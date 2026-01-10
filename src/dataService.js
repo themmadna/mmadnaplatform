@@ -87,5 +87,49 @@ export const dataService = {
     const { data, error } = await supabase.from('ufc_baselines').select('*').single();
     if (error) { console.warn("Baselines fetch error", error); return null; }
     return data;
+  },
+
+  
+  async getRecommendations(userId, dna) {
+    const { data, error } = await supabase.rpc('get_fight_recommendations', {
+      p_user_id: userId,
+      p_pace: parseFloat(dna.strikePace),
+      p_violence: parseFloat(dna.violenceIndex),
+      p_control: parseFloat(dna.engagementStyle),
+      p_finish: parseFloat(dna.finishRate),
+      p_duration: parseFloat(dna.avgFightTime)
+    });
+    
+    if (error) console.error("Recs error", error);
+    return data;
+  },
+
+  // NEW: Get Community Favorites (Fallback for new users)
+  // Logic: Most Likes -> Tiebreak Least Dislikes -> Random
+  async getCommunityFavorites() {
+    const { data, error } = await supabase
+      .from('fights')
+      .select(`
+        *,
+        fight_ratings!inner (
+          likes_count,
+          dislikes_count
+        )
+      `)
+      .order('likes_count', { foreignTable: 'fight_ratings', ascending: false })
+      .order('dislikes_count', { foreignTable: 'fight_ratings', ascending: true })
+      .limit(10);
+
+    if (error) {
+      console.error("Error fetching top rated:", error);
+      return [];
+    }
+    
+    // Flatten the structure for the UI
+    return data.map(f => ({
+        ...f,
+        ratings: f.fight_ratings,
+        match_reason: "Community Favorite" // Special label for these
+    }));
   }
 };

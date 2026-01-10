@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Target, Dna } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Target, Dna, Sparkles } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
@@ -50,7 +50,7 @@ const CombatDNACard = ({ dna, currentTheme }) => {
         <Activity className={currentTheme.accent} size={24} />
         <div>
           <h2 className="text-xl font-black uppercase tracking-wider">Your Combat DNA</h2>
-          <p className="text-xs opacity-50">Based on Bout Totals and compared with UFC averages</p>
+          <p className="text-xs opacity-50">Based on bout totals and compared with UFC averages</p>
         </div>
       </div>
 
@@ -58,7 +58,7 @@ const CombatDNACard = ({ dna, currentTheme }) => {
         <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
           <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Strike Pace</p>
           <div className="text-3xl font-black mb-1">{dna.strikePace}</div>
-          <p className="text-xs opacity-50 mb-2">combined / min</p>
+          <p className="text-xs opacity-50 mb-2">combined strikes / min</p>
           <div className="bg-black/20 py-1 px-2 rounded-lg inline-block">
             <Comparison userVal={dna.strikePace} baseVal={baselines.strikePace} />
           </div>
@@ -66,7 +66,7 @@ const CombatDNACard = ({ dna, currentTheme }) => {
         <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
           <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Violence Index</p>
           <div className="text-3xl font-black mb-1">{dna.violenceIndex}</div>
-          <p className="text-xs opacity-50 mb-2">(Kd + Sub) / min</p>
+          <p className="text-xs opacity-50 mb-2">(Kd + Sub Att) / min</p>
           <div className="bg-black/20 py-1 px-2 rounded-lg inline-block">
             <Comparison userVal={dna.violenceIndex} baseVal={baselines.violenceIndex} />
           </div>
@@ -120,7 +120,10 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false }) => {
   const fighters = fight.bout ? fight.bout.split(/ vs /i) : ["Unknown", "Fighter"];
 
   return (
-    <div className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all`}>
+    <div className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative`}>
+
+
+
       <div className="p-4 bg-black/20 text-center">
         <h2 className={`text-xl font-bold ${currentTheme.text}`}>
           {fighters[0]} <span className={currentTheme.accent}>VS</span> {fighters[1]}
@@ -154,10 +157,11 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false }) => {
   );
 };
 
+
 // --- Main App Component ---
 export default function UFCFightRating() {
   const [session, setSession] = useState(null);
-  const [currentView, setCurrentView] = useState('events'); // 'events', 'fights', 'profile', 'dna'
+  const [currentView, setCurrentView] = useState('events');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [availableYears, setAvailableYears] = useState([]);
   const [selectedYear, setSelectedYear] = useState('');
@@ -165,6 +169,7 @@ export default function UFCFightRating() {
   const [eventFights, setEventFights] = useState([]);
   const [userHistory, setUserHistory] = useState([]);
   const [combatDNA, setCombatDNA] = useState(null);
+  const [recommendations, setRecommendations] = useState([]); 
   const [activeProfileTab, setActiveProfileTab] = useState('like');
   
   // Theme State
@@ -202,14 +207,45 @@ export default function UFCFightRating() {
     if (data) {
       const years = [...new Set(data.map(e => e.event_date.split('-')[0]))].sort((a, b) => b - a);
       setAvailableYears(years);
+      // 1. DEFAULT TO MOST RECENT YEAR (Initial State)
       if (years.length > 0) setSelectedYear(years[0]);
       setLoading(false);
     }
   };
 
-  // Browse Events Logic
+  // --- LOGIC: Fetch Recommendations or Favorites for "For You" Tab ---
   useEffect(() => {
-    if (!selectedYear || searchQuery) return;
+    if (selectedYear === 'For You' && session) {
+        setFetchingEvents(true);
+        const loadForYou = async () => {
+             // Check if user qualifies for DNA (Needs 5+ likes)
+             const likesCount = userHistory.filter(f => f.userVote === 'like').length;
+             
+             if (likesCount >= 5 && combatDNA) {
+                 // CASE A: HAS DNA -> Get Smart Recommendations
+                 const recs = await dataService.getRecommendations(session.user.id, combatDNA);
+                 if (recs) setRecommendations(recs);
+             } else {
+                 // CASE B: NO DNA -> Get Community Favorites
+                 const favs = await dataService.getCommunityFavorites();
+                 // Check if user has already voted on these (to color the buttons)
+                 const favsWithVotes = favs.map(f => ({
+                     ...f,
+                     userVote: userHistory.find(v => v.id === f.id)?.userVote
+                 }));
+                 setRecommendations(favsWithVotes);
+             }
+             setFetchingEvents(false);
+        };
+        loadForYou();
+    }
+  }, [selectedYear, combatDNA, userHistory, session]);
+
+
+  // Browse Events Logic (Only runs for specific years)
+  useEffect(() => {
+    if (!selectedYear || selectedYear === 'For You' || searchQuery) return;
+    
     const fetchEventsByYear = async () => {
       setFetchingEvents(true);
       const { data } = await supabase.from('ufc_events').select('*').gte('event_date', `${selectedYear}-01-01`).lte('event_date', `${selectedYear}-12-31`).order('event_date', { ascending: false });
@@ -219,7 +255,7 @@ export default function UFCFightRating() {
     fetchEventsByYear();
   }, [selectedYear, searchQuery]);
 
-  // Search Logic
+  // Search Logic (Kept same as before)
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
       if (!searchQuery) { setSearchResults([]); return; }
@@ -265,9 +301,10 @@ export default function UFCFightRating() {
     }
   };
 
-  const handleVote = async (fightId, clickedType) => {
+const handleVote = async (fightId, clickedType) => {
     let targetList;
     if (currentView === 'profile') targetList = userHistory;
+    else if (selectedYear === 'For You' && !searchQuery) targetList = recommendations; 
     else if (searchQuery) targetList = searchResults;
     else targetList = eventFights;
 
@@ -278,6 +315,7 @@ export default function UFCFightRating() {
     const isSwitching = oldVote !== null && oldVote !== clickedType;
     const finalVote = oldVote === clickedType ? null : clickedType;
 
+    // 1. Helper to update existing items in a list
     const updateList = (list) => list.map(f => {
       if (f.id === fightId) {
         let { likes_count, dislikes_count } = f.ratings || { likes_count: 0, dislikes_count: 0 };
@@ -290,22 +328,67 @@ export default function UFCFightRating() {
       return f;
     });
 
+    // 2. Update visible lists
     if (searchQuery) setSearchResults(updateList(searchResults));
     if (eventFights.length > 0) setEventFights(updateList(eventFights));
-    const newUserHistory = updateList(userHistory);
+    
+    // For You Tab: Optimistic Remove
+    if (selectedYear === 'For You') {
+        setRecommendations(prev => prev.filter(f => f.id !== fightId));
+    }
+    
+    // 3. UPDATE USER HISTORY (THE FIX)
+    let newUserHistory = updateList(userHistory);
+    
+    // Check if this fight was actually found and updated in history. 
+    // If NOT (because it's a new recommendation), we must ADD it.
+    const existsInHistory = userHistory.some(f => f.id === fightId);
+    if (!existsInHistory && finalVote !== null) {
+        // Create a new history object merging the fight data with the new vote
+        const newHistoryItem = { 
+            ...fight, 
+            userVote: finalVote,
+            // Ensure ratings are updated locally for consistency
+            ratings: {
+                likes_count: (fight.ratings?.likes_count || 0) + (finalVote === 'like' ? 1 : 0),
+                dislikes_count: (fight.ratings?.dislikes_count || 0) + (finalVote === 'dislike' ? 1 : 0)
+            }
+        };
+        newUserHistory = [newHistoryItem, ...newUserHistory];
+    } else if (existsInHistory && finalVote === null) {
+        // If we removed the vote, remove it from history
+        newUserHistory = newUserHistory.filter(f => f.id !== fightId);
+    }
+    
     setUserHistory(newUserHistory);
 
-    // Update DNA in background if we liked a fight
+    // 4. Update DNA logic
+    let newDna = combatDNA;
     if (finalVote === 'like' || oldVote === 'like') {
        const likedFights = newUserHistory.filter(f => f.userVote === 'like');
        if (likedFights.length > 0) {
-          dataService.getCombatDNA(likedFights).then(dna => setCombatDNA(dna));
-       } else { setCombatDNA(null); }
+          newDna = await dataService.getCombatDNA(likedFights); 
+          setCombatDNA(newDna);
+       } else { setCombatDNA(null); newDna = null; }
     }
 
+    // 5. Database & Refill
     try {
       if (isSwitching) await dataService.castVote(fightId, null);
       await dataService.castVote(fightId, finalVote);
+      
+      if (selectedYear === 'For You' && session) {
+          const likesCount = newUserHistory.filter(f => f.userVote === 'like').length;
+          if (likesCount >= 5 && newDna) {
+               const freshRecs = await dataService.getRecommendations(session.user.id, newDna);
+               if(freshRecs) setRecommendations(freshRecs);
+          } else {
+               const favs = await dataService.getCommunityFavorites();
+               const favsWithVotes = favs.map(f => ({ ...f, userVote: newUserHistory.find(v => v.id === f.id)?.userVote }));
+               setRecommendations(favsWithVotes.filter(f => f.id !== fightId && f.userVote === undefined));
+          }
+      }
+
     } catch (err) { console.error(err); }
   };
 
@@ -319,36 +402,21 @@ export default function UFCFightRating() {
     const { data: historyFights } = await supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count)`).in('id', votes.map(v => v.fight_id));
     if (!historyFights) { setUserHistory([]); return; }
     
-    const uniqueEventNames = [...new Set(historyFights.map(f => f.event_name))];
-    const { data: eventDates } = await supabase.from('ufc_events').select('event_name, event_date').in('event_name', uniqueEventNames);
-    
-    const merged = historyFights.map(f => {
-      const eventInfo = eventDates?.find(e => e.event_name === f.event_name);
-      return {
+    const merged = historyFights.map(f => ({
         ...f,
         ratings: f.fight_ratings || { likes_count: 0, dislikes_count: 0 },
-        event_date: eventInfo?.event_date || '',
         userVote: votes.find(v => v.fight_id === f.id)?.vote_type
-      };
-    });
-    merged.sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+    }));
     setUserHistory(merged);
 
     const likedFights = merged.filter(f => f.userVote === 'like');
     if (likedFights.length > 0) {
       const dnaResults = await dataService.getCombatDNA(likedFights);
       setCombatDNA(dnaResults);
-    } else {
-      setCombatDNA(null);
-    }
+    } else { setCombatDNA(null); }
   };
 
-  // Trigger Data Fetch when entering Profile or DNA view
-  useEffect(() => { 
-    if (currentView === 'profile' || currentView === 'dna') {
-        fetchUserHistory(); 
-    }
-  }, [currentView]);
+  useEffect(() => { fetchUserHistory(); }, [session]);
 
   if (!session) return <LoginPage />;
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
@@ -357,7 +425,6 @@ export default function UFCFightRating() {
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} p-4 pb-20 transition-all duration-500`}>
       <div className="max-w-2xl mx-auto">
         <header className="flex justify-between items-center mb-8 pt-4 relative">
-          {/* THEME SELECTOR */}
           <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border border-white/10 ${currentTheme.card}`}>
             <Palette size={24} className={currentTheme.accent} />
           </button>
@@ -408,28 +475,75 @@ export default function UFCFightRating() {
 
             {!searchQuery && (
               <>
-                <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide items-center">
+                  
+                  {/* --- "FOR YOU" BUTTON (Special Look) --- */}
+                  <button 
+                    onClick={() => setSelectedYear('For You')} 
+                    className={`px-6 py-2 rounded-full font-bold border transition-all flex items-center gap-2 whitespace-nowrap
+                        ${selectedYear === 'For You' 
+                            ? 'bg-gradient-to-r from-yellow-600 to-yellow-800 border-transparent text-white shadow-lg shadow-yellow-900/50' 
+                            : 'border-yellow-500/30 text-yellow-500/80 hover:bg-yellow-500/10'
+                        }`}
+                  >
+                    <Sparkles size={16} className={selectedYear === 'For You' ? 'text-white' : 'text-yellow-500'} />
+                    For You
+                  </button>
+                  
+                  {/* Standard Year Buttons */}
                   {availableYears.map(y => (
                     <button key={y} onClick={() => setSelectedYear(y)} className={`px-6 py-2 rounded-full font-bold border transition-all ${selectedYear === y ? `${currentTheme.primary} border-transparent text-white` : 'border-white/20 opacity-50'}`}>{y}</button>
                   ))}
                 </div>
-                <div className="grid gap-4">
-                  {fetchingEvents ? (<p className="text-center opacity-40 py-10 italic">Loading...</p>) : events.map(event => (
-                    <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-6 rounded-xl border text-left hover:scale-[1.01] transition-transform`}>
-                      <h3 className="text-xl font-bold">{event.event_name}</h3>
-                      <div className="flex flex-col gap-1 mt-1 opacity-50 text-sm">
-                        <p>{event.event_date}</p>
-                        {event.location && <p className="flex items-center gap-1 italic"><MapPin size={12} /> {event.location}</p>}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+
+                {/* CONTENT AREA */}
+                {selectedYear === 'For You' ? (
+                     // --- RENDER RECOMMENDATIONS ---
+                     <div className="animate-in slide-in-from-right duration-500">
+                         {fetchingEvents ? (
+                             <p className="text-center opacity-40 py-10 italic">Curating your fight feed...</p>
+                         ) : (
+                             <>
+                                {recommendations.length > 0 ? (
+                                    <>
+                                        {/* Optional Header explaining what they are seeing */}
+                                        <div className="mb-6 opacity-60 text-sm text-center italic">
+                                            {userHistory.filter(f => f.userVote === 'like').length < 5 
+                                                ? "Community Favorites (Rate 5 fights to unlock DNA)" 
+                                                : "Based on your Combat DNA"}
+                                        </div>
+                                        {recommendations.map(f => (
+                                            <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} />
+                                        ))}
+                                    </>
+                                ) : (
+                                    <div className="text-center py-20 opacity-40 italic">No recommendations found. Try rating more fights!</div>
+                                )}
+                             </>
+                         )}
+                     </div>
+                ) : (
+                    // --- RENDER EVENT LIST (Standard) ---
+                    <div className="grid gap-4">
+                      {fetchingEvents ? (<p className="text-center opacity-40 py-10 italic">Loading...</p>) : events.map(event => (
+                        <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-6 rounded-xl border text-left hover:scale-[1.01] transition-transform`}>
+                          <h3 className="text-xl font-bold">{event.event_name}</h3>
+                          <div className="flex flex-col gap-1 mt-1 opacity-50 text-sm">
+                            <p>{event.event_date}</p>
+                            {event.location && <p className="flex items-center gap-1 italic"><MapPin size={12} /> {event.location}</p>}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                )}
               </>
             )}
           </>
         )}
 
-        {/* --- 2. FIGHTS VIEW --- */}
+        {/* ... (Fights View, DNA View, Profile View code remains unchanged) ... */}
+        {/* Make sure to keep the closing brackets for the other views here */}
+        
         {currentView === 'fights' && !searchQuery && (
           <div className="animate-in fade-in">
             <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 font-bold opacity-60"><ChevronLeft size={20} /> BACK TO EVENTS</button>
@@ -439,7 +553,6 @@ export default function UFCFightRating() {
           </div>
         )}
 
-        {/* --- 3. DNA PAGE (New View) --- */}
         {currentView === 'dna' && (
           <div className="animate-in slide-in-from-right pb-20">
              <div className="flex items-center gap-2 mb-6 opacity-60">
@@ -460,7 +573,6 @@ export default function UFCFightRating() {
                  <User size={20} />
                  <span className="font-bold">LIKE HISTORY</span>
              </div>
-
             <div className="flex bg-gray-800/50 p-1 rounded-xl mb-8">
               {['like', 'dislike'].map(tab => (
                 <button key={tab} onClick={() => setActiveProfileTab(tab)} className={`flex-1 py-3 rounded-lg font-bold uppercase transition-all ${activeProfileTab === tab ? (tab === 'like' ? 'bg-green-600 text-white' : 'bg-red-600 text-white') : 'opacity-40'}`}>
