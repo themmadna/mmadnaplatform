@@ -66,7 +66,7 @@ const CombatDNACard = ({ dna, currentTheme }) => {
         <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
           <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Violence Index</p>
           <div className="text-3xl font-black mb-1">{dna.violenceIndex}</div>
-          <p className="text-xs opacity-50 mb-2">events / min</p>
+          <p className="text-xs opacity-50 mb-2">(Kd + Sub) / min</p>
           <div className="bg-black/20 py-1 px-2 rounded-lg inline-block">
             <Comparison userVal={dna.violenceIndex} baseVal={baselines.violenceIndex} />
           </div>
