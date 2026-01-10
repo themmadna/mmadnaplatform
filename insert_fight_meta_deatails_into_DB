@@ -1,0 +1,267 @@
+import os
+import time
+from dotenv import load_dotenv
+from bs4 import BeautifulSoup
+import requests
+from supabase import create_client, Client
+import supabase
+from supabase_auth import datetime
+
+
+# Load variables and create the CLIENT object
+load_dotenv()
+url = os.environ.get("SUPABASE_URL")
+key = os.environ.get("SUPABASE_ANON_KEY")
+
+# We will call our client 'supabase_db' to avoid confusion with the library name
+supabase_db: Client = create_client(url, key)
+
+
+
+
+
+def parse_fight_meta_details(fight_url):
+    try:
+        res = requests.get(fight_url, timeout=10)
+        soup = BeautifulSoup(res.text, 'html.parser')
+    except Exception as e:
+        print(f"❌ Failed to load fight page: {fight_url} | Error: {e}")
+        return None
+
+    try:
+        event_name = soup.select_one("body > section > div > h2 > a").text.strip()
+    except:
+        event_name = None
+
+    fighters = soup.select('div.b-fight-details__person')
+    if len(fighters) < 2:
+        return None
+
+    fighter1 = fighters[0]
+    fighter2 = fighters[1]
+
+    fighter1_name = fighter1.select_one('h3.b-fight-details__person-name').text.strip()
+    fighter1_nickname = fighter1.select_one('p.b-fight-details__person-title').text.strip()
+    fighter2_name = fighter2.select_one('h3.b-fight-details__person-name').text.strip()
+    fighter2_nickname = fighter2.select_one('p.b-fight-details__person-title').text.strip()
+
+    result_tag1 = fighter1.select_one('i.b-fight-details__person-status')
+    result_tag2 = fighter2.select_one('i.b-fight-details__person-status')
+    result1 = result_tag1.text.strip().upper()
+    result2 = result_tag2.text.strip().upper()
+
+    if result1 == "W":
+        winner = fighter1_name
+        result = "win"
+    elif result2 == "W":
+        winner = fighter2_name
+        result = "win"
+    elif result1 == result2 == "L":
+        result = "no contest"
+        winner = None
+    elif result1 == result2 == "":
+        result = "draw"
+        winner = None
+    else:
+        result = "unknown"
+        winner = None
+
+    details_div = soup.select_one("div.b-fight-details__fight")
+
+    try:
+        weight_class = details_div.select_one("i.b-fight-details__fight-title").text.strip()
+    except:
+        weight_class = ""
+
+    labels = details_div.select("i.b-fight-details__label")
+    content = details_div.select("i.b-fight-details__text-item, i.b-fight-details__text-item_first")
+
+    details = {}
+    for label, val in zip(labels, content):
+        key = label.text.strip().rstrip(":").lower().replace(" ", "_")
+        value = val.text.replace(label.text, "").strip()
+        details[key] = value
+
+    method = details.get("method", "")
+    round_num = details.get("round", "")
+    time_end = details.get("time", "")
+    time_format = details.get("time_format", "")
+    referee = details.get("referee", "")
+
+    try:
+        method_details_raw = soup.select('div.b-fight-details__content p')[1]
+        method_details = ", ".join([
+            f"{i.find('span').text.strip()}: {i.text.split()[-1]}"
+            for i in method_details_raw.select('i.b-fight-details__text-item')
+        ])
+    except:
+        method_details = ""
+
+    return {
+        "event_name": event_name,
+        "fight": f"{fighter1_name} vs {fighter2_name}",
+        "fighter1_name": fighter1_name,
+        "fighter1_nickname": fighter1_nickname,
+        "fighter2_name": fighter2_name,
+        "fighter2_nickname": fighter2_nickname,
+        "winner": winner,
+        "result": result.lower(),
+        "weight_class": weight_class,
+        "method": method,
+        "method_details": method_details,
+        "round": round_num,
+        "time": time_end,
+        "time_format": time_format,
+        "referee": referee,
+        "fight_url": fight_url
+    }
+
+
+
+def get_all_event_links():
+    url = "http://ufcstats.com/statistics/events/completed?page=all"
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, 'html.parser')
+    table_rows = soup.select('tr.b-statistics__table-row')
+
+    events = []
+
+    for row in table_rows:
+        cols = row.find_all('td')
+        if len(cols) != 2:
+            continue  # Skip header or malformed row
+
+        event_tag = cols[0].find('a')
+        event_date_tag = cols[0].find('span', class_='b-statistics__date')
+
+        if not event_tag or not event_date_tag:
+            continue
+
+        event_name = event_tag.text.strip()
+        event_url = event_tag['href'].strip()
+        event_date = event_date_tag.text.strip()
+
+        # Skip future events (compare to today's date)
+        from datetime import datetime
+        try:
+            event_datetime = datetime.strptime(event_date, "%B %d, %Y")
+            if event_datetime > datetime.today():
+                continue  # It's a future event
+        except:
+            continue  # Could not parse date, skip it
+
+        events.append({
+            'event_name': event_name,
+            'event_url': event_url
+        })
+
+    print(f"✅ Found {len(events)} completed events.")
+    return events
+
+
+
+def get_texts(td): 
+    return [p.get_text(strip=True) for p in td.find_all('p')]
+
+
+
+def scrape_fights_for_event(event_name, event_url): 
+    try: 
+        response = requests.get(event_url) 
+        soup = BeautifulSoup(response.text, 'html.parser') 
+        table_body = soup.find('tbody', class_='b-fight-details__table-body') 
+        rows = table_body.find_all('tr', class_='b-fight-details__table-row') 
+    except Exception as e: 
+        print(f"❌ Error loading {event_url}: {e}") 
+        return []
+    
+    fights = [] 
+    
+    for row in rows: 
+        cols = row.find_all('td') 
+        if len(cols) < 10: 
+            continue
+
+        result_flags = [r.lower() for r in get_texts(cols[0])] 
+        
+        if result_flags == ['win']: 
+            result = 'win' 
+        elif all(r == 'draw' for r in result_flags): 
+            result = 'draw' 
+        elif all(r == 'nc' for r in result_flags): 
+            result = 'no contest' 
+        else: result = 'unknown'
+
+        fighters = get_texts(cols[1]) 
+        fighter1 = fighters[0] if len(fighters) > 0 else '' 
+        fighter2 = fighters[1] if len(fighters) > 1 else ''
+        winner = fighter1 if result == 'win' else None
+
+        fight_link = cols[0].find('a') 
+        fight_url = fight_link['href'] if fight_link else None
+
+        fight_name = f"{fighter1} vs {fighter2}" 
+        
+        fights.append({ 'event_name': event_name, 'fight': fight_name, 'winner': winner, 'fight_url': fight_url }) 
+
+    return fights
+
+
+
+def insert_new_fight_meta_by_event():
+    events = get_all_event_links()  # You already have this function
+    print(f"📡 Checking {len(events)} events for new metadata...")
+
+    inserted = 0
+
+    for event in events:
+        event_name = event["event_name"]
+        event_url = event["event_url"]
+
+        fights = scrape_fights_for_event(event_name, event_url)  # You already have this too
+        if not fights:
+            print(f"⚠️ No fights found for {event_name}")
+            continue
+
+        fight_urls = [f['fight_url'] for f in fights if f['fight_url']]
+
+        # Check how many of this event's fights are already inserted
+        existing = supabase_db.table("fight_meta_details").select("fight_url")\
+            .in_("fight_url", fight_urls).execute()
+
+        if len(existing.data) == len(fight_urls):
+            print(f"🛑 All fight metadata for '{event_name}' already exists. Stopping early.")
+            break  # ✅ Stop here, all older events assumed inserted
+
+        print(f"🔄 Scraping fight metadata for {event_name}...")
+
+        for fight in fights:
+            fight_url = fight["fight_url"]
+            if not fight_url:
+                continue
+
+            exists = supabase_db.table("fight_meta_details").select("id")\
+                .eq("fight_url", fight_url).execute()
+            if exists.data:
+                print(f"⚠️ Already exists: {fight['fight']}")
+                continue
+
+            fight_data = parse_fight_meta_details(fight_url)
+            if not fight_data:
+                print(f"❌ Failed to scrape meta for: {fight_url}")
+                continue
+
+            try:
+                supabase_db.table("fight_meta_details").insert(fight_data).execute()
+                print(f"✅ Inserted: {fight_data['fight']}")
+                inserted += 1
+            except Exception as e:
+                print(f"❌ Insert failed for {fight_data['fight']}: {e}")
+
+            time.sleep(1)
+
+    print(f"\n🎯 Done — Total fight meta inserted: {inserted}")
+
+
+
+insert_new_fight_meta_by_event()
