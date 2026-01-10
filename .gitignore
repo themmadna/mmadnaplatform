@@ -8,16 +8,39 @@
 # testing
 /coverage
 
-# production
+# production (CRA uses /build, Vite uses /dist - good to have both)
 /build
+/dist
 
-# misc
-.DS_Store
+# security (CRITICAL: Block all env files to prevent leaking keys)
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
+# misc
+.DS_Store
+Thumbs.db
+
+# logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Vercel (If you use Vercel CLI locally)
+.vercel
+
+# Editor directories (User-specific settings that shouldn't be shared)
+.vscode
+.idea
+*.suo
+*.ntvs
+*.njsproj
+*.sln
+*.sw?
+
+# Ignore accidental backup files
+*copys
+*.JS copys
+src/*copys
