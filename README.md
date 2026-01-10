@@ -1,70 +1,101 @@
-# Getting Started with Create React App
+# 🥊 UFC Ratings & Combat DNA
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+> **Discover what kind of fight fan you really are.**
+> An analytics platform that generates a personalized "Combat DNA" profile based on the UFC bouts you rate.
 
-## Available Scripts
+![Project Status](https://img.shields.io/badge/Status-Active-green)
+![Tech Stack](https://img.shields.io/badge/Stack-React%20|%20Supabase%20|%20Tailwind-blue)
 
-In the project directory, you can run:
+## 📖 About The Project
 
-### `npm start`
+Most MMA stats focus on the fighter (e.g., "Jon Jones lands 4.3 strikes/min"). **UFC Ratings** flips the script to focus on the **Fan**.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+By liking or disliking specific fights, this application builds a unique "Combat DNA" profile for the user. It aggregates hundreds of data points—from strike locations to control time to knockdown frequency—to reveal your specific taste in violence.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Do you prefer high-volume brawls? Technical grappling clinics? Or chaotic first-round finishes? This app tells you the answer with data.
 
-### `npm test`
+## ✨ Key Features
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 🧬 The Combat DNA Engine
+Your profile is built on 5 custom "Bout-Level" metrics, calculated via complex SQL aggregations:
+* **Strike Pace:** Combined significant strike volume per minute (both fighters).
+* **Violence Index:** A custom metric tracking "danger events" (Knockdowns + Submission Attempts) per minute.
+* **Engagement Style:** Analysis of where the fight takes place (Stand-up vs. Ground Control %).
+* **Finish Profile:** Your preference for "Flash KOs" vs. "Deep Water Wars" (Avg Duration + Finish Rate).
+* **Grappling Intensity:** Takedown attempts per fight.
 
-### `npm run build`
+### 🎯 Dynamic Strike Heatmap
+* **Interactive SVG:** A custom-built fighter visualization that updates in real-time.
+* **Heat Map Logic:** Dynamically colors the Head, Body, and Legs (Red/Orange/Yellow) based on the strike distribution of your favorite fights.
+* **Glow Effects:** CSS filters generate a "radioactive" glow intensity proportional to the percentage of strikes absorbed in that zone.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### 📊 Live Baselines
+* **Supabase Views:** The app compares your personal stats against a live "UFC Average" calculated from thousands of fights in the database.
+* **Contextual Ratings:** Every stat shows a "vs Avg" comparison (e.g., `+5.3 strikes/min vs avg`) so you know exactly where you stand.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 🛠️ Tech Stack
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+* **Frontend:** React.js, Tailwind CSS, Lucide React (Icons).
+* **Backend:** Supabase (PostgreSQL, Auth, Realtime Database).
+* **Visualization:** Custom SVG manipulation, CSS transitions.
+* **Deployment:** Vercel.
 
-### `npm run eject`
+## 🚀 Getting Started
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Prerequisites
+* Node.js installed.
+* A Supabase account (free tier works great).
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Installation
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+1.  **Clone the repo**
+    ```bash
+    git clone [https://github.com/yourusername/ufc-ratings-dna.git](https://github.com/yourusername/ufc-ratings-dna.git)
+    cd ufc-ratings-dna
+    ```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+2.  **Install dependencies**
+    ```bash
+    npm install
+    ```
 
-## Learn More
+3.  **Setup Environment Variables**
+    Create a `.env` file in the root directory and add your Supabase credentials:
+    ```env
+    VITE_SUPABASE_URL=your_supabase_project_url
+    VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+    ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+4.  **Run the App**
+    ```bash
+    npm run dev
+    ```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## 🗄️ Database Structure
 
-### Code Splitting
+The app relies on three main tables and one view in PostgreSQL:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+* `fights`: Stores event names, bout details, and dates.
+* `round_fight_stats`: Granular round-by-round data (strikes, takedowns, control time).
+* `user_votes`: Junction table tracking user Likes/Dislikes.
+* `ufc_baselines` (View): A virtual table that auto-calculates the global UFC averages for comparison.
 
-### Analyzing the Bundle Size
+## 🤝 Contributing
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
 
-### Making a Progressive Web App
+1.  Fork the Project
+2.  Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the Branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+## 📝 License
 
-### Advanced Configuration
+Distributed under the MIT License. See `LICENSE` for more information.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## 📧 Contact
 
-### Deployment
+Your Name - [@YourTwitterHandle](https://twitter.com/your_handle) - email@example.com
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Project Link: [https://github.com/yourusername/ufc-ratings-dna](https://github.com/yourusername/ufc-ratings-dna)
