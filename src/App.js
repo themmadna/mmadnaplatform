@@ -111,8 +111,8 @@ const CombatDNACard = ({ dna, currentTheme }) => {
   );
 };
 
-// --- FightCard Component ---
-const FightCard = ({ fight, currentTheme, handleVote, showEvent = false }) => {
+// --- FightCard Component (Updated with Locking Logic) ---
+const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false }) => {
   const likes = fight.ratings?.likes_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
   const totalVotes = likes + dislikes;
@@ -121,8 +121,12 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false }) => {
 
   return (
     <div className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative`}>
-
-
+      
+      {/* LOCKED OVERLAY (Optional Visual Cue) */}
+      {locked && (
+        <div className="absolute inset-0 bg-black/5 z-10 pointer-events-none flex items-center justify-center">
+        </div>
+      )}
 
       <div className="p-4 bg-black/20 text-center">
         <h2 className={`text-xl font-bold ${currentTheme.text}`}>
@@ -144,14 +148,36 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false }) => {
         <div className="h-1.5 w-full bg-gray-700 rounded-full mb-6 relative overflow-hidden">
           <div className={`h-full ${currentTheme.primary} transition-all duration-500 absolute left-0 top-0`} style={{ width: `${likePercentage}%` }}></div>
         </div>
+        
+        {/* BUTTONS WITH LOCK LOGIC */}
         <div className="flex gap-4">
-          <button onClick={() => handleVote(fight.id, 'like')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${fight.userVote === 'like' ? 'bg-green-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}>
-            <ThumbsUp size={18} /> {likes}
+          <button 
+            disabled={locked}
+            onClick={() => handleVote(fight.id, 'like')} 
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all 
+                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' : 
+                  (fight.userVote === 'like' ? 'bg-green-600 text-white' : 'bg-gray-800 hover:bg-gray-700')}`}
+          >
+            {locked ? <span className="text-xs">LOCKED</span> : <><ThumbsUp size={18} /> {likes}</>}
           </button>
-          <button onClick={() => handleVote(fight.id, 'dislike')} className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${fight.userVote === 'dislike' ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700'}`}>
-            <ThumbsDown size={18} /> {dislikes}
+          
+          <button 
+            disabled={locked}
+            onClick={() => handleVote(fight.id, 'dislike')} 
+            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all 
+                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' : 
+                  (fight.userVote === 'dislike' ? 'bg-red-600 text-white' : 'bg-gray-800 hover:bg-gray-700')}`}
+          >
+            {locked ? <span className="text-xs">LOCKED</span> : <><ThumbsDown size={18} /> {dislikes}</>}
           </button>
         </div>
+        
+        {/* Helper text for locked state */}
+        {locked && (
+            <div className="text-center text-xs opacity-40 mt-2 uppercase tracking-widest">
+                Voting opens at start time
+            </div>
+        )}
       </div>
     </div>
   );
@@ -417,6 +443,24 @@ const handleVote = async (fightId, clickedType) => {
   };
 
   useEffect(() => { fetchUserHistory(); }, [session]);
+  
+  // --- HELPER: CHECK IF EVENT IS LOCKED ---
+  const isVotingLocked = (event) => {
+    if (!event || !event.start_time) return false; // If no time, assume open
+    const now = new Date();
+    const startTime = new Date(event.start_time); // Converts UTC to local time automatically
+    return now < startTime; // Returns TRUE if we are still waiting for start
+  };
+  
+  // --- HELPER: CHECK IF EVENT IS UPCOMING (For the Badge) ---
+  const isUpcoming = (dateString) => {
+    if (!dateString) return false;
+    const eventDate = new Date(dateString);
+    const today = new Date();
+    today.setHours(0,0,0,0); // Reset time to compare dates only
+    // Check if event is today or future
+    return eventDate >= today;
+  };
 
   if (!session) return <LoginPage />;
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
@@ -527,7 +571,16 @@ const handleVote = async (fightId, clickedType) => {
                     <div className="grid gap-4">
                       {fetchingEvents ? (<p className="text-center opacity-40 py-10 italic">Loading...</p>) : events.map(event => (
                         <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-6 rounded-xl border text-left hover:scale-[1.01] transition-transform`}>
-                          <h3 className="text-xl font-bold">{event.event_name}</h3>
+                          <h3 className="text-xl font-bold flex items-center gap-3">
+                            {event.event_name}
+                            
+                            {/* NEW BADGE */}
+                            {isUpcoming(event.event_date) && (
+                                <span className="bg-red-600/20 text-red-500 text-xs px-2 py-1 rounded-md border border-red-600/30 uppercase tracking-widest">
+                                    Upcoming
+                                </span>
+                            )}
+                          </h3>
                           <div className="flex flex-col gap-1 mt-1 opacity-50 text-sm">
                             <p>{event.event_date}</p>
                             {event.location && <p className="flex items-center gap-1 italic"><MapPin size={12} /> {event.location}</p>}
@@ -549,7 +602,21 @@ const handleVote = async (fightId, clickedType) => {
             <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 font-bold opacity-60"><ChevronLeft size={20} /> BACK TO EVENTS</button>
             <h2 className="text-2xl font-black mb-1 uppercase border-l-4 border-red-600 pl-4">{selectedEvent?.event_name}</h2>
             <p className="text-sm opacity-50 mb-8 pl-5 italic">{selectedEvent?.event_date} {selectedEvent?.location ? `• ${selectedEvent.location}` : ''}</p>
-            {eventFights.map(f => <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} />)}
+            
+            {/* 1. CALCULATE LOCK STATUS FOR THIS EVENT */}
+            {(() => {
+                const eventLocked = isVotingLocked(selectedEvent);
+                
+                return eventFights.map(f => (
+                    <FightCard 
+                        key={f.id} 
+                        fight={f} 
+                        currentTheme={currentTheme} 
+                        handleVote={handleVote} 
+                        locked={eventLocked} // <-- 2. PASS IT HERE
+                    />
+                ));
+            })()}
           </div>
         )}
 
