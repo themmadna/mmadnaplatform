@@ -5,7 +5,7 @@ import { dataService } from './dataService';
 import LoginPage from './Login';
 import CombatDNAVisual from './CombatDNAVisual';
 
-// --- CombatDNA Card (The 5 Metrics) ---
+// --- CombatDNA Card (The 5 Metrics + Intensity) ---
 const CombatDNACard = ({ dna, currentTheme }) => {
   const [baselines, setBaselines] = useState({
     strikePace: 30.5,        
@@ -13,7 +13,8 @@ const CombatDNACard = ({ dna, currentTheme }) => {
     violenceIndex: 0.15,     
     engagementStyle: 45,     
     finishRate: 48,          
-    avgFightTime: 10.5       
+    avgFightTime: 10.5,
+    intensityScore: 2.0      // Default baseline for intensity
   });
 
   useEffect(() => {
@@ -43,6 +44,18 @@ const CombatDNACard = ({ dna, currentTheme }) => {
       </span>
     );
   };
+
+  // --- NEW: Intensity Logic ---
+  // We expect dna.intensityScore to come from the backend. If missing, default to 0.
+  const intensityScore = dna.intensityScore || 0; 
+  
+  const getIntensityLabel = (score) => {
+      if (score > 12) return { text: "MAULER", color: "text-red-500" };
+      if (score > 7) return { text: "ACTIVE GRAPPLER", color: "text-yellow-400" };
+      return { text: "CONTROL FOCUSED", color: "text-blue-400" };
+  };
+  const intensityLabel = getIntensityLabel(intensityScore);
+
 
   return (
     <div className={`${currentTheme.card} p-6 rounded-2xl border mb-8 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-700`}>
@@ -74,17 +87,31 @@ const CombatDNACard = ({ dna, currentTheme }) => {
       </div>
 
       <div className="space-y-6">
+        {/* ENGAGEMENT STYLE + INTENSITY */}
         <div>
           <div className="flex justify-between text-sm mb-2 font-bold">
-            <span className="flex items-center gap-2"><Swords size={14} /> Engagement Style (Control Time)</span>
+            <span className="flex items-center gap-2"><Swords size={14} /> Engagement Style</span>
             <div className="flex items-center">
-              <span>{dna.engagementStyle}%</span>
+              <span>{dna.engagementStyle}% Control</span>
               <Comparison userVal={dna.engagementStyle} baseVal={baselines.engagementStyle} suffix="%" />
             </div>
           </div>
-          <div className="h-2 bg-gray-700 rounded-full overflow-hidden relative" title="0% = Standup War, 100% = Grappling Clinic">
+          
+          <div className="h-2 bg-gray-700 rounded-full overflow-hidden relative mb-3" title="0% = Standup War, 100% = Grappling Clinic">
             <div className="absolute top-0 bottom-0 w-0.5 bg-white/30 z-10" style={{ left: `${baselines.engagementStyle}%` }}></div>
             <div className={`h-full ${currentTheme.primary} transition-all duration-1000`} style={{ width: `${dna.engagementStyle}%` }}></div>
+          </div>
+
+          {/* NEW: Intensity Sub-Metric Display */}
+          <div className="flex items-center justify-between bg-white/5 rounded-lg p-2 px-3 border border-white/5">
+             <div className="flex flex-col">
+                 <span className="text-[10px] uppercase tracking-widest opacity-50">Grappling Intensity</span>
+                 <span className={`text-xs font-bold ${intensityLabel.color}`}>{intensityLabel.text}</span>
+             </div>
+             <div className="text-right">
+                 <span className="text-lg font-black">{intensityScore}</span>
+                 <span className="text-[10px] opacity-40 ml-1">Activity Score</span>
+             </div>
           </div>
         </div>
 
