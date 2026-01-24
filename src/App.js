@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Target } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
