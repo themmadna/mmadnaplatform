@@ -96,6 +96,37 @@ export const dataService = {
     };
   },
 
+  // NEW: Fetch individual fight metrics for the Scatter Plot
+  async getComparisonData(likedFights) {
+    if (!likedFights || likedFights.length === 0) return [];
+
+    const fightIds = likedFights.map(f => f.id);
+
+    // Fetch the pre-calculated metrics from your View
+    const { data, error } = await supabase
+      .from('fight_dna_metrics')
+      .select('*')
+      .in('fight_id', fightIds);
+
+    if (error) {
+      console.error("Error fetching comparison data:", error);
+      return [];
+    }
+
+    // Merge the metrics with the fight names (so the chart has labels)
+    return data.map(metric => {
+      const originalFight = likedFights.find(f => f.id === metric.fight_id);
+      return {
+        id: metric.fight_id,
+        fullName: originalFight ? originalFight.bout : 'Unknown Fight',
+        pace: metric.metric_pace,
+        intensity: metric.metric_intensity || 0,
+        violence: metric.metric_violence,
+        control: metric.metric_control
+      };
+    });
+  },
+
   async getGlobalBaselines() {
     const { data, error } = await supabase.from('ufc_baselines').select('*').single();
     if (error) { console.warn("Baselines fetch error", error); return null; }
