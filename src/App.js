@@ -14,13 +14,13 @@ const CombatDNACard = ({ dna, currentTheme }) => {
     engagementStyle: 45,     
     finishRate: 48,          
     avgFightTime: 10.5,
-    intensityScore: 2.0      // Default baseline for intensity
+    intensityScore: 4.03     // <--- UPDATED WITH REAL DATA
   });
 
   useEffect(() => {
     const loadBaselines = async () => {
       const realStats = await dataService.getGlobalBaselines();
-      if (realStats) setBaselines(realStats);
+      if (realStats) setBaselines(prev => ({...prev, ...realStats}));
     };
     loadBaselines();
   }, []);
@@ -45,8 +45,7 @@ const CombatDNACard = ({ dna, currentTheme }) => {
     );
   };
 
-  // --- NEW: Intensity Logic ---
-  // We expect dna.intensityScore to come from the backend. If missing, default to 0.
+  // --- Intensity Logic ---
   const intensityScore = dna.intensityScore || 0; 
   
   const getIntensityLabel = (score) => {
@@ -102,15 +101,23 @@ const CombatDNACard = ({ dna, currentTheme }) => {
             <div className={`h-full ${currentTheme.primary} transition-all duration-1000`} style={{ width: `${dna.engagementStyle}%` }}></div>
           </div>
 
-          {/* NEW: Intensity Sub-Metric Display */}
+          {/* INTENSITY METRIC WITH COMPARISON */}
           <div className="flex items-center justify-between bg-white/5 rounded-lg p-2 px-3 border border-white/5">
              <div className="flex flex-col">
                  <span className="text-[10px] uppercase tracking-widest opacity-50">Grappling Intensity</span>
                  <span className={`text-xs font-bold ${intensityLabel.color}`}>{intensityLabel.text}</span>
              </div>
-             <div className="text-right">
-                 <span className="text-lg font-black">{intensityScore}</span>
-                 <span className="text-[10px] opacity-40 ml-1">Activity Score</span>
+             
+             <div className="flex items-center gap-3">
+                 {/* The Comparison Badge */}
+                 <div className="bg-black/20 py-1 px-2 rounded-lg">
+                    <Comparison userVal={intensityScore} baseVal={baselines.intensityScore} />
+                 </div>
+
+                 <div className="text-right">
+                     <span className="text-lg font-black">{intensityScore}</span>
+                     <span className="text-[10px] opacity-40 ml-1">Activity Score</span>
+                 </div>
              </div>
           </div>
         </div>
