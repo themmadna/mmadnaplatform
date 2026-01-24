@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Target, Dna, Sparkles } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
@@ -442,7 +442,10 @@ const handleVote = async (fightId, clickedType) => {
     } else { setCombatDNA(null); }
   };
 
-  useEffect(() => { fetchUserHistory(); }, [session]);
+  useEffect(() => { 
+  fetchUserHistory(); 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [session]);
   
   // --- HELPER: CHECK IF EVENT IS LOCKED ---
   const isVotingLocked = (event) => {
