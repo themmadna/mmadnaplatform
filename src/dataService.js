@@ -19,80 +19,46 @@ export const dataService = {
   async getCombatDNA(likedFights) {
     if (!likedFights || likedFights.length === 0) return null;
 
-    const uniqueEvents = [...new Set(likedFights.map(f => f.event_name))];
     const fightIds = likedFights.map(f => f.id);
 
-    // Fetch RAW stats, META details, and PRE-CALCULATED Intensity
-    const [statsResponse, metaResponse, intensityResponse] = await Promise.all([
-      supabase.from('round_fight_stats').select('*').in('event_name', uniqueEvents),
-      supabase.from('fight_meta_details').select('event_name, bout, round, time, method').in('event_name', uniqueEvents),
-      supabase.from('fight_dna_metrics').select('fight_id, metric_intensity').in('fight_id', fightIds)
-    ]);
+    const { data, error } = await supabase
+      .from('fight_dna_metrics')
+      .select('*')
+      .in('fight_id', fightIds);
 
-    const rawStats = statsResponse.data || [];
-    const rawMeta = metaResponse.data || [];
-    const rawIntensity = intensityResponse.data || [];
+    if (error || !data) {
+      console.error("Error fetching DNA metrics:", error);
+      return null;
+    }
 
-    const fightAggregates = likedFights.map(likedFight => {
-      const boutStats = rawStats.filter(r => r.event_name === likedFight.event_name && r.bout === likedFight.bout);
-      const matchMeta = rawMeta.find(m => m.event_name === likedFight.event_name && m.bout === likedFight.bout);
-
-      if (boutStats.length === 0 || !matchMeta || !matchMeta.time) return null;
-
-      const endRound = parseInt(matchMeta.round) || 1;
-      const [mins, secs] = matchMeta.time.split(':').map(Number);
-      const totalMinutes = ((endRound - 1) * 5) + mins + (secs / 60);
-      const totalSeconds = totalMinutes * 60;
-      
-      if (totalMinutes <= 0) return null;
-
-      // Aggregates
-      const combinedSigStrikes = boutStats.reduce((sum, r) => sum + (r.sig_strikes_attempted || 0), 0);
-      const combinedTakedowns = boutStats.reduce((sum, r) => sum + (r.takedowns_attempted || 0), 0);
-      const combinedViolence = boutStats.reduce((sum, r) => sum + (r.kd || 0) + (r.sub_attempts || 0), 0);
-      const combinedControl = boutStats.reduce((sum, r) => sum + (r.control_time_sec || 0), 0);
-      
-      // VISUAL DATA
-      const totalHead = boutStats.reduce((sum, r) => sum + (r.sig_strikes_head_attempted || 0), 0);
-      const totalBody = boutStats.reduce((sum, r) => sum + (r.sig_strikes_body_attempted || 0), 0);
-      const totalLeg = boutStats.reduce((sum, r) => sum + (r.sig_strikes_leg_attempted || 0), 0);
-
-      const isFinish = ['KO/TKO', 'Submission'].includes(matchMeta.method) ? 1 : 0;
-
-      return {
-        combinedSigStrikes, combinedTakedowns, combinedViolence, combinedControl,
-        totalHead, totalBody, totalLeg,
-        isFinish, totalMinutes, totalSeconds
-      };
-    }).filter(Boolean);
-
-    if (fightAggregates.length === 0) return null;
-
-    const totalMin = fightAggregates.reduce((sum, f) => sum + f.totalMinutes, 0);
-    const count = fightAggregates.length;
-
-    // Calculate Average Intensity
-    const validIntensities = rawIntensity.map(r => r.metric_intensity).filter(n => n !== null);
-    const avgIntensity = validIntensities.length > 0 
-        ? (validIntensities.reduce((a, b) => a + b, 0) / validIntensities.length).toFixed(2) 
-        : 0;
+    const total = data.length;
+    
+    // Sum up everything
+    const sums = data.reduce((acc, curr) => ({
+      pace: acc.pace + (curr.metric_pace || 0),
+      intensity: acc.intensity + (curr.metric_intensity || 0),
+      violence: acc.violence + (curr.metric_violence || 0),
+      control: acc.control + (curr.metric_control || 0),
+      finish: acc.finish + (curr.metric_finish || 0),
+      duration: acc.duration + (curr.metric_duration || 0),
+      // Sum the Raw Counts for the Body Map
+      head: acc.head + (curr.raw_head_strikes || 0),
+      body: acc.body + (curr.raw_body_strikes || 0),
+      leg: acc.leg + (curr.raw_leg_strikes || 0),
+    }), { pace: 0, intensity: 0, violence: 0, control: 0, finish: 0, duration: 0, head: 0, body: 0, leg: 0 });
 
     return {
-      // 5 Core Metrics
-      strikePace: (fightAggregates.reduce((sum, f) => sum + f.combinedSigStrikes, 0) / totalMin).toFixed(1),
-      grapplingIntensity: (fightAggregates.reduce((sum, f) => sum + f.combinedTakedowns, 0) / count).toFixed(1),
-      violenceIndex: (fightAggregates.reduce((sum, f) => sum + f.combinedViolence, 0) / totalMin).toFixed(2),
-      engagementStyle: Math.round((fightAggregates.reduce((sum, f) => sum + f.combinedControl, 0) / fightAggregates.reduce((sum, f) => sum + f.totalSeconds, 0)) * 100),
-      finishRate: Math.round((fightAggregates.reduce((sum, f) => sum + f.isFinish, 0) / count) * 100),
-      avgFightTime: (totalMin / count).toFixed(1),
+      strikePace: parseFloat((sums.pace / total).toFixed(2)),
+      intensityScore: parseFloat((sums.intensity / total).toFixed(2)),
+      violenceIndex: parseFloat((sums.violence / total).toFixed(2)),
+      engagementStyle: Math.round(sums.control / total),
+      finishRate: Math.round(sums.finish / total),
+      avgFightTime: parseFloat((sums.duration / total).toFixed(1)),
       
-      // NEW: INTENSITY SCORE (Passed to UI and Recommendations)
-      intensityScore: avgIntensity,
-
-      // Visual Data
-      totalHeadStrikes: fightAggregates.reduce((sum, f) => sum + f.totalHead, 0),
-      totalBodyStrikes: fightAggregates.reduce((sum, f) => sum + f.totalBody, 0),
-      totalLegStrikes: fightAggregates.reduce((sum, f) => sum + f.totalLeg, 0),
+      // RETURN THE EXACT KEYS THE VISUALIZER WANTS:
+      totalHeadStrikes: Math.round(sums.head / total),
+      totalBodyStrikes: Math.round(sums.body / total),
+      totalLegStrikes: Math.round(sums.leg / total)
     };
   },
 
@@ -133,20 +99,21 @@ export const dataService = {
     return data;
   },
 
-  async getRecommendations(userId, dna) {
-    // Call the updated RPC function with the new parameter
+  async getRecommendations(userId) {
     const { data, error } = await supabase.rpc('get_fight_recommendations', {
-      p_user_id: userId,
-      p_pace: parseFloat(dna.strikePace),
-      p_violence: parseFloat(dna.violenceIndex),
-      p_control: parseFloat(dna.engagementStyle),
-      p_finish: parseFloat(dna.finishRate),
-      p_duration: parseFloat(dna.avgFightTime),
-      p_intensity: parseFloat(dna.intensityScore || 0) // <--- NEW PARAMETER
+      p_user_id: userId
     });
     
-    if (error) console.error("Recs error", error);
-    return data;
+    if (error) {
+      console.error("Recommendations error:", error);
+      return [];
+    }
+
+    // Map the result to ensure the frontend always gets recommendationReason
+    return data.map(fight => ({
+      ...fight,
+      recommendationReason: fight.recommendationReason || "Style Match"
+    }));
   },
 
   // NEW: Get Community Favorites (Fallback for new users)

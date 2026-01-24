@@ -326,33 +326,25 @@ export default function UFCFightRating() {
     fetchEventsByYear();
   }, [selectedYear, searchQuery]);
 
-  // Search Logic (Updated to include start_time for locking)
+  // Search Logic
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
       if (!searchQuery) { setSearchResults([]); return; }
       setFetchingEvents(true);
       const query = searchQuery.trim().toLowerCase();
-      
       const { data: fightMatches } = await supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count)`).or(`bout.ilike.%${query}%,event_name.ilike.%${query}%`).limit(100);
 
       if (fightMatches && fightMatches.length > 0 && session) {
         const { data: userVotes } = await supabase.from('user_votes').select('fight_id, vote_type').eq('user_id', session.user.id);
         const uniqueEvents = [...new Set(fightMatches.map(f => f.event_name))];
-        
-        // FETCH START_TIME HERE
-        const { data: eventData } = await supabase.from('ufc_events').select('event_name, event_date, start_time').in('event_name', uniqueEvents);
+        const { data: eventData } = await supabase.from('ufc_events').select('event_name, event_date').in('event_name', uniqueEvents);
 
-        let merged = fightMatches.map(f => {
-            const eventDetails = eventData?.find(e => e.event_name === f.event_name);
-            return {
-              ...f,
-              ratings: f.fight_ratings || { likes_count: 0, dislikes_count: 0 },
-              event_date: eventDetails?.event_date || '0000-00-00',
-              start_time: eventDetails?.start_time,
-              userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type
-            };
-        });
-
+        let merged = fightMatches.map(f => ({
+          ...f,
+          ratings: f.fight_ratings || { likes_count: 0, dislikes_count: 0 },
+          event_date: eventData?.find(e => e.event_name === f.event_name)?.event_date || '0000-00-00',
+          userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type
+        }));
         if (merged.some(f => f.bout && f.bout.toLowerCase().includes(query))) {
             merged = merged.filter(f => f.bout && f.bout.toLowerCase().includes(query));
         }
@@ -582,19 +574,7 @@ const handleVote = async (fightId, clickedType) => {
             {searchQuery && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h3 className="text-sm font-bold opacity-50 mb-4 uppercase tracking-widest">{fetchingEvents ? "Searching..." : `Found ${searchResults.length} Fights`}</h3>
-                
-                {/* SEARCH RESULTS MAPPING (Updated with 'locked' prop) */}
-                {searchResults.map(f => (
-                    <FightCard 
-                        key={f.id} 
-                        fight={f} 
-                        currentTheme={currentTheme} 
-                        handleVote={handleVote} 
-                        showEvent={true} 
-                        locked={isVotingLocked(f)} 
-                    />
-                ))}
-                
+                {searchResults.map(f => (<FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} />))}
                 {!fetchingEvents && searchResults.length === 0 && (<div className="text-center py-20 opacity-40 italic">No fights found.</div>)}
               </div>
             )}
