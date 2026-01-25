@@ -21,19 +21,28 @@ export const dataService = {
 
     const fightIds = likedFights.map(f => f.id);
 
+    // 1. QUERY WITH STATUS FILTER
+    // We now filter by 'status' directly because you added it to the view.
+    // This ensures "Upcoming" fights (which have no stats) don't dilute your averages.
     const { data, error } = await supabase
       .from('fight_dna_metrics')
       .select('*')
-      .in('fight_id', fightIds);
+      .in('fight_id', fightIds)
+      .eq('status', 'completed'); 
 
     if (error || !data) {
       console.error("Error fetching DNA metrics:", error);
       return null;
     }
 
+    // 2. SAFETY CHECK
+    // If you liked 5 fights but only 2 are completed, data.length will be 2.
+    // If data.length is 0, it means you have only liked upcoming fights (so no DNA yet).
+    if (data.length === 0) return null;
+
     const total = data.length;
     
-    // Sum up everything
+    // Sum up everything using only the VALID (completed) data
     const sums = data.reduce((acc, curr) => ({
       pace: acc.pace + (curr.metric_pace || 0),
       intensity: acc.intensity + (curr.metric_intensity || 0),
@@ -62,7 +71,7 @@ export const dataService = {
     };
   },
 
-  // NEW: Fetch individual fight metrics for the Scatter Plot
+  // --- SCATTER PLOT DATA ---
   async getComparisonData(likedFights) {
     if (!likedFights || likedFights.length === 0) return [];
 
@@ -72,7 +81,8 @@ export const dataService = {
     const { data, error } = await supabase
       .from('fight_dna_metrics')
       .select('*')
-      .in('fight_id', fightIds);
+      .in('fight_id', fightIds)
+      .eq('status', 'completed'); // Also good to filter here for cleaner charts
 
     if (error) {
       console.error("Error fetching comparison data:", error);
@@ -93,30 +103,34 @@ export const dataService = {
     });
   },
 
+  // --- GLOBAL BASELINES (Grey Polygon) ---
   async getGlobalBaselines() {
     const { data, error } = await supabase.from('ufc_baselines').select('*').single();
     if (error) { console.warn("Baselines fetch error", error); return null; }
     return data;
   },
 
+  // --- RECOMMENDATIONS (Using SQL Function) ---
   async getRecommendations(userId) {
     const { data, error } = await supabase.rpc('get_fight_recommendations', {
       p_user_id: userId
     });
     
+    // Robust error handling to prevent UI crashes
     if (error) {
       console.error("Recommendations error:", error);
       return [];
     }
 
     // Map the result to ensure the frontend always gets recommendationReason
-    return data.map(fight => ({
+    // Includes fallback to 'match_reason' or default string
+    return (data || []).map(fight => ({
       ...fight,
-      recommendationReason: fight.recommendationReason || "Style Match"
+      recommendationReason: fight.recommendationReason || fight.match_reason || "Style Match"
     }));
   },
 
-  // NEW: Get Community Favorites (Fallback for new users)
+  // --- COMMUNITY FAVORITES (Fallback for new users) ---
   async getCommunityFavorites() {
     const { data, error } = await supabase
       .from('fights')
