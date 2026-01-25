@@ -116,7 +116,7 @@ const CombatDNACard = ({ dna, currentTheme }) => {
 
                  <div className="text-right">
                      <span className="text-lg font-black">{intensityScore}</span>
-                     <span className="text-[10px] opacity-40 ml-1">Activity Score</span>
+                     <span className="text-[10px] opacity-40 ml-1">Work Rate</span>
                  </div>
              </div>
           </div>
