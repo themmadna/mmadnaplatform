@@ -6,12 +6,20 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from dateutil import parser
-
+from pathlib import Path # <--- Add this import
 
 # --- 1. INITIALIZATION ---
-load_dotenv()
-url = os.environ.get("SUPABASE_URL")
+# This forces the script to look for .env in the same folder as the script file
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path)
+
+url = os.environ.get("REACT_APP_SUPABASE_URL")
 key = os.environ.get("SUPABASE_SERVICE_KEY")
+
+# Simple check to stop the script immediately if keys are missing
+if not url or not key:
+    raise ValueError(f"❌ Error: .env file not loaded correctly.\nLooking at: {env_path}\nMake sure SUPABASE_URL and SUPABASE_SERVICE_KEY are inside.")
+
 supabase_db: Client = create_client(url, key)
 
 
@@ -66,9 +74,15 @@ def parse_fight_meta_details(fight_url):
         content = details_div.select("i.b-fight-details__text-item, i.b-fight-details__text-item_first")
         details = {l.text.strip().rstrip(":").lower().replace(" ", "_"): v.text.replace(l.text, "").strip() for l, v in zip(labels, content)}
 
+        # --- THE FIX: Clean the event name string too ---
+        raw_event_name = soup.select_one("body > section > div > h2 > a").text.strip()
+        cleaned_event_name = clean_bout_name(raw_event_name)
+
         return {
-            "event_name": soup.select_one("body > section > div > h2 > a").text.strip(),
+            "event_name": cleaned_event_name,
             "bout": f"{clean_bout_name(f1_name)} vs {clean_bout_name(f2_name)}",
+            "fighter1_name": clean_bout_name(f1_name),
+            "fighter2_name": clean_bout_name(f2_name),
             "winner": clean_bout_name(winner) if winner else None,
             "result": "win" if (r1 == "W" or r2 == "W") else "draw",
             "weight_class": details_div.select_one("i.b-fight-details__fight-title").text.strip(),
@@ -78,7 +92,6 @@ def parse_fight_meta_details(fight_url):
             "time_format": details.get("time_format", ""),
             "referee": details.get("referee", ""),
             "fight_url": fight_url,
-            "status": "completed" # Explicitly mark as completed when parsing meta
         }
     except: return None
 
@@ -278,74 +291,103 @@ def sync_fights():
     events = supabase_db.table("ufc_events").select("event_name, event_url").order("event_date", desc=True).limit(10).execute()
     
     for event in events.data:
-        # 1. Fetch existing fights to check status
+        # 1. Fetch ALL existing fights for this event
         existing_fights = supabase_db.table("fights").select("id, bout, status").eq("event_name", event['event_name']).execute().data
-        existing_map = {f['bout']: f for f in existing_fights}
         
-        # If all fights are completed, skip event
-        if existing_fights and all(f.get('status') == 'completed' for f in existing_fights):
-            continue
+        # 2. Create a lookup map
+        existing_map = {}
+        for f in existing_fights:
+            existing_map[f['bout']] = f
+            if " vs " in f['bout']:
+                p1, p2 = f['bout'].split(" vs ")
+                existing_map[f"{p2} vs {p1}"] = f
+
+        scraped_ids = [] 
 
         res = requests.get(event['event_url'])
         soup = BeautifulSoup(res.text, 'html.parser')
         tbody = soup.find('tbody')
-        if not tbody: continue
         
-        rows = tbody.find_all('tr', class_='b-fight-details__table-row')
-        for row in rows:
-            cols = row.find_all('td')
-            if len(cols) < 10: continue
-            
-            fighters = get_texts(cols[1]) 
-            if len(fighters) < 2: continue
+        # Only parse rows if tbody exists
+        if tbody:
+            rows = tbody.find_all('tr', class_='b-fight-details__table-row')
+            for row in rows:
+                cols = row.find_all('td')
+                if len(cols) < 10: continue
+                
+                fighters = get_texts(cols[1]) 
+                if len(fighters) < 2: continue
 
-            # --- SAFETY CHECK: DOES THE LINK EXIST? ---
-            link_tag = cols[0].find('a')
-            if not link_tag:
-                # If a completed fight has no link, it was likely cancelled or invalid. Skip it.
-                continue
+                link_tag = cols[0].find('a')
+                if not link_tag: continue
 
-            f1 = clean_bout_name(fighters[0])
-            f2 = clean_bout_name(fighters[1])
-            standardized_bout = f"{f1} vs {f2}"
-            fight_url = link_tag['href']
-            
-            # LOGIC: Update or Insert
-            if standardized_bout in existing_map:
-                fight_record = existing_map[standardized_bout]
-                if fight_record.get('status') == 'upcoming':
-                    print(f"🔄 Updating Status (Upcoming -> Completed): {standardized_bout}")
-                    supabase_db.table("fights").update({
-                        "status": "completed",
-                        "fight_url": fight_url 
-                    }).eq("id", fight_record['id']).execute()
-                    stats_summary["updated_fights"] += 1
-            else:
-                # New completed fight we missed
-                # Only insert if it's NOT already in the map (to prevent duplicates)
-                print(f"➕ Inserting New Completed: {standardized_bout}")
-                supabase_db.table("fights").insert({
-                    'event_name': event['event_name'], 
-                    'bout': standardized_bout, 
-                    'fight_url': fight_url,
-                    'status': 'completed' 
-                }).execute()
-                stats_summary["new_fights"] += 1
+                f1 = clean_bout_name(fighters[0])
+                f2 = clean_bout_name(fighters[1])
+                standardized_bout = f"{f1} vs {f2}"
+                fight_url = link_tag['href']
+                
+                # 3. Check map
+                if standardized_bout in existing_map:
+                    fight_record = existing_map[standardized_bout]
+                    scraped_ids.append(fight_record['id']) 
+                    
+                    if fight_record.get('status') == 'upcoming':
+                        print(f"🔄 Updating Status (Upcoming -> Completed): {standardized_bout}")
+                        supabase_db.table("fights").update({
+                            "status": "completed",
+                            "fight_url": fight_url,
+                            "bout": standardized_bout 
+                        }).eq("id", fight_record['id']).execute()
+                        stats_summary["updated_fights"] += 1
+                else:
+                    print(f"➕ Inserting New Completed: {standardized_bout}")
+                    supabase_db.table("fights").insert({
+                        'event_name': event['event_name'], 
+                        'bout': standardized_bout, 
+                        'fight_url': fight_url,
+                        'status': 'completed' 
+                    }).execute()
+                    stats_summary["new_fights"] += 1
+
+        # 4. AUTO-DELETE LOGIC (With Safety Switch)
+        # We ONLY delete missing fights if we actually found at least one result.
+        # If scraped_ids is empty, it means the event hasn't happened yet, so we touch nothing.
+        if len(scraped_ids) > 0:
+            for f in existing_fights:
+                if f['status'] == 'upcoming' and f['id'] not in scraped_ids:
+                    print(f"🚫 Deleting Cancelled Fight: {f['bout']}")
+                    supabase_db.table("user_votes").delete().eq("fight_id", f['id']).execute()
+                    supabase_db.table("fights").delete().eq("id", f['id']).execute()
 
 def sync_meta():
-    print("🚀 Phase 3: Syncing Metadata...")
-    # Fetch fights that are 'completed' but missing metadata in the detail table
-    # Logic: Get last 50 fights, check if they exist in meta table
+    print("🚀 Phase 3: Syncing Metadata & Winners...")
+    # Fetch fights that are 'completed' but missing metadata
     fights = supabase_db.table("fights").select("bout, fight_url").eq("status", "completed").order("id", desc=True).limit(50).execute()
     
     for f in fights.data:
+        # Check if meta already exists to avoid duplicates
         if supabase_db.table("fight_meta_details").select("id").eq("fight_url", f['fight_url']).execute().data: 
             continue
             
         data = parse_fight_meta_details(f['fight_url'])
         if data:
             data['bout'] = clean_bout_name(data.get('bout', ''))
+            
+            # --- THE FIX ---
+            # Remove 'status' from the dictionary because the fight_meta_details table 
+            # doesn't have a 'status' column. (It only exists on the parent 'fights' table).
+            data.pop('status', None) 
+
+            # 1. Insert the detailed metadata
             supabase_db.table("fight_meta_details").insert(data).execute()
+            
+            # 2. Update the main 'fights' table with the winner
+            if data.get('winner'):
+                print(f"🏆 Updating Winner for {data['bout']}: {data['winner']}")
+                supabase_db.table("fights").update({
+                    "winner": data['winner']
+                }).eq("fight_url", f['fight_url']).execute()
+            
             stats_summary["new_metadata"] += 1
             time.sleep(1)
 
@@ -380,42 +422,59 @@ def sync_round_stats():
 
 # --- ADD THIS FUNCTION WITH YOUR OTHER SCRAPERS ---
 def sync_event_times():
-    print("⏰ Phase 5: Syncing Event Times from ESPN...")
+    print("⏰ Phase 5: Syncing Event Times from ESPN (Future Focused)...")
     
-    # ESPN's public MMA endpoint
-    url = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
+    # 1. Get today's date
+    today = datetime.now().date().isoformat()
     
-    try:
-        res = requests.get(url).json()
-        events = res.get('events', [])
+    # 2. Fetch ONLY future/upcoming events from your DB
+    upcoming_events = supabase_db.table("ufc_events")\
+        .select("*")\
+        .gte("event_date", today)\
+        .order("event_date", desc=False)\
+        .execute()
         
-        for espn_event in events:
-            # ESPN returns the date in UTC ISO format (e.g. "2026-01-24T23:00Z")
-            date_str = espn_event.get('date', '') 
-            
-            if not date_str: continue
+    if not upcoming_events.data:
+        print("   No upcoming events found in DB to sync.")
+        return
 
-            # Convert ESPN's full timestamp to just a Date (YYYY-MM-DD) to match our DB
-            espn_date_obj = parser.parse(date_str)
-            espn_date_only = espn_date_obj.date().isoformat()
+    base_url = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
+
+    for db_event in upcoming_events.data:
+        # Convert DB date (YYYY-MM-DD) to ESPN format (YYYYMMDD)
+        date_param = db_event['event_date'].replace("-", "")
+        
+        print(f"   🔍 Querying ESPN for {db_event['event_name']} (Date: {db_event['event_date']})...")
+        
+        try:
+            # 3. Ask ESPN specifically for THIS date
+            res = requests.get(f"{base_url}?dates={date_param}").json()
+            events = res.get('events', [])
             
-            # Find the matching event in OUR database by checking the Date
-            db_event = supabase_db.table("ufc_events")\
-                .select("*")\
-                .eq("event_date", espn_date_only)\
-                .execute()
-            
-            if db_event.data:
-                row = db_event.data[0]
-                print(f"✅ Time Sync: {row['event_name']} starts at {date_str}")
+            match_found = False
+            for espn_event in events:
+                # Get the exact UTC start time
+                espn_time_str = espn_event.get('date', '')
+                if not espn_time_str: continue
+
+                # Optional: Strict Name Check (Useful if multiple cards are on the same day)
+                # But usually, querying by date is unique enough for UFC.
                 
-                # Update our database with the specific timestamp
+                print(f"      ✅ Found match! Updating start time to: {espn_time_str}")
+                
+                # 4. Update the Database
                 supabase_db.table("ufc_events").update({
-                    "start_time": date_str
-                }).eq("id", row['id']).execute()
+                    "start_time": espn_time_str
+                }).eq("id", db_event['id']).execute()
                 
-    except Exception as e:
-        print(f"⚠️ ESPN Sync Failed: {e}")
+                match_found = True
+                break # Move to next DB event
+            
+            if not match_found:
+                print(f"      ⚠️ No scheduled data found on ESPN yet for this date.")
+
+        except Exception as e:
+            print(f"      ❌ Error syncing time: {e}")
 
 # --- 6. EXECUTION ---
 if __name__ == "__main__":
