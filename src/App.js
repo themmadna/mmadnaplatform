@@ -918,7 +918,7 @@ export default function UFCFightRating() {
                         ? (tab === 'like' ? 'bg-blue-600 text-white' : tab === 'favorite' ? 'bg-yellow-500 text-black' : 'bg-red-600 text-white') 
                         : 'opacity-40'}`}
                 >
-                  {tab === 'favorite' ? <Star size={16} className="inline mr-1 mb-1"/> : null}
+                  {tab === 'favorite' ? <Star size={10} className="inline mr-1 mb-1"/> : null}
                   {tab}s ({userHistory.filter(f => f.userVote === tab).length})
                 </button>
               ))}
