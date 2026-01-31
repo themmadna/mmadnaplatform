@@ -2,28 +2,31 @@ import { supabase } from './supabaseClient';
 
 export const dataService = {
   // --- VOTING LOGIC ---
+  // Works for 'like', 'dislike', or 'favorite' automatically
   async castVote(fightId, newVote) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Login required");
 
     if (newVote === null) {
+      // If un-toggling, remove the vote entirely
       const { error } = await supabase.from('user_votes').delete().match({ user_id: user.id, fight_id: fightId });
       if (error) throw error;
     } else {
+      // Upsert handles inserting OR updating (e.g. changing 'like' to 'favorite')
       const { error } = await supabase.from('user_votes').upsert({ user_id: user.id, fight_id: fightId, vote_type: newVote });
       if (error) throw error;
     }
   },
 
   // --- COMBAT DNA (Bout Totals + Visual Data) ---
-  async getCombatDNA(likedFights) {
-    if (!likedFights || likedFights.length === 0) return null;
+  // This calculates stats for whatever list of fights you pass it (Likes, Favorites, or Both)
+  async getCombatDNA(fightList) {
+    if (!fightList || fightList.length === 0) return null;
 
-    const fightIds = likedFights.map(f => f.id);
+    const fightIds = fightList.map(f => f.id);
 
     // 1. QUERY WITH STATUS FILTER
-    // We now filter by 'status' directly because you added it to the view.
-    // This ensures "Upcoming" fights (which have no stats) don't dilute your averages.
+    // Ensure we only calculate DNA from 'completed' fights that have data
     const { data, error } = await supabase
       .from('fight_dna_metrics')
       .select('*')
@@ -36,8 +39,7 @@ export const dataService = {
     }
 
     // 2. SAFETY CHECK
-    // If you liked 5 fights but only 2 are completed, data.length will be 2.
-    // If data.length is 0, it means you have only liked upcoming fights (so no DNA yet).
+    // If data.length is 0, it means the user only selected Upcoming/Missing data fights
     if (data.length === 0) return null;
 
     const total = data.length;
@@ -72,17 +74,17 @@ export const dataService = {
   },
 
   // --- SCATTER PLOT DATA ---
-  async getComparisonData(likedFights) {
-    if (!likedFights || likedFights.length === 0) return [];
+  async getComparisonData(fightList) {
+    if (!fightList || fightList.length === 0) return [];
 
-    const fightIds = likedFights.map(f => f.id);
+    const fightIds = fightList.map(f => f.id);
 
     // Fetch the pre-calculated metrics from your View
     const { data, error } = await supabase
       .from('fight_dna_metrics')
       .select('*')
       .in('fight_id', fightIds)
-      .eq('status', 'completed'); // Also good to filter here for cleaner charts
+      .eq('status', 'completed'); 
 
     if (error) {
       console.error("Error fetching comparison data:", error);
@@ -91,7 +93,7 @@ export const dataService = {
 
     // Merge the metrics with the fight names (so the chart has labels)
     return data.map(metric => {
-      const originalFight = likedFights.find(f => f.id === metric.fight_id);
+      const originalFight = fightList.find(f => f.id === metric.fight_id);
       return {
         id: metric.fight_id,
         fullName: originalFight ? originalFight.bout : 'Unknown Fight',
@@ -123,7 +125,6 @@ export const dataService = {
     }
 
     // Map the result to ensure the frontend always gets recommendationReason
-    // Includes fallback to 'match_reason' or default string
     return (data || []).map(fight => ({
       ...fight,
       recommendationReason: fight.recommendationReason || fight.match_reason || "Style Match"
@@ -131,6 +132,7 @@ export const dataService = {
   },
 
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
+  // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {
     const { data, error } = await supabase
       .from('fights')
@@ -138,9 +140,12 @@ export const dataService = {
         *,
         fight_ratings!inner (
           likes_count,
-          dislikes_count
+          dislikes_count,
+          favorites_count
         )
       `)
+      // Sort: Most Favorited -> Most Liked -> Least Disliked
+      .order('favorites_count', { foreignTable: 'fight_ratings', ascending: false })
       .order('likes_count', { foreignTable: 'fight_ratings', ascending: false })
       .order('dislikes_count', { foreignTable: 'fight_ratings', ascending: true })
       .limit(10);
