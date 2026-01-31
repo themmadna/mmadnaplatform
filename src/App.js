@@ -348,7 +348,14 @@ export default function UFCFightRating() {
       if (!searchQuery) { setSearchResults([]); return; }
       setFetchingEvents(true);
       const query = searchQuery.trim().toLowerCase();
-      const { data: fightMatches } = await supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).or(`bout.ilike.%${query}%,event_name.ilike.%${query}%`).limit(100);
+      
+      const { data: fightMatches } = await supabase
+        .from('fights')
+        .select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`)
+        .or(`bout.ilike.%${query}%,event_name.ilike.%${query}%`)
+        // REMOVED .order('id') to avoid the "old fight/new ID" issue you spotted
+        .limit(400); // <--- INCREASED TO 400 (Safe for browser, big enough for McGregor)
+
 
       if (fightMatches && fightMatches.length > 0 && session) {
         const { data: userVotes } = await supabase.from('user_votes').select('fight_id, vote_type').eq('user_id', session.user.id);
