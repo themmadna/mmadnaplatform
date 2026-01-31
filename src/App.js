@@ -913,7 +913,7 @@ export default function UFCFightRating() {
                 <button 
                   key={tab} 
                   onClick={() => setActiveProfileTab(tab)} 
-                  className={`flex-1 py-3 rounded-lg font-bold uppercase transition-all 
+                  className={`flex-1 py-3 rounded-lg font-bold text-xs sm:text-sm uppercase transition-all 
                     ${activeProfileTab === tab 
                         ? (tab === 'like' ? 'bg-blue-600 text-white' : tab === 'favorite' ? 'bg-yellow-500 text-black' : 'bg-red-600 text-white') 
                         : 'opacity-40'}`}
