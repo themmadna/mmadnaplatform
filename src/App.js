@@ -570,7 +570,10 @@ export default function UFCFightRating() {
     updateDnaAndCharts(merged, 'combined');
   };
 
-  useEffect(() => { fetchUserHistory(); }, [session]);
+  useEffect(() => { 
+    fetchUserHistory(); 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
   
   const isVotingLocked = (event) => {
     if (!event || !event.start_time) return false; 
