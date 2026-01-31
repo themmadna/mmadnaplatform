@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ThumbsUp, ThumbsDown, Star, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Star, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
@@ -46,7 +46,6 @@ const CombatDNACard = ({ dna, currentTheme }) => {
     );
   };
 
-  // --- Intensity Logic ---
   const intensityScore = dna.intensityScore || 0; 
   
   const getIntensityLabel = (score) => {
@@ -145,11 +144,10 @@ const CombatDNACard = ({ dna, currentTheme }) => {
   );
 };
 
-// --- FightCard Component (Fixed: Dislike Count Showing) ---
+// --- FightCard Component (Favorites First) ---
 const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false }) => {
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
-  // 1. Added this line back
   const dislikes = fight.ratings?.dislikes_count || 0;
   
   // Visual logic
@@ -182,7 +180,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
       </div>
 
       <div className="p-6">
-        {/* BUTTONS ROW */}
+        {/* BUTTONS ROW (Fav -> Like -> Dislike) */}
         <div className="flex gap-2">
           
           {/* 1. FAVORITE */}
@@ -209,17 +207,15 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
              <span className="text-sm font-bold">{likes}</span>
           </button>
 
-          {/* 3. DISLIKE (Fixed) */}
+          {/* 3. DISLIKE */}
           <button 
             disabled={locked}
             onClick={() => handleVote(fight.id, 'dislike')} 
-            // Added gap-2 here to space the icon and number
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all border border-transparent
                 ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' : 
                   (isDislike ? 'bg-red-900/50 border-red-600 text-red-500' : 'bg-white/5 hover:bg-white/10')}`}
           >
              <ThumbsDown size={18} className={isDislike ? 'fill-current' : ''} />
-             {/* Added the count here */}
              <span className="text-sm font-bold">{dislikes}</span>
           </button>
 
@@ -247,11 +243,19 @@ export default function UFCFightRating() {
   const [eventFights, setEventFights] = useState([]);
   const [userHistory, setUserHistory] = useState([]);
   const [combatDNA, setCombatDNA] = useState(null);
-  
-  // NEW STATE: Filter for DNA
-  const [dnaFilter, setDnaFilter] = useState('combined'); // 'combined', 'favorites', 'likes'
+  const [dnaFilter, setDnaFilter] = useState('combined'); 
 
-  // Comparison Data for the Scatter Plot
+  // --- FILTER STATE ---
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    maxDuration: 25, 
+    minPace: 0,      
+    minViolence: 0,   
+    maxControl: 100,   // Default 100%
+    minGrappling: 0   
+  });
+  const [displayLimit, setDisplayLimit] = useState(10); 
+
   const [comparisonData, setComparisonData] = useState([]);
   const [baselines, setBaselines] = useState({
     strikePace: 30.5, intensityScore: 4.03, violenceIndex: 0.15, engagementStyle: 45, finishRate: 48, avgFightTime: 10.5
@@ -259,14 +263,11 @@ export default function UFCFightRating() {
 
   const [recommendations, setRecommendations] = useState([]); 
   const [activeProfileTab, setActiveProfileTab] = useState('favorite');
-  
-  // Theme State
   const [theme, setTheme] = useState(() => localStorage.getItem('ufc_app_theme') || 'modern');
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const [loading, setLoading] = useState(true);
   const [fetchingEvents, setFetchingEvents] = useState(false);
   
-  // Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
 
@@ -274,20 +275,39 @@ export default function UFCFightRating() {
     modern: { name: 'Modern Dark', bg: 'bg-gray-900', card: 'bg-gray-800 border-gray-700', primary: 'bg-red-600', text: 'text-white', accent: 'text-red-400' },
     neon: { name: 'Neon Cyber', bg: 'bg-black', card: 'bg-black border-cyan-500', primary: 'bg-cyan-500', text: 'text-cyan-100', accent: 'text-pink-400' },
     ocean: { name: 'Ocean Blue', bg: 'bg-blue-950', card: 'bg-blue-900 border-teal-600', primary: 'bg-teal-600', text: 'text-cyan-50', accent: 'text-teal-300' },
-    crimson: { name: 'Fight Red', bg: 'bg-red-950', card: 'bg-red-900 border-red-500', primary: 'bg-red-600', text: 'text-white', accent: 'text-red-200'           
+    crimson: { 
+        name: 'Crimson', 
+        bg: 'bg-red-950', card: 'bg-red-900 border-red-500', primary: 'bg-red-600', text: 'text-white', accent: 'text-red-200'           
     }
   };
   const currentTheme = themes[theme] || themes.modern;
 
   useEffect(() => { localStorage.setItem('ufc_app_theme', theme); }, [theme]);
 
+  // --- HELPER: Reset Filters to DNA Defaults ---
+  const resetFiltersToDNA = () => {
+    if (combatDNA) {
+      setFilters({
+        maxDuration: Math.ceil(combatDNA.avgFightTime / 5) * 5 || 25, 
+        minPace: Math.floor(combatDNA.strikePace) || 0,
+        minViolence: parseFloat((combatDNA.violenceIndex * 0.8).toFixed(2)) || 0,
+        maxControl: combatDNA.engagementStyle < 40 ? 40 : 100,
+        minGrappling: parseFloat((combatDNA.intensityScore * 0.8).toFixed(1)) || 0
+      });
+    } else {
+      setFilters({ maxDuration: 25, minPace: 0, minViolence: 0, maxControl: 100, minGrappling: 0 });
+    }
+  };
+
+  // --- INITIAL LOAD ONLY ---
+  // Removed the auto-reset useEffect here to STOP THE LOOP.
+  // Filters will now ONLY reset if you click the button or refresh the page.
+
   useEffect(() => {
     const init = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       setSession(currentSession);
       await fetchYears();
-      
-      // Fetch Baselines globally for the ScatterPlot
       const realStats = await dataService.getGlobalBaselines();
       if (realStats) setBaselines(prev => ({...prev, ...realStats}));
     };
@@ -306,13 +326,11 @@ export default function UFCFightRating() {
     }
   };
 
-  // --- LOGIC: Fetch Recommendations ---
   useEffect(() => {
     if (selectedYear === 'For You' && session) {
         setFetchingEvents(true);
         const loadForYou = async () => {
               const likesCount = userHistory.filter(f => f.userVote === 'like' || f.userVote === 'favorite').length;
-              
               if (likesCount >= 5 && combatDNA) {
                   const recs = await dataService.getRecommendations(session.user.id, combatDNA);
                   if (recs) setRecommendations(recs);
@@ -330,11 +348,8 @@ export default function UFCFightRating() {
     }
   }, [selectedYear, combatDNA, userHistory, session]);
 
-
-  // Browse Events Logic
   useEffect(() => {
     if (!selectedYear || selectedYear === 'For You' || searchQuery) return;
-    
     const fetchEventsByYear = async () => {
       setFetchingEvents(true);
       const { data } = await supabase.from('ufc_events').select('*').gte('event_date', `${selectedYear}-01-01`).lte('event_date', `${selectedYear}-12-31`).order('event_date', { ascending: false });
@@ -344,42 +359,91 @@ export default function UFCFightRating() {
     fetchEventsByYear();
   }, [selectedYear, searchQuery]);
 
-  // Search Logic
+  // --- UPDATED SEARCH LOGIC ---
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
-      if (!searchQuery) { setSearchResults([]); return; }
+      if (!searchQuery && !showFilters) { setSearchResults([]); return; }
+      
       setFetchingEvents(true);
       const query = searchQuery.trim().toLowerCase();
-      
-      const { data: fightMatches } = await supabase
+      let filterIds = null;
+
+      if (showFilters) {
+          let statsQuery = supabase.from('fight_dna_metrics').select('fight_id');
+          
+          statsQuery = statsQuery.lte('metric_duration', filters.maxDuration);
+          statsQuery = statsQuery.gte('metric_pace', filters.minPace);
+          statsQuery = statsQuery.gte('metric_violence', filters.minViolence);
+          
+          // Max Control: Less Than
+          statsQuery = statsQuery.lte('metric_control', filters.maxControl);
+          
+          // Grappling Intensity
+          statsQuery = statsQuery.gte('metric_intensity', filters.minGrappling);
+
+          const { data: metricResults, error: metricError } = await statsQuery;
+          
+          if (metricError) {
+              console.error("Filter Error", metricError);
+              setFetchingEvents(false);
+              return;
+          }
+
+          if (!metricResults || metricResults.length === 0) {
+              setSearchResults([]);
+              setFetchingEvents(false);
+              return;
+          }
+          filterIds = metricResults.map(m => m.fight_id);
+      }
+
+      let supabaseQuery = supabase
         .from('fights')
         .select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`)
-        .or(`bout.ilike.%${query}%,event_name.ilike.%${query}%`)
-        // REMOVED .order('id') to avoid the "old fight/new ID" issue you spotted
-        .limit(400); // <--- INCREASED TO 400 (Safe for browser, big enough for McGregor)
+        .limit(400); 
 
+      if (query) {
+        supabaseQuery = supabaseQuery.or(`bout.ilike.%${query}%,event_name.ilike.%${query}%`);
+      }
+
+      if (filterIds !== null) {
+          supabaseQuery = supabaseQuery.in('id', filterIds);
+      }
+
+      const { data: fightMatches, error } = await supabaseQuery;
+      
+      if (error) { 
+          console.error("Search Error", error); 
+          setFetchingEvents(false); 
+          return; 
+      }
 
       if (fightMatches && fightMatches.length > 0 && session) {
-        const { data: userVotes } = await supabase.from('user_votes').select('fight_id, vote_type').eq('user_id', session.user.id);
-        const uniqueEvents = [...new Set(fightMatches.map(f => f.event_name))];
-        const { data: eventData } = await supabase.from('ufc_events').select('event_name, event_date').in('event_name', uniqueEvents);
+         const { data: userVotes } = await supabase.from('user_votes').select('fight_id, vote_type').eq('user_id', session.user.id);
+         const uniqueEvents = [...new Set(fightMatches.map(f => f.event_name))];
+         const { data: eventData } = await supabase.from('ufc_events').select('event_name, event_date').in('event_name', uniqueEvents);
 
-        let merged = fightMatches.map(f => ({
+         let merged = fightMatches.map(f => ({
           ...f,
           ratings: f.fight_ratings || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
           event_date: eventData?.find(e => e.event_name === f.event_name)?.event_date || '0000-00-00',
           userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type
         }));
-        if (merged.some(f => f.bout && f.bout.toLowerCase().includes(query))) {
+        
+        if (query && merged.some(f => f.bout && f.bout.toLowerCase().includes(query))) {
             merged = merged.filter(f => f.bout && f.bout.toLowerCase().includes(query));
         }
+        
         merged.sort((a, b) => new Date(b.event_date) - new Date(a.event_date));
+        
+        setDisplayLimit(10);
         setSearchResults(merged);
+
       } else { setSearchResults([]); }
       setFetchingEvents(false);
     }, 400);
     return () => clearTimeout(delayDebounce);
-  }, [searchQuery, session]);
+  }, [searchQuery, session, filters, showFilters]);
 
   const handleEventClick = async (event) => {
     setSelectedEvent(event);
@@ -397,31 +461,34 @@ export default function UFCFightRating() {
     }
   };
 
-  // --- UPDATED VOTING LOGIC ---
+  // --- VOTING LOGIC ---
   const handleVote = async (fightId, clickedType) => {
     let targetList;
-    if (currentView === 'profile') targetList = userHistory;
-    else if (selectedYear === 'For You' && !searchQuery) targetList = recommendations; 
-    else if (searchQuery) targetList = searchResults;
-    else targetList = eventFights;
+
+    if (currentView === 'profile') {
+        targetList = userHistory;
+    } else if (selectedYear === 'For You' && !searchQuery) {
+        targetList = recommendations; 
+    } else if (searchQuery || showFilters) { 
+        targetList = searchResults; 
+    } else {
+        targetList = eventFights;
+    }
 
     const fight = targetList.find(f => f.id === fightId);
     if (!fight) return;
     
     const oldVote = fight.userVote;
-    const finalVote = oldVote === clickedType ? null : clickedType; // Toggle logic
+    const finalVote = oldVote === clickedType ? null : clickedType; 
 
-    // 1. Helper to update existing items in a list (Optimistic Update)
     const updateList = (list) => list.map(f => {
       if (f.id === fightId) {
         let { likes_count, dislikes_count, favorites_count } = f.ratings || { likes_count: 0, dislikes_count: 0, favorites_count: 0 };
         
-        // Remove old vote stats
         if (oldVote === 'like') likes_count = Math.max(0, likes_count - 1);
         if (oldVote === 'dislike') dislikes_count = Math.max(0, dislikes_count - 1);
         if (oldVote === 'favorite') favorites_count = Math.max(0, favorites_count - 1);
         
-        // Add new vote stats
         if (finalVote === 'like') likes_count++;
         if (finalVote === 'dislike') dislikes_count++;
         if (finalVote === 'favorite') favorites_count++;
@@ -431,17 +498,14 @@ export default function UFCFightRating() {
       return f;
     });
 
-    // 2. Update visible lists
-    if (searchQuery) setSearchResults(updateList(searchResults));
+    if (searchQuery || showFilters) setSearchResults(updateList(searchResults));
     if (eventFights.length > 0) setEventFights(updateList(eventFights));
     if (selectedYear === 'For You') setRecommendations(prev => prev.filter(f => f.id !== fightId));
     
-    // 3. UPDATE USER HISTORY
     let newUserHistory = updateList(userHistory);
     
     const existsInHistory = userHistory.some(f => f.id === fightId);
     if (!existsInHistory && finalVote !== null) {
-        // Add new item to history
         const newHistoryItem = { 
             ...fight, 
             userVote: finalVote,
@@ -453,35 +517,23 @@ export default function UFCFightRating() {
         };
         newUserHistory = [newHistoryItem, ...newUserHistory];
     } else if (existsInHistory && finalVote === null) {
-        // Remove from history if vote is cleared
         newUserHistory = newUserHistory.filter(f => f.id !== fightId);
     }
     
     setUserHistory(newUserHistory);
-
-    // 4. Update DNA logic based on CURRENT filter
-    // We pass the NEW history to ensure calculations are up to date
     updateDnaAndCharts(newUserHistory, dnaFilter);
 
-    // 5. Database Call
     try {
-      if (oldVote && oldVote !== finalVote) await dataService.castVote(fightId, null); // Clear old
-      if (finalVote) await dataService.castVote(fightId, finalVote); // Set new
+      if (oldVote && oldVote !== finalVote) await dataService.castVote(fightId, null); 
+      if (finalVote) await dataService.castVote(fightId, finalVote); 
     } catch (err) { console.error(err); }
   };
 
-  // --- REUSABLE DNA UPDATER ---
   const updateDnaAndCharts = async (historyList, filterType) => {
       let filteredFights = [];
-      
-      if (filterType === 'favorites') {
-          filteredFights = historyList.filter(f => f.userVote === 'favorite');
-      } else if (filterType === 'likes') {
-          filteredFights = historyList.filter(f => f.userVote === 'like');
-      } else {
-          // Combined (Default)
-          filteredFights = historyList.filter(f => f.userVote === 'like' || f.userVote === 'favorite');
-      }
+      if (filterType === 'favorites') filteredFights = historyList.filter(f => f.userVote === 'favorite');
+      else if (filterType === 'likes') filteredFights = historyList.filter(f => f.userVote === 'like');
+      else filteredFights = historyList.filter(f => f.userVote === 'like' || f.userVote === 'favorite');
 
       if (filteredFights.length > 0) {
           const newDna = await dataService.getCombatDNA(filteredFights);
@@ -494,11 +546,8 @@ export default function UFCFightRating() {
       }
   };
 
-  // Trigger DNA update when Filter Changes
   useEffect(() => {
-     if(userHistory.length > 0) {
-         updateDnaAndCharts(userHistory, dnaFilter);
-     }
+     if(userHistory.length > 0) updateDnaAndCharts(userHistory, dnaFilter);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dnaFilter]);
 
@@ -518,15 +567,10 @@ export default function UFCFightRating() {
         userVote: votes.find(v => v.fight_id === f.id)?.vote_type
     }));
     setUserHistory(merged);
-
-    // Initial DNA Load (Default Combined)
     updateDnaAndCharts(merged, 'combined');
   };
 
-  useEffect(() => { 
-    fetchUserHistory(); 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  useEffect(() => { fetchUserHistory(); }, [session]);
   
   const isVotingLocked = (event) => {
     if (!event || !event.start_time) return false; 
@@ -564,37 +608,172 @@ export default function UFCFightRating() {
             </div>
           )}
 
-          <h1 className="text-3xl font-black italic tracking-tighter cursor-pointer" onClick={() => {setCurrentView('events'); setSearchQuery('');}}>MMA DNA</h1>
+          <h1 className="text-3xl font-black italic tracking-tighter cursor-pointer" onClick={() => {setCurrentView('events'); setSearchQuery(''); setShowFilters(false);}}>MMA DNA</h1>
           
           <div className="flex gap-2">
-            <button onClick={() => { setCurrentView('dna'); setSearchQuery(''); }} className={`p-2 rounded-full border ${currentTheme.card} ${currentView === 'dna' ? 'border-white' : 'border-white/10'}`}>
+            <button onClick={() => { setCurrentView('dna'); setSearchQuery(''); setShowFilters(false); }} className={`p-2 rounded-full border ${currentTheme.card} ${currentView === 'dna' ? 'border-white' : 'border-white/10'}`}>
                 <Dna size={24} className={currentTheme.accent} />
             </button>
 
-            <button onClick={() => { setCurrentView('profile'); setSearchQuery(''); }} className={`p-2 rounded-full border ${currentTheme.card} ${currentView === 'profile' ? 'border-white' : 'border-white/10'}`}>
+            <button onClick={() => { setCurrentView('profile'); setSearchQuery(''); setShowFilters(false); }} className={`p-2 rounded-full border ${currentTheme.card} ${currentView === 'profile' ? 'border-white' : 'border-white/10'}`}>
                 <User size={24} className={currentTheme.accent} />
             </button>
           </div>
         </header>
 
-        {/* --- 1. EVENTS VIEW --- */}
         {currentView === 'events' && (
           <>
-            <div className="relative mb-6">
+            <div className="relative mb-2">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={20} />
-              <input type="text" placeholder="Search fighters or events..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full py-4 pl-12 pr-12 rounded-2xl border ${currentTheme.card} focus:outline-none focus:ring-2 focus:ring-red-600/50 transition-all shadow-md`} />
-              {searchQuery && <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100"><X size={20} /></button>}
+              <input 
+                  type="text" 
+                  placeholder="Search fighters or filters..." 
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)} 
+                  className={`w-full py-4 pl-12 pr-12 rounded-2xl border ${currentTheme.card} focus:outline-none focus:ring-2 focus:ring-red-600/50 transition-all shadow-md`} 
+              />
+              
+              {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="absolute right-12 top-1/2 -translate-y-1/2 opacity-50 hover:opacity-100 p-2">
+                      <X size={20} />
+                  </button>
+              )}
+
+              <button 
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all ${showFilters ? 'bg-red-600 text-white shadow-lg' : 'opacity-50 hover:opacity-100 hover:bg-white/10'}`}
+              >
+                  <Settings2 size={18} />
+              </button>
             </div>
 
-            {searchQuery && (
-              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h3 className="text-sm font-bold opacity-50 mb-4 uppercase tracking-widest">{fetchingEvents ? "Searching..." : `Found ${searchResults.length} Fights`}</h3>
-                {searchResults.map(f => (<FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} />))}
-                {!fetchingEvents && searchResults.length === 0 && (<div className="text-center py-20 opacity-40 italic">No fights found.</div>)}
+            {/* --- ADVANCED FILTERS PANEL --- */}
+            {showFilters && (
+                <div className={`p-4 rounded-xl border mb-6 animate-in slide-in-from-top-2 ${currentTheme.card}`}>
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                            <Settings2 size={14} className={currentTheme.accent} />
+                            <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">Fight Finder</h3>
+                        </div>
+                        {combatDNA && (
+                            <button onClick={resetFiltersToDNA} className={`text-[10px] uppercase font-bold ${currentTheme.accent} hover:text-white transition-colors flex items-center gap-1`}>
+                                <Dna size={10} /> Apply My Stats
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="flex flex-col gap-5">
+                        {/* DURATION */}
+                        <div>
+                            <div className="flex justify-between text-xs mb-2">
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Max Duration</span>
+                                <span className="font-bold">{filters.maxDuration} mins</span>
+                            </div>
+                            <input 
+                                type="range" min="1" max="25" step="1"
+                                value={filters.maxDuration}
+                                onChange={(e) => setFilters({...filters, maxDuration: parseInt(e.target.value)})}
+                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                            />
+                        </div>
+
+                        {/* PACE */}
+                        <div>
+                            <div className="flex justify-between text-xs mb-2">
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Min Pace</span>
+                                <span className="font-bold">{filters.minPace} strikes/min</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="60" step="1"
+                                value={filters.minPace}
+                                onChange={(e) => setFilters({...filters, minPace: parseInt(e.target.value)})}
+                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                            />
+                        </div>
+
+                        {/* VIOLENCE */}
+                        <div>
+                            <div className="flex justify-between text-xs mb-2">
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Min Violence Index</span>
+                                <span className="font-bold">{filters.minViolence}</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="2" step="0.1"
+                                value={filters.minViolence}
+                                onChange={(e) => setFilters({...filters, minViolence: parseFloat(e.target.value)})}
+                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                            />
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
+                                <span>Low</span>
+                                <span>Bloodbath</span>
+                            </div>
+                        </div>
+
+                        {/* CONTROL */}
+                        <div>
+                            <div className="flex justify-between text-xs mb-2">
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Max Control %</span>
+                                <span className="font-bold">{filters.maxControl}%</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="100" step="5"
+                                value={filters.maxControl}
+                                onChange={(e) => setFilters({...filters, maxControl: parseInt(e.target.value)})}
+                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                            />
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
+                                <span>Standup War</span>
+                                <span>Total Control</span>
+                            </div>
+                        </div>
+
+                        {/* GRAPPLING / INTENSITY */}
+                        <div>
+                            <div className="flex justify-between text-xs mb-2">
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Min Grappling Intensity</span>
+                                <span className="font-bold">{filters.minGrappling}</span>
+                            </div>
+                            <input 
+                                type="range" min="0" max="20" step="0.5"
+                                value={filters.minGrappling}
+                                onChange={(e) => setFilters({...filters, minGrappling: parseFloat(e.target.value)})}
+                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                            />
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
+                                <span>Lay & Pray</span>
+                                <span>Mauler</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {(searchQuery || showFilters) && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+                <h3 className="text-sm font-bold opacity-50 mb-4 uppercase tracking-widest">
+                    {fetchingEvents ? "Searching..." : `Found ${searchResults.length} Fights`}
+                </h3>
+                
+                {searchResults.slice(0, displayLimit).map(f => (
+                    <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} />
+                ))}
+
+                {!fetchingEvents && searchResults.length > displayLimit && (
+                    <button 
+                        onClick={() => setDisplayLimit(prev => prev + 10)}
+                        className={`w-full py-4 rounded-xl border border-dashed border-white/20 hover:bg-white/5 hover:border-white/40 transition-all text-xs font-bold uppercase tracking-widest opacity-60 hover:opacity-100 flex items-center justify-center gap-2`}
+                    >
+                        Show More Results ({searchResults.length - displayLimit} remaining)
+                    </button>
+                )}
+
+                {!fetchingEvents && searchResults.length === 0 && (
+                    <div className="text-center py-20 opacity-40 italic">No fights match your criteria.</div>
+                )}
               </div>
             )}
 
-            {!searchQuery && (
+            {!searchQuery && !showFilters && (
               <>
                 <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide items-center">
                   <button 
@@ -692,7 +871,6 @@ export default function UFCFightRating() {
                    <span className="font-bold">COMBAT DNA ANALYSIS</span>
                </div>
 
-               {/* --- DNA FILTER TOGGLES --- */}
                <div className="flex justify-center mb-6">
                     <div className="bg-white/10 p-1 rounded-xl flex gap-1">
                         {['combined', 'likes', 'favorites'].map((type) => (
@@ -710,19 +888,8 @@ export default function UFCFightRating() {
                     </div>
                </div>
                
-               {/* 1. Identity */}
                <CombatDNACard dna={combatDNA} currentTheme={currentTheme} />
-               
-               {/* 2. Evidence (Scatter Plot) */}
-               {comparisonData.length > 0 && (
-                  <CombatScatterPlot 
-                     data={comparisonData} 
-                     baselines={baselines} 
-                     currentTheme={currentTheme} 
-                  />
-               )}
-               
-               {/* 3. Style (The Body Map) */}
+               {comparisonData.length > 0 && <CombatScatterPlot data={comparisonData} baselines={baselines} currentTheme={currentTheme} />}
                <CombatDNAVisual dna={combatDNA} currentTheme={currentTheme} />
             </div>
         )}
@@ -735,7 +902,6 @@ export default function UFCFightRating() {
                  <span className="font-bold">VOTING HISTORY</span>
              </div>
             
-            {/* TABS REORDERED: Favorite -> Like -> Dislike */}
             <div className="flex bg-gray-800/50 p-1 rounded-xl mb-8">
               {['favorite', 'like', 'dislike'].map(tab => (
                 <button 
