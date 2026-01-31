@@ -300,7 +300,6 @@ export default function UFCFightRating() {
   };
 
   // --- INITIAL LOAD ONLY ---
-  // Removed the auto-reset useEffect here to STOP THE LOOP.
   // Filters will now ONLY reset if you click the button or refresh the page.
 
   useEffect(() => {
@@ -359,7 +358,7 @@ export default function UFCFightRating() {
     fetchEventsByYear();
   }, [selectedYear, searchQuery]);
 
-  // --- UPDATED SEARCH LOGIC ---
+  // --- UPDATED SEARCH LOGIC (With Array Fix) ---
   useEffect(() => {
     const delayDebounce = setTimeout(async () => {
       if (!searchQuery && !showFilters) { setSearchResults([]); return; }
@@ -425,7 +424,8 @@ export default function UFCFightRating() {
 
          let merged = fightMatches.map(f => ({
           ...f,
-          ratings: f.fight_ratings || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
+          // FIX 1: HANDLE RATINGS ARRAY (Force it to be an object)
+          ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
           event_date: eventData?.find(e => e.event_name === f.event_name)?.event_date || '0000-00-00',
           userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type
         }));
@@ -454,7 +454,8 @@ export default function UFCFightRating() {
       const { data: userVotes } = await supabase.from('user_votes').select('*').eq('user_id', session.user.id);
       const merged = bouts.map(f => ({
         ...f,
-        ratings: f.fight_ratings || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
+        // FIX 2: HANDLE RATINGS ARRAY
+        ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
         userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type
       }));
       setEventFights(merged);
@@ -563,7 +564,8 @@ export default function UFCFightRating() {
     
     const merged = historyFights.map(f => ({
         ...f,
-        ratings: f.fight_ratings || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
+        // FIX 3: HANDLE RATINGS ARRAY (Force it to be an object)
+        ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
         userVote: votes.find(v => v.fight_id === f.id)?.vote_type
     }));
     setUserHistory(merged);
@@ -611,6 +613,7 @@ export default function UFCFightRating() {
             </div>
           )}
 
+          {/* Reset Filters on Navigation */}
           <h1 className="text-3xl font-black italic tracking-tighter cursor-pointer" onClick={() => {setCurrentView('events'); setSearchQuery(''); setShowFilters(false);}}>MMA DNA</h1>
           
           <div className="flex gap-2">
