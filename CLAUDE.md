@@ -244,3 +244,20 @@ Example structure:
 ```
 
 `PROJECT_PLAN.md` lives in `ufc-web-app/` and is committed to git so progress is visible across sessions. Update it as each task is completed — never let it fall behind the actual work.
+
+### Lessons learned (LESSONS.md)
+After completing each task, update **`LESSONS.md`** with a short retrospective entry. This is written for Claude — not the user — to avoid rediscovering the same problems in future sessions.
+
+Each entry should be brief and tied to the task it came from:
+
+```
+## [Task name] — [date]
+
+**Bugs / errors encountered:**
+- Short description of the problem and what fixed it.
+
+**What I'd do differently:**
+- One or two concrete changes to approach, order of operations, or assumptions.
+```
+
+Only log things that are genuinely reusable — recurring patterns, non-obvious gotchas, or mistakes that cost unnecessary compute. Skip anything obvious or one-off. `LESSONS.md` lives in `ufc-web-app/` and is committed alongside `PROJECT_PLAN.md`.
