@@ -7,24 +7,7 @@ import CombatDNAVisual from './CombatDNAVisual';
 import CombatScatterPlot from './components/CombatScatterPlot';
 
 // --- CombatDNA Card (The 5 Metrics + Intensity) ---
-const CombatDNACard = ({ dna, currentTheme }) => {
-  const [baselines, setBaselines] = useState({
-    strikePace: 30.5,        
-    grapplingIntensity: 5.5, 
-    violenceIndex: 0.15,     
-    engagementStyle: 45,     
-    finishRate: 48,          
-    avgFightTime: 10.5,
-    intensityScore: 4.03     
-  });
-
-  useEffect(() => {
-    const loadBaselines = async () => {
-      const realStats = await dataService.getGlobalBaselines();
-      if (realStats) setBaselines(prev => ({...prev, ...realStats}));
-    };
-    loadBaselines();
-  }, []);
+const CombatDNACard = ({ dna, currentTheme, baselines }) => {
 
   if (!dna) return (
     <div className={`p-6 rounded-xl border border-dashed ${currentTheme.card} opacity-50 text-center animate-in fade-in`}>
@@ -541,9 +524,8 @@ export default function UFCFightRating() {
       else filteredFights = historyList.filter(f => f.userVote === 'like' || f.userVote === 'favorite');
 
       if (filteredFights.length > 0) {
-          const newDna = await dataService.getCombatDNA(filteredFights);
-          setCombatDNA(newDna);
-          const chartData = await dataService.getComparisonData(filteredFights);
+          const { dna, chartData } = await dataService.getDNAAndChartData(filteredFights);
+          setCombatDNA(dna);
           setComparisonData(chartData);
       } else {
           setCombatDNA(null);
@@ -898,7 +880,7 @@ export default function UFCFightRating() {
                     </div>
                </div>
                
-               <CombatDNACard dna={combatDNA} currentTheme={currentTheme} />
+               <CombatDNACard dna={combatDNA} currentTheme={currentTheme} baselines={baselines} />
                {comparisonData.length > 0 && <CombatScatterPlot data={comparisonData} baselines={baselines} currentTheme={currentTheme} />}
                <CombatDNAVisual dna={combatDNA} currentTheme={currentTheme} />
             </div>

@@ -10,9 +10,9 @@
 - [x] Fix DNA filter tab resets to 'combined' on re-fetch instead of preserving user selection — App.js:572
 
 #### Performance
-- [ ] Remove duplicate `getGlobalBaselines()` call in `CombatDNACard` — pass baselines as prop from parent — App.js:23
-- [ ] Optimise `fetchYears` — avoid fetching all rows just to extract unique years — App.js:319
-- [ ] Merge `getCombatDNA` + `getComparisonData` into one DB query — dataService.js
+- [x] Remove duplicate `getGlobalBaselines()` call in `CombatDNACard` — pass baselines as prop from parent
+- [x] Merge `getCombatDNA` + `getComparisonData` into one DB query — new `getDNAAndChartData()` in dataService.js
+- [~] Optimise `fetchYears` — deferred: query already fetches only `event_date` column (~6KB total); true distinct requires a DB function — low priority
 
 #### Dead Code
 - [ ] Remove unused `grapplingIntensity` key from `CombatDNACard` fallback baselines — App.js:13

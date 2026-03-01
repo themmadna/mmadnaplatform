@@ -18,33 +18,25 @@ export const dataService = {
     }
   },
 
-  // --- COMBAT DNA (Bout Totals + Visual Data) ---
-  // This calculates stats for whatever list of fights you pass it (Likes, Favorites, or Both)
-  async getCombatDNA(fightList) {
-    if (!fightList || fightList.length === 0) return null;
+  // --- COMBAT DNA + SCATTER PLOT DATA (single query) ---
+  // Fetches fight_dna_metrics once and returns both the DNA averages and per-fight chart data.
+  async getDNAAndChartData(fightList) {
+    if (!fightList || fightList.length === 0) return { dna: null, chartData: [] };
 
     const fightIds = fightList.map(f => f.id);
 
-    // 1. QUERY WITH STATUS FILTER
-    // Ensure we only calculate DNA from 'completed' fights that have data
     const { data, error } = await supabase
       .from('fight_dna_metrics')
       .select('*')
       .in('fight_id', fightIds)
-      .eq('status', 'completed'); 
+      .eq('status', 'completed');
 
-    if (error || !data) {
-      console.error("Error fetching DNA metrics:", error);
-      return null;
+    if (error || !data || data.length === 0) {
+      if (error) console.error("Error fetching DNA metrics:", error);
+      return { dna: null, chartData: [] };
     }
 
-    // 2. SAFETY CHECK
-    // If data.length is 0, it means the user only selected Upcoming/Missing data fights
-    if (data.length === 0) return null;
-
     const total = data.length;
-    
-    // Sum up everything using only the VALID (completed) data
     const sums = data.reduce((acc, curr) => ({
       pace: acc.pace + (curr.metric_pace || 0),
       intensity: acc.intensity + (curr.metric_intensity || 0),
@@ -52,46 +44,24 @@ export const dataService = {
       control: acc.control + (curr.metric_control || 0),
       finish: acc.finish + (curr.metric_finish || 0),
       duration: acc.duration + (curr.metric_duration || 0),
-      // Sum the Raw Counts for the Body Map
       head: acc.head + (curr.raw_head_strikes || 0),
       body: acc.body + (curr.raw_body_strikes || 0),
       leg: acc.leg + (curr.raw_leg_strikes || 0),
     }), { pace: 0, intensity: 0, violence: 0, control: 0, finish: 0, duration: 0, head: 0, body: 0, leg: 0 });
 
-    return {
+    const dna = {
       strikePace: parseFloat((sums.pace / total).toFixed(2)),
       intensityScore: parseFloat((sums.intensity / total).toFixed(2)),
       violenceIndex: parseFloat((sums.violence / total).toFixed(2)),
       engagementStyle: Math.round(sums.control / total),
       finishRate: Math.round(sums.finish / total),
       avgFightTime: parseFloat((sums.duration / total).toFixed(1)),
-      
       avgHeadStrikes: Math.round(sums.head / total),
       avgBodyStrikes: Math.round(sums.body / total),
       avgLegStrikes: Math.round(sums.leg / total)
     };
-  },
 
-  // --- SCATTER PLOT DATA ---
-  async getComparisonData(fightList) {
-    if (!fightList || fightList.length === 0) return [];
-
-    const fightIds = fightList.map(f => f.id);
-
-    // Fetch the pre-calculated metrics from your View
-    const { data, error } = await supabase
-      .from('fight_dna_metrics')
-      .select('*')
-      .in('fight_id', fightIds)
-      .eq('status', 'completed'); 
-
-    if (error) {
-      console.error("Error fetching comparison data:", error);
-      return [];
-    }
-
-    // Merge the metrics with the fight names (so the chart has labels)
-    return data.map(metric => {
+    const chartData = data.map(metric => {
       const originalFight = fightList.find(f => f.id === metric.fight_id);
       return {
         id: metric.fight_id,
@@ -102,6 +72,8 @@ export const dataService = {
         control: metric.metric_control
       };
     });
+
+    return { dna, chartData };
   },
 
   // --- GLOBAL BASELINES (Grey Polygon) ---
