@@ -52,6 +52,7 @@ requests, beautifulsoup4, python-dotenv, supabase, python-dateutil
 REACT_APP_SUPABASE_URL=...
 REACT_APP_SUPABASE_ANON_KEY=...
 SUPABASE_SERVICE_KEY=...        # Service role key — required for scraper writes
+SUPABASE_MANAGEMENT_KEY=...    # Account-level Management API token — used to query view/function SQL definitions
 ```
 
 ## Supabase Tables
@@ -221,30 +222,31 @@ DNA metrics describe a fight's character without hardcoded categories. They powe
 2. **User profile** — a user's rated fights are averaged into a DNA profile that represents the *style* of fights they enjoy, used to drive personalised recommendations
 
 ### Metric definitions
-All metrics are pre-calculated and stored in `fight_dna_metrics`. The frontend averages them across a user's rated fights via `dataService.getCombatDNA()`.
+All metrics are pre-calculated in the `fight_dna_metrics` **view** (not a table — it's computed live from `fights`, `round_fight_stats`, and `fight_meta_details`). The frontend averages them across a user's rated fights via `dataService.getCombatDNA()`.
 
-| DB column | Frontend key | What it measures | Unit / scale |
+| DB column | Frontend key | Formula | Unit / scale |
 |---|---|---|---|
-| `metric_pace` | `strikePace` | Significant strikes landed per minute | Rate (UFC avg: ~16.3) |
-| `metric_violence` | `violenceIndex` | Knockdown rate — aggression / finishing power | Small decimal (UFC avg: ~0.27) |
-| `metric_intensity` | `intensityScore` | Sig strikes landed ÷ control time — pressure under fire | Ratio (UFC avg: ~5.4) |
-| `metric_control` | `engagementStyle` | Grappling control time | Seconds per round (UFC avg: ~40s) |
-| `metric_finish` | `finishRate` | Did the fight end by finish (KO/TKO/Sub)? | Binary 0 or 1 (UFC avg: ~52%) |
-| `metric_duration` | `avgFightTime` | Total fight duration | Minutes (UFC avg: ~10.6) |
-| `raw_head_strikes` | `totalHeadStrikes` | Total significant head strikes | Count |
-| `raw_body_strikes` | `totalBodyStrikes` | Total significant body strikes | Count |
-| `raw_leg_strikes` | `totalLegStrikes` | Total significant leg strikes | Count |
+| `metric_pace` | `strikePace` | `total_sig_strikes_attempted / fight_duration_minutes` | Attempts/min (UFC avg: ~16.3) |
+| `metric_violence` | `violenceIndex` | `(total_KD + total_sub_attempts) / fight_duration_minutes` | Rate (UFC avg: ~0.27) |
+| `metric_intensity` | `intensityScore` | `(ground_att + clinch_att + sub_att×5 + reversals×5) / (control_minutes + 2)` | Composite ratio (UFC avg: ~5.4) |
+| `metric_control` | `engagementStyle` | `(control_time_sec / total_fight_time_sec) × 100` | % of fight time (UFC avg: ~40%) |
+| `metric_finish` | `finishRate` | `100 if KO/TKO/Sub, else 0` | 0 or 100 (UFC avg: ~52) |
+| `metric_duration` | `avgFightTime` | Total fight time | Minutes (UFC avg: ~10.6) |
+| `raw_head_strikes` | `totalHeadStrikes` | `sum(sig_strikes_head_attempted)` | Count |
+| `raw_body_strikes` | `totalBodyStrikes` | `sum(sig_strikes_body_attempted)` | Count |
+| `raw_leg_strikes` | `totalLegStrikes` | `sum(sig_strikes_leg_attempted)` | Count |
 
-### `ufc_baselines` — league averages
-Used to render the background "grey polygon" on the DNA radar chart so the user's profile is always shown relative to a typical UFC fight:
+### `ufc_baselines` view
+Simple average of all metrics across all fights in `fight_dna_metrics`. Used to render the background "grey polygon" on the DNA radar chart:
 `strikePace: 16.27, violenceIndex: 0.27, intensityScore: 5.38, engagementStyle: 40.1, finishRate: 52.0, avgFightTime: 10.6`
 
-### Views
-**`fight_scraping_status`** — joins `fights`, `fight_meta_details`, and `round_fight_stats` to show completeness of scraped data per fight.
-Columns: `event_name`, `event_date`, `bout`, `fight_url`, `rounds_fought`, `expected_rows`, `actual_rows`, `missing_rows`, `fight_status`
-Status values: `✅ COMPLETE`, `⚠️ PARTIAL`, `❌ MISSING`, `❓ NO META DATA`
-
-> Note: View SQL definitions are not retrievable via the REST API — they require the Supabase Management API or direct DB access.
+### `fight_scraping_status` view
+Joins `ufc_events` → `fights` → `fight_meta_details` → `round_fight_stats`. Computes expected rows as `rounds_fought × 2` (one row per fighter per round) and compares to actual rows inserted.
+Status logic:
+- `❓ NO META DATA` — `rounds_fought` is NULL (fight_meta_details not scraped yet)
+- `❌ MISSING` — `actual_rows = 0`
+- `⚠️ PARTIAL` — some rows present but fewer than expected
+- `✅ COMPLETE` — `actual_rows >= expected_rows`
 
 ## Key Conventions
 - Bout name format is always `Fighter1 vs Fighter2` (no period after "vs")
