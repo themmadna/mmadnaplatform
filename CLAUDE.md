@@ -306,5 +306,12 @@ Each entry should be brief and tied to the task it came from:
 
 Only log things that are genuinely reusable — recurring patterns, non-obvious gotchas, or mistakes that cost unnecessary compute. Skip anything obvious or one-off. `LESSONS.md` lives in `ufc-web-app/` and is committed alongside `PROJECT_PLAN.md`.
 
-### Commit and push after each task group
-After completing a task group and updating the MD files, **always ask the user** if they want to commit and push the changes to GitHub before moving to the next task group. Do not skip this step or assume they want to continue without committing.
+### REQUIRED: Concluding steps after every task group — do not skip
+After completing a task group (e.g. finishing a phase or a labelled section of PROJECT_PLAN.md), you MUST do the following steps in order before moving on to anything else:
+
+1. **Update PROJECT_PLAN.md** — mark completed tasks `[x]`
+2. **Update LESSONS.md** — add a brief retrospective entry (bugs hit, what to do differently)
+3. **Update MEMORY.md** — if any stable conventions or patterns were confirmed this session
+4. **Ask the user** if they want to commit and push before continuing
+
+Do not skip any of these steps. Do not proceed to the next task group until all four are done.

@@ -218,6 +218,7 @@ export default function UFCFightRating() {
   const [selectedYear, setSelectedYear] = useState('');
   const [events, setEvents] = useState([]);
   const [eventFights, setEventFights] = useState([]);
+  const [loadingFights, setLoadingFights] = useState(false);
   const [userHistory, setUserHistory] = useState([]);
   const [combatDNA, setCombatDNA] = useState(null);
   const [dnaFilter, setDnaFilter] = useState('combined'); 
@@ -426,6 +427,7 @@ export default function UFCFightRating() {
     setSelectedEvent(event);
     setCurrentView('fights');
     setEventFights([]);
+    setLoadingFights(true);
     const [{ data: bouts }, { data: metaDetails }] = await Promise.all([
       supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name),
       supabase.from('fight_meta_details').select('bout, weight_class').eq('event_name', event.event_name)
@@ -441,6 +443,7 @@ export default function UFCFightRating() {
       }));
       setEventFights(merged);
     }
+    setLoadingFights(false);
   };
 
   // --- VOTING LOGIC ---
@@ -557,19 +560,20 @@ export default function UFCFightRating() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
   
-  const isVotingLocked = (event) => {
-    if (!event || !event.start_time) return false; 
-    const now = new Date();
-    const startTime = new Date(event.start_time); 
-    return now < startTime; 
-  };
-  
   const isUpcoming = (dateString) => {
     if (!dateString) return false;
     const eventDate = new Date(dateString);
     const today = new Date();
     today.setHours(0,0,0,0);
     return eventDate >= today;
+  };
+
+  const isVotingLocked = (event) => {
+    if (!event) return false;
+    if (!event.start_time) return isUpcoming(event.event_date);
+    const now = new Date();
+    const startTime = new Date(event.start_time);
+    return now < startTime;
   };
 
   if (!session) return <LoginPage />;
@@ -834,14 +838,19 @@ export default function UFCFightRating() {
             <h2 className="text-2xl font-black mb-1 uppercase border-l-4 border-red-600 pl-4">{selectedEvent?.event_name}</h2>
             <p className="text-sm opacity-50 mb-8 pl-5 italic">{selectedEvent?.event_date} {selectedEvent?.event_location ? `• ${selectedEvent.event_location}` : ''}</p>
             
-            {(() => {
+            {loadingFights ? (
+                <div className="flex flex-col items-center justify-center py-20 opacity-50">
+                    <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin mb-3" />
+                    <p className="text-sm font-bold uppercase tracking-widest">Loading fights...</p>
+                </div>
+            ) : (() => {
                 const eventLocked = isVotingLocked(selectedEvent);
                 return eventFights.map(f => (
-                    <FightCard 
-                        key={f.id} 
-                        fight={f} 
-                        currentTheme={currentTheme} 
-                        handleVote={handleVote} 
+                    <FightCard
+                        key={f.id}
+                        fight={f}
+                        currentTheme={currentTheme}
+                        handleVote={handleVote}
                         locked={eventLocked}
                     />
                 ));

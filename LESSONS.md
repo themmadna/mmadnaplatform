@@ -43,6 +43,18 @@
 
 ---
 
+## Phase 1a UX gap fixes — 2026-03-01
+
+**Changes made:**
+- Added `loadingFights` state + spinner in fights view — previously blank while `handleEventClick` awaited data.
+- Fixed `isVotingLocked` to fall back to `event_date` when `start_time` is absent — upcoming events without a start time were incorrectly voteable. Moved `isUpcoming` above `isVotingLocked` so it can be called as a fallback.
+
+**What I'd do differently:**
+- When a guard clause like `if (!x) return false` is on a nullable field that has semantic meaning (upcoming vs past), always ask: what should the fallback actually be? `false` is not always the safe default.
+- Always follow the concluding steps (LESSONS, MEMORY, commit prompt) immediately after finishing a task group — don't wait to be reminded.
+
+---
+
 ## Data engineering review & pipeline fixes — 2026-03-01
 
 **Bugs / errors encountered:**

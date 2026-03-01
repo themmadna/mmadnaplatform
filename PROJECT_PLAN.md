@@ -21,8 +21,8 @@
 - [x] Remove unused `React` import (not needed with modern JSX transform)
 
 #### UX Gaps
-- [ ] Add loading state when clicking an event (fights view is blank while fetching) — App.js:448
-- [ ] Review `isVotingLocked` behaviour when no `start_time` — upcoming fights are currently voteable — App.js:581
+- [x] Add loading state when clicking an event (fights view is blank while fetching) — App.js:448
+- [x] Review `isVotingLocked` behaviour when no `start_time` — upcoming fights are currently voteable — App.js:581
 
 ### 1b. UI/UX Review
 - [ ] Walk through user flows end to end
