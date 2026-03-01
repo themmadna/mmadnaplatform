@@ -220,14 +220,27 @@ Returns aggregate stats on fights the user has liked.
 ### One task at a time
 When work is broken into phases or has sub-tasks, tackle **one task at a time** before moving to the next. This keeps the session context focused and makes it easy to review, test, and commit each piece independently before moving on.
 
-### Project plan + status files
-For any multi-phase project, maintain two files:
+### Project plan + status (one file)
+For any multi-phase project, maintain a single **`PROJECT_PLAN.md`** file where the plan and status are always together. Status lives inline with each task so they can never drift out of sync.
 
-- **`PROJECT_PLAN.md`** — The full plan: phases, tasks, approach, and any relevant decisions or trade-offs. Written once at the start and updated if the plan changes.
-- **`PROJECT_STATUS.md`** — Live tracking file updated as work progresses. Each task should be marked with its current state:
-  - `[ ]` Not started
-  - `[~]` In progress
-  - `[x]` Complete
-  - `[!]` Blocked / needs decision
+Each task uses a status marker:
+- `[ ]` Not started
+- `[~]` In progress
+- `[x]` Complete
+- `[!]` Blocked / needs decision
 
-Both files should live in `ufc-web-app/` and be committed to git so progress is visible across sessions.
+Example structure:
+```
+## Phase 1: Data Pipeline
+- [x] Scrape events from ufcstats.com
+- [x] Insert into ufc_events table
+- [~] Scrape round-by-round stats
+  - [x] Parse base stats table
+  - [ ] Parse zone stats table
+- [ ] Schedule scraper to run weekly
+
+## Phase 2: Frontend
+- [ ] Build fight card component
+```
+
+`PROJECT_PLAN.md` lives in `ufc-web-app/` and is committed to git so progress is visible across sessions. Update it as each task is completed — never let it fall behind the actual work.
