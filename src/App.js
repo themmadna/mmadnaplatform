@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { ThumbsUp, ThumbsDown, Star, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
@@ -143,12 +143,6 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
   return (
     <div className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative`}>
       
-      {/* LOCKED OVERLAY */}
-      {locked && (
-        <div className="absolute inset-0 bg-black/5 z-10 pointer-events-none flex items-center justify-center">
-        </div>
-      )}
-
       <div className="p-4 bg-black/20 text-center">
         <h2 className={`text-xl font-bold ${currentTheme.text}`}>
           {fighters[0]} <span className={currentTheme.accent}>VS</span> {fighters[1]}

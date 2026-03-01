@@ -101,11 +101,7 @@ export const dataService = {
       return [];
     }
 
-    // Map the result to ensure the frontend always gets recommendationReason
-    return (data || []).map(fight => ({
-      ...fight,
-      recommendationReason: fight.recommendationReason || fight.match_reason || "Style Match"
-    }));
+    return data || [];
   },
 
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
@@ -135,7 +131,6 @@ export const dataService = {
     return data.map(f => ({
         ...f,
         ratings: f.fight_ratings,
-        match_reason: "Community Favorite"
     }));
   }
 };

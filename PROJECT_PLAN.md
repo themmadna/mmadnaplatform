@@ -15,9 +15,10 @@
 - [~] Optimise `fetchYears` — deferred: query already fetches only `event_date` column (~6KB total); true distinct requires a DB function — low priority
 
 #### Dead Code
-- [ ] Remove unused `grapplingIntensity` key from `CombatDNACard` fallback baselines — App.js:13
-- [ ] Remove empty locked overlay div (bg-black/5, no content, invisible) — App.js:163
-- [ ] Clean up dual `recommendationReason || match_reason` check — confirm RPC return shape — dataService.js:135
+- [x] `grapplingIntensity` key — already gone from live code (only in backup copies)
+- [x] Remove empty locked overlay div (bg-black/5, no content, invisible)
+- [x] Drop dead `recommendationReason || match_reason` mapping — field not rendered anywhere in App.js; `getRecommendations` now returns RPC data directly
+- [x] Remove unused `React` import (not needed with modern JSX transform)
 
 #### UX Gaps
 - [ ] Add loading state when clicking an event (fights view is blank while fetching) — App.js:448
