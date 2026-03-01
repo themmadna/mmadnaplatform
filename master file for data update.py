@@ -68,13 +68,17 @@ def parse_fight_meta_details(fight_url):
         r1 = fighters[0].select_one('i.b-fight-details__person-status').text.strip().upper()
         r2 = fighters[1].select_one('i.b-fight-details__person-status').text.strip().upper()
 
+        f1_nick_el = fighters[0].select_one('p.b-fight-details__person-title')
+        f2_nick_el = fighters[1].select_one('p.b-fight-details__person-title')
+        f1_nickname = f1_nick_el.text.strip().strip('"') if f1_nick_el else None
+        f2_nickname = f2_nick_el.text.strip().strip('"') if f2_nick_el else None
+
         winner = f1_name if r1 == "W" else (f2_name if r2 == "W" else None)
         details_div = soup.select_one("div.b-fight-details__fight")
         labels = details_div.select("i.b-fight-details__label")
         content = details_div.select("i.b-fight-details__text-item, i.b-fight-details__text-item_first")
         details = {l.text.strip().rstrip(":").lower().replace(" ", "_"): v.text.replace(l.text, "").strip() for l, v in zip(labels, content)}
 
-        # --- THE FIX: Clean the event name string too ---
         raw_event_name = soup.select_one("body > section > div > h2 > a").text.strip()
         cleaned_event_name = clean_bout_name(raw_event_name)
 
@@ -82,18 +86,23 @@ def parse_fight_meta_details(fight_url):
             "event_name": cleaned_event_name,
             "bout": f"{clean_bout_name(f1_name)} vs {clean_bout_name(f2_name)}",
             "fighter1_name": clean_bout_name(f1_name),
+            "fighter1_nickname": f1_nickname if f1_nickname else None,
             "fighter2_name": clean_bout_name(f2_name),
+            "fighter2_nickname": f2_nickname if f2_nickname else None,
             "winner": clean_bout_name(winner) if winner else None,
             "result": "win" if (r1 == "W" or r2 == "W") else "draw",
             "weight_class": details_div.select_one("i.b-fight-details__fight-title").text.strip(),
             "method": details.get("method", ""),
+            "method_details": details.get("details", None),
             "round": details.get("round", ""),
             "time": details.get("time", ""),
             "time_format": details.get("time_format", ""),
             "referee": details.get("referee", ""),
             "fight_url": fight_url,
         }
-    except: return None
+    except Exception as e:
+        print(f"⚠️  parse_fight_meta_details failed for {fight_url}: {e}")
+        return None
 
 def parse_base_stats_table(table, event_name, fight_name):
     tbody = table.find('tbody')
@@ -116,20 +125,22 @@ def parse_base_stats_table(table, event_name, fight_name):
                     
                     # --- CLEANING STATION ---
                     stats.append({
-                        "event_name": clean_bout_name(event_name),  
-                        "bout": clean_bout_name(fight_name),        
-                        "round": round_num, 
-                        "fighter_name": clean_bout_name(f[0]),      
-                        "kd": int(f[1]), 
-                        "sig_strikes_landed": l_sig, 
-                        "sig_strikes_attempted": a_sig, 
-                        "total_strikes_landed": l_tot, 
-                        "total_strikes_attempted": a_tot, 
-                        "takedowns_landed": l_td, 
-                        "takedowns_attempted": a_td, 
-                        "sub_attempts": int(f[7]), 
-                        "reversals": int(f[8]), 
-                        "control_time": f[9], 
+                        "event_name": clean_bout_name(event_name),
+                        "bout": clean_bout_name(fight_name),
+                        "round": round_num,
+                        "fighter_name": clean_bout_name(f[0]),
+                        "kd": int(f[1]),
+                        "sig_strikes_landed": l_sig,
+                        "sig_strikes_attempted": a_sig,
+                        "sig_strike_pct": round(l_sig / a_sig, 3) if a_sig > 0 else None,
+                        "total_strikes_landed": l_tot,
+                        "total_strikes_attempted": a_tot,
+                        "takedowns_landed": l_td,
+                        "takedowns_attempted": a_td,
+                        "takedown_pct": round(l_td / a_td, 3) if a_td > 0 else None,
+                        "sub_attempts": int(f[7]),
+                        "reversals": int(f[8]),
+                        "control_time": f[9],
                         "control_time_sec": time_to_seconds(f[9])
                     })
         i += 1
@@ -223,43 +234,47 @@ def sync_upcoming_fights():
         .execute()
     
     for event in events.data:
-        # Check if we already have fights for this upcoming event
-        if supabase_db.table("fights").select("id").eq("event_name", event['event_name']).execute().data: 
-            print(f"Skipping {event['event_name']} (Already in DB)")
-            continue 
-
         print(f"Processing Next Event: {event['event_name']}")
+
+        # Build a set of bouts already in DB for this event (per-fight check)
+        existing = supabase_db.table("fights").select("bout").eq("event_name", event['event_name']).execute().data
+        existing_bouts = {f['bout'] for f in existing}
+
         res = requests.get(event['event_url'])
         soup = BeautifulSoup(res.text, 'html.parser')
         tbody = soup.find('tbody')
         if not tbody: continue
-        
+
         rows = tbody.find_all('tr', class_='b-fight-details__table-row')
         for row in rows:
             cols = row.find_all('td')
-            if len(cols) < 2: continue 
-            
-            fighters = get_texts(cols[1]) 
+            if len(cols) < 2: continue
+
+            fighters = get_texts(cols[1])
             if len(fighters) < 2: continue
 
             # Check Col 1 for link first, then Col 0
             link_tag = cols[1].find('a')
             if not link_tag:
                  link_tag = cols[0].find('a')
-            
+
             fight_url = link_tag['href'] if link_tag else None
-            
+
             f1 = clean_bout_name(fighters[0])
             f2 = clean_bout_name(fighters[1])
             standardized_bout = f"{f1} vs {f2}"
 
+            if standardized_bout in existing_bouts:
+                print(f"  ⏭️  Skipping existing: {standardized_bout}")
+                continue
+
             print(f"⚔️  Upcoming Fight: {standardized_bout}")
-            
+
             supabase_db.table("fights").insert({
-                'event_name': event['event_name'], 
-                'bout': standardized_bout, 
-                'fight_url': fight_url, 
-                'status': 'upcoming' 
+                'event_name': event['event_name'],
+                'bout': standardized_bout,
+                'fight_url': fight_url,
+                'status': 'upcoming'
             }).execute()
             stats_summary["new_fights"] += 1
 
@@ -271,16 +286,22 @@ def sync_events():
     res = requests.get("http://ufcstats.com/statistics/events/completed?page=all")
     soup = BeautifulSoup(res.text, 'html.parser')
     rows = soup.find('table', class_='b-statistics__table-events').find_all('tr', class_='b-statistics__table-row')
+    consecutive_existing = 0
+    STOP_AFTER = 5  # Stop once we've seen this many already-in-DB events in a row
     for row in rows:
-        if not row.find('a') or row.find('img'): continue 
+        if not row.find('a') or row.find('img'): continue
         e_name = clean_bout_name(row.find_all('td')[0].find('a').text.strip())
         e_url = row.find_all('td')[0].find('a')['href']
         e_date = row.find_all('td')[0].find('span', class_='b-statistics__date').text.strip()
         iso_date = datetime.strptime(e_date, "%B %d, %Y").date().isoformat()
-        
-        # Check if exists
-        if supabase_db.table("ufc_events").select("id").eq("event_url", e_url).execute().data: break 
-        
+
+        if supabase_db.table("ufc_events").select("id").eq("event_url", e_url).execute().data:
+            consecutive_existing += 1
+            if consecutive_existing >= STOP_AFTER:
+                break
+            continue
+
+        consecutive_existing = 0  # Reset — found a gap
         print(f"🏟️ New Completed Event: {e_name}")
         supabase_db.table("ufc_events").insert({"event_name": e_name, "event_url": e_url, "event_date": iso_date, "event_location": row.find_all('td')[1].text.strip()}).execute()
         stats_summary["new_events"] += 1
@@ -361,8 +382,8 @@ def sync_fights():
 
 def sync_meta():
     print("🚀 Phase 3: Syncing Metadata & Winners...")
-    # Fetch fights that are 'completed' but missing metadata
-    fights = supabase_db.table("fights").select("bout, fight_url").eq("status", "completed").order("id", desc=True).limit(50).execute()
+    # Fetch ALL completed fights — per-fight URL check skips already-processed ones
+    fights = supabase_db.table("fights").select("bout, fight_url").eq("status", "completed").order("id", desc=True).execute()
     
     for f in fights.data:
         # Check if meta already exists to avoid duplicates

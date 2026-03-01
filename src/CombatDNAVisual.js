@@ -4,9 +4,9 @@ import { Target } from 'lucide-react';
 const CombatDNAVisual = ({ dna, currentTheme }) => {
   if (!dna) return null;
 
-  const head = dna.totalHeadStrikes || 0;
-  const body = dna.totalBodyStrikes || 0;
-  const legs = dna.totalLegStrikes || 0;
+  const head = dna.avgHeadStrikes || 0;
+  const body = dna.avgBodyStrikes || 0;
+  const legs = dna.avgLegStrikes || 0;
   const grandTotal = head + body + legs || 1;
 
   const headPct = Math.round((head / grandTotal) * 100);

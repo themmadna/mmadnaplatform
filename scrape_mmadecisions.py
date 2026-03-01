@@ -3,6 +3,7 @@ import time
 import logging
 import argparse
 from datetime import datetime
+from pathlib import Path
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
@@ -10,14 +11,14 @@ import pandas as pd
 from supabase import create_client, Client
 
 # --- 1. INITIALIZATION ---
-load_dotenv()
+load_dotenv(dotenv_path=Path(__file__).parent / '.env')
 DEFAULT_START_YEAR = 2010
-CURRENT_YEAR = datetime.now().year 
-STOP_THRESHOLD = 10 
+CURRENT_YEAR = datetime.now().year
+STOP_THRESHOLD = 10
 
 
-url = os.environ.get("SUPABASE_URL")
-key = os.environ.get("SUPABASE_ANON_KEY")
+url = os.environ.get("REACT_APP_SUPABASE_URL")
+key = os.environ.get("SUPABASE_SERVICE_KEY")
 supabase_db: Client = create_client(url, key)
 
 logging.basicConfig(filename='scrape_errors.log', level=logging.ERROR, 
@@ -45,49 +46,54 @@ def fetch_page(url):
         logging.error(f"Failed to fetch {url}: {e}")
         return None
 
-def extract_fight_data(html_content, url):
+def extract_fight_data(html_content, url, bout_display=None):
     if not html_content: return None
     soup = BeautifulSoup(html_content, "html.parser")
-    
+
     event_block = soup.find("td", class_="decision-top2")
     event_lines = [line.strip() for line in event_block.text.splitlines() if line.strip()] if event_block else []
     event = event_lines[0] if event_lines else 'N/A'
     date = event_lines[1] if len(event_lines) > 1 else 'N/A'
-    
+
     referee_block = soup.find("td", class_="decision-bottom2")
     referee = referee_block.get_text(strip=True).replace('REFEREE:', '').strip() if referee_block else 'N/A'
-    
-    fight_name_raw = url.split('/')[-1].replace('-', ' ').strip()
-    try:
-        f1_url, f2_url = [f.strip() for f in fight_name_raw.split(' vs ')]
-    except ValueError: 
-        f1_url = f2_url = 'Unknown'
-    
+
+    # Use display name from the event page link (properly cased) when available.
+    # Fallback to URL slug only if display name wasn't passed in.
+    if bout_display and ' vs ' in bout_display:
+        f1_name, f2_name = [f.strip() for f in bout_display.split(' vs ', 1)]
+    else:
+        fight_name_raw = url.split('/')[-1].replace('-', ' ').strip()
+        try:
+            f1_name, f2_name = [f.strip() for f in fight_name_raw.split(' vs ')]
+        except ValueError:
+            f1_name = f2_name = 'Unknown'
+
     data = []
     judge_tables = soup.find_all("table", style="border-spacing: 1px; width: 100%")
     for table in judge_tables:
         try:
             judge = table.find("a").get_text(strip=True).replace("\xa0", " ").strip()
         except AttributeError: continue
-        
+
         for round_row in table.find_all("tr", class_="decision"):
             cols = round_row.find_all("td", class_="list")
             if len(cols) < 3 or not cols[1].text.strip() or cols[1].text.strip() == "-": continue
-            
-            bout_name = f"{f1_url} vs. {f2_url}"
+
+            bout_name = f"{f1_name} vs {f2_name}"
             common_fields = {
                 'event': event.strip(),
                 'bout': bout_name,
                 'date': date.strip(),
                 'judge': judge,
-                'round': cols[0].text.strip(),
+                'round': int(cols[0].text.strip()),
                 'referee': referee
             }
             # Row for Fighter 1
-            data.append({**common_fields, 'fighter': f1_url, 'score': cols[1].text.strip()})
+            data.append({**common_fields, 'fighter': f1_name, 'score': cols[1].text.strip()})
             # Row for Fighter 2
-            data.append({**common_fields, 'fighter': f2_url, 'score': cols[2].text.strip()})
-            
+            data.append({**common_fields, 'fighter': f2_name, 'score': cols[2].text.strip()})
+
     return {'data': data} if data else None
 
 
@@ -167,22 +173,22 @@ def scrapeDataFunction(start_year, end_year):
             event_html = fetch_page(base_url + e_link)
             if not event_html: continue
             bout_soup = BeautifulSoup(event_html, 'html.parser')
-            bouts = [a.get('href') for a in bout_soup.find_all('a') if 'decision/' in a.get('href', '')]
-            
+            # Capture (href, display_text) — display text has proper fighter name casing
+            bouts = [
+                (a.get('href'), clean_string(a.get_text(strip=True)))
+                for a in bout_soup.find_all('a')
+                if 'decision/' in a.get('href', '') and a.get_text(strip=True)
+            ]
+
             new_fights_processed = 0
-            for b_link in bouts:
-                # 1. Pre-calculate the bout name from the URL slug
-                # Example slug: "Merab-Dvalishvili-vs-Cory-Sandhagen" -> "Merab Dvalishvili vs Cory Sandhagen"
-                fight_slug = b_link.split('/')[-1].replace('-', ' ').strip()
-                clean_bout_name = clean_string(fight_slug)
-                
-                # 2. SKIP if we already have this bout for this event
-                if clean_bout_name in existing_bouts:
-                    print(f"  ⏭️ Skipping existing bout: {clean_bout_name}")
+            for b_link, b_name in bouts:
+                # SKIP if we already have this bout for this event
+                if b_name in existing_bouts:
+                    print(f"  ⏭️ Skipping existing bout: {b_name}")
                     continue
-                
-                # 3. Only fetch the page if it's a NEW fight
-                res = extract_fight_data(fetch_page(base_url + b_link.strip()), base_url + b_link)
+
+                # Only fetch the page if it's a NEW fight
+                res = extract_fight_data(fetch_page(base_url + b_link.strip()), base_url + b_link, b_name)
                 
                 if res and res.get('data'):
                     insert_judge_data_supabase(res['data'])

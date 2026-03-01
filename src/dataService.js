@@ -66,10 +66,9 @@ export const dataService = {
       finishRate: Math.round(sums.finish / total),
       avgFightTime: parseFloat((sums.duration / total).toFixed(1)),
       
-      // RETURN THE EXACT KEYS THE VISUALIZER WANTS:
-      totalHeadStrikes: Math.round(sums.head / total),
-      totalBodyStrikes: Math.round(sums.body / total),
-      totalLegStrikes: Math.round(sums.leg / total)
+      avgHeadStrikes: Math.round(sums.head / total),
+      avgBodyStrikes: Math.round(sums.body / total),
+      avgLegStrikes: Math.round(sums.leg / total)
     };
   },
 
@@ -113,9 +112,15 @@ export const dataService = {
   },
 
   // --- RECOMMENDATIONS (Using SQL Function) ---
-  async getRecommendations(userId) {
+  async getRecommendations(userId, combatDNA) {
     const { data, error } = await supabase.rpc('get_fight_recommendations', {
-      p_user_id: userId
+      p_user_id: userId,
+      p_pace: combatDNA?.strikePace ?? 0,
+      p_violence: combatDNA?.violenceIndex ?? 0,
+      p_intensity: combatDNA?.intensityScore ?? 0,
+      p_control: combatDNA?.engagementStyle ?? 0,
+      p_finish: combatDNA?.finishRate ?? 0,
+      p_duration: combatDNA?.avgFightTime ?? 0,
     });
     
     // Robust error handling to prevent UI crashes
