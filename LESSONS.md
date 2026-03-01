@@ -16,6 +16,20 @@
 
 ---
 
+## Frontend code review & bug fixes — 2026-03-01
+
+**Bugs / errors encountered:**
+- `event.location` was used throughout App.js but the DB column is `event_location`. Location never displayed on any event card or in the fights view header — silent failure with no console error.
+- `fight.weight_class` was rendered in FightCard but the `fights` table doesn't have that column — it lives in `fight_meta_details`. Always fell back to `'MAIN CARD'`. Fix: fetch `fight_meta_details` in parallel inside `handleEventClick` and merge by `bout`.
+- `fetchUserHistory` hardcoded `updateDnaAndCharts(merged, 'combined')` regardless of `dnaFilter` state. A user on the 'favorites' DNA tab who triggered a re-fetch would silently get 'combined' data while the tab still showed 'favorites' as active.
+
+**What I'd do differently:**
+- When reviewing frontend field access, cross-reference against the schema in CLAUDE.md first. A quick grep for `\.location` or `\.weight_class` against the table definitions would have caught both bugs immediately.
+- When a function that re-fetches data also recomputes derived state (like DNA), check whether hardcoded arguments match the live UI state. Any hardcoded string where a state variable exists is a suspect.
+- Check `fight_meta_details` vs `fights` split carefully — `fights` is the lightweight index table; `fight_meta_details` holds the rich attributes. Weight class, method, referee, etc. all live in meta.
+
+---
+
 ## Data engineering review & pipeline fixes — 2026-03-01
 
 **Bugs / errors encountered:**

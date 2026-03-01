@@ -305,3 +305,6 @@ Each entry should be brief and tied to the task it came from:
 ```
 
 Only log things that are genuinely reusable — recurring patterns, non-obvious gotchas, or mistakes that cost unnecessary compute. Skip anything obvious or one-off. `LESSONS.md` lives in `ufc-web-app/` and is committed alongside `PROJECT_PLAN.md`.
+
+### Commit and push after each task group
+After completing a task group and updating the MD files, **always ask the user** if they want to commit and push the changes to GitHub before moving to the next task group. Do not skip this step or assume they want to continue without committing.

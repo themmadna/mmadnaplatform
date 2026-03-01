@@ -448,15 +448,19 @@ export default function UFCFightRating() {
   const handleEventClick = async (event) => {
     setSelectedEvent(event);
     setCurrentView('fights');
-    setEventFights([]); 
-    const { data: bouts } = await supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name);
+    setEventFights([]);
+    const [{ data: bouts }, { data: metaDetails }] = await Promise.all([
+      supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name),
+      supabase.from('fight_meta_details').select('bout, weight_class').eq('event_name', event.event_name)
+    ]);
     if (bouts && session) {
       const { data: userVotes } = await supabase.from('user_votes').select('*').eq('user_id', session.user.id);
+      const metaMap = Object.fromEntries((metaDetails || []).map(m => [m.bout, m.weight_class]));
       const merged = bouts.map(f => ({
         ...f,
-        // FIX 2: HANDLE RATINGS ARRAY
         ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
-        userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type
+        userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type,
+        weight_class: metaMap[f.bout] || null
       }));
       setEventFights(merged);
     }
@@ -569,11 +573,11 @@ export default function UFCFightRating() {
         userVote: votes.find(v => v.fight_id === f.id)?.vote_type
     }));
     setUserHistory(merged);
-    updateDnaAndCharts(merged, 'combined');
+    updateDnaAndCharts(merged, dnaFilter);
   };
 
-  useEffect(() => { 
-    fetchUserHistory(); 
+  useEffect(() => {
+    fetchUserHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
   
@@ -836,7 +840,7 @@ export default function UFCFightRating() {
                           </h3>
                           <div className="flex flex-col gap-1 mt-1 opacity-50 text-sm">
                             <p>{event.event_date}</p>
-                            {event.location && <p className="flex items-center gap-1 italic"><MapPin size={12} /> {event.location}</p>}
+                            {event.event_location && <p className="flex items-center gap-1 italic"><MapPin size={12} /> {event.event_location}</p>}
                           </div>
                         </button>
                       ))}
@@ -852,7 +856,7 @@ export default function UFCFightRating() {
           <div className="animate-in fade-in">
             <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 font-bold opacity-60"><ChevronLeft size={20} /> BACK TO EVENTS</button>
             <h2 className="text-2xl font-black mb-1 uppercase border-l-4 border-red-600 pl-4">{selectedEvent?.event_name}</h2>
-            <p className="text-sm opacity-50 mb-8 pl-5 italic">{selectedEvent?.event_date} {selectedEvent?.location ? `• ${selectedEvent.location}` : ''}</p>
+            <p className="text-sm opacity-50 mb-8 pl-5 italic">{selectedEvent?.event_date} {selectedEvent?.event_location ? `• ${selectedEvent.event_location}` : ''}</p>
             
             {(() => {
                 const eventLocked = isVotingLocked(selectedEvent);
