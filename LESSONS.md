@@ -43,6 +43,22 @@
 
 ---
 
+## Phase 1b UI/UX fixes — 2026-03-01
+
+**Changes made:**
+- Empty state added to fights view (was blank after load with no data)
+- Filter panel: Reset button added inline with the "Fight Finder" heading
+- Profile tabs: empty state per tab ("No favorites yet." etc.)
+- Theme selector: click-outside closes dropdown — wrapped Palette button + dropdown in a shared `ref`'d container so the toggle button click doesn't re-open after outside-click closes it
+- Search results: `locked={isUpcoming(f.event_date)}` — upcoming fights now locked in search just like in events view
+- Locked message: "Voting opens at start time" → "Voting opens at event start" (accurate for both start_time and date-based locking)
+
+**What I'd do differently:**
+- When adding a click-outside handler with a ref, always check whether the toggle button is inside or outside the ref'd element. If outside, a click on the toggle button triggers the outside handler first then the onClick — causing a double-toggle. Fix: wrap both in a single ref'd container.
+- When a `locked` prop defaults to `false` in a component, grep all call sites to confirm every context that should lock is actually passing the prop.
+
+---
+
 ## Phase 1a UX gap fixes — 2026-03-01
 
 **Changes made:**

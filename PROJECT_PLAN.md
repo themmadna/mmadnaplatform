@@ -25,9 +25,21 @@
 - [x] Review `isVotingLocked` behaviour when no `start_time` — upcoming fights are currently voteable — App.js:581
 
 ### 1b. UI/UX Review
-- [ ] Walk through user flows end to end
-- [ ] Identify layout, responsiveness, or usability issues
-- [ ] Prioritise fixes
+- [x] Walk through user flows end to end
+- [x] Identify layout, responsiveness, or usability issues
+- [x] Prioritise fixes
+
+#### Fixes (in priority order)
+- [x] Empty state when eventFights is empty after loading — App.js:846
+- [x] Filter panel: add Reset button — App.js:641
+- [x] Profile tabs: empty state per tab — App.js:916
+- [x] Theme selector: close on click-outside — App.js:590
+- [x] Search results: pass locked prop for upcoming fights — App.js:748
+- [x] "Voting opens at start time" copy is inaccurate when locked by date — App.js:202
+- [~] Initial "Loading..." is unstyled (low priority)
+- [~] Back button loses year/scroll position (low priority)
+- [~] Year tabs have no scroll affordance (low priority)
+- [~] Redundant DNA headers (low priority)
 
 ### 1c. Backend & Scraper Review
 - [ ] Review master scraper pipeline — correctness, edge cases

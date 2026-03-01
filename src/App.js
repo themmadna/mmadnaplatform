@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ThumbsUp, ThumbsDown, Star, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
@@ -200,7 +200,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
         
         {locked && (
             <div className="text-center text-xs opacity-40 mt-2 uppercase tracking-widest">
-                Voting opens at start time
+                Voting opens at event start
             </div>
         )}
       </div>
@@ -243,6 +243,7 @@ export default function UFCFightRating() {
   const [activeProfileTab, setActiveProfileTab] = useState('favorite');
   const [theme, setTheme] = useState(() => localStorage.getItem('ufc_app_theme') || 'modern');
   const [showThemeSelector, setShowThemeSelector] = useState(false);
+  const themeSelectorRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [fetchingEvents, setFetchingEvents] = useState(false);
   
@@ -276,6 +277,17 @@ export default function UFCFightRating() {
       setFilters({ maxDuration: 25, minPace: 0, minViolence: 0, maxControl: 100, minGrappling: 0 });
     }
   };
+
+  useEffect(() => {
+    if (!showThemeSelector) return;
+    const handleClickOutside = (e) => {
+      if (themeSelectorRef.current && !themeSelectorRef.current.contains(e.target)) {
+        setShowThemeSelector(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showThemeSelector]);
 
   // --- INITIAL LOAD ONLY ---
   // Filters will now ONLY reset if you click the button or refresh the page.
@@ -583,19 +595,20 @@ export default function UFCFightRating() {
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} p-4 pb-20 transition-all duration-500`}>
       <div className="max-w-2xl mx-auto">
         <header className="flex justify-between items-center mb-8 pt-4 relative">
-          <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border border-white/10 ${currentTheme.card}`}>
-            <Palette size={24} className={currentTheme.accent} />
-          </button>
-          
-          {showThemeSelector && (
-            <div className={`absolute top-16 left-0 ${currentTheme.card} border rounded-lg p-2 z-50 shadow-2xl`}>
-              {Object.keys(themes).map(t => (
-                <button key={t} onClick={() => { setTheme(t); setShowThemeSelector(false); }} className="block w-full text-left px-4 py-2 hover:bg-white/10 rounded capitalize text-sm">
-                  {themes[t].name}
-                </button>
-              ))}
-            </div>
-          )}
+          <div ref={themeSelectorRef} className="relative">
+            <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border border-white/10 ${currentTheme.card}`}>
+              <Palette size={24} className={currentTheme.accent} />
+            </button>
+            {showThemeSelector && (
+              <div className={`absolute top-12 left-0 ${currentTheme.card} border rounded-lg p-2 z-50 shadow-2xl`}>
+                {Object.keys(themes).map(t => (
+                  <button key={t} onClick={() => { setTheme(t); setShowThemeSelector(false); }} className="block w-full text-left px-4 py-2 hover:bg-white/10 rounded capitalize text-sm">
+                    {themes[t].name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Reset Filters on Navigation */}
           <h1 className="text-3xl font-black italic tracking-tighter cursor-pointer" onClick={() => {setCurrentView('events'); setSearchQuery(''); setShowFilters(false);}}>MMA DNA</h1>
@@ -644,6 +657,7 @@ export default function UFCFightRating() {
                         <div className="flex items-center gap-2">
                             <Settings2 size={14} className={currentTheme.accent} />
                             <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">Fight Finder</h3>
+                            <button onClick={() => setFilters({ maxDuration: 25, minPace: 0, minViolence: 0, maxControl: 100, minGrappling: 0 })} className="text-[10px] uppercase font-bold opacity-30 hover:opacity-70 transition-opacity">Reset</button>
                         </div>
                         {combatDNA && (
                             <button onClick={resetFiltersToDNA} className={`text-[10px] uppercase font-bold ${currentTheme.accent} hover:text-white transition-colors flex items-center gap-1`}>
@@ -745,7 +759,7 @@ export default function UFCFightRating() {
                 </h3>
                 
                 {searchResults.slice(0, displayLimit).map(f => (
-                    <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} />
+                    <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} locked={isUpcoming(f.event_date)} />
                 ))}
 
                 {!fetchingEvents && searchResults.length > displayLimit && (
@@ -843,6 +857,8 @@ export default function UFCFightRating() {
                     <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin mb-3" />
                     <p className="text-sm font-bold uppercase tracking-widest">Loading fights...</p>
                 </div>
+            ) : eventFights.length === 0 ? (
+                <div className="text-center py-20 opacity-40 italic">No fights found for this event.</div>
             ) : (() => {
                 const eventLocked = isVotingLocked(selectedEvent);
                 return eventFights.map(f => (
@@ -914,7 +930,9 @@ export default function UFCFightRating() {
             </div>
 
             <div className="space-y-4">
-              {userHistory.filter(f => f.userVote === activeProfileTab).map(f => (
+              {userHistory.filter(f => f.userVote === activeProfileTab).length === 0 ? (
+                <div className="text-center py-20 opacity-40 italic">No {activeProfileTab}s yet.</div>
+              ) : userHistory.filter(f => f.userVote === activeProfileTab).map(f => (
                 <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} />
               ))}
             </div>
