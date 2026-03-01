@@ -214,3 +214,20 @@ Returns aggregate stats on fights the user has liked.
 - Single branch `main` for active development
 - Feature branches used for larger additions
 - Push from `ufc-web-app/` only — never from the parent `VS Ufc/` folder
+
+## Session & Planning Workflow
+
+### One task at a time
+When work is broken into phases or has sub-tasks, tackle **one task at a time** before moving to the next. This keeps the session context focused and makes it easy to review, test, and commit each piece independently before moving on.
+
+### Project plan + status files
+For any multi-phase project, maintain two files:
+
+- **`PROJECT_PLAN.md`** — The full plan: phases, tasks, approach, and any relevant decisions or trade-offs. Written once at the start and updated if the plan changes.
+- **`PROJECT_STATUS.md`** — Live tracking file updated as work progresses. Each task should be marked with its current state:
+  - `[ ]` Not started
+  - `[~]` In progress
+  - `[x]` Complete
+  - `[!]` Blocked / needs decision
+
+Both files should live in `ufc-web-app/` and be committed to git so progress is visible across sessions.
