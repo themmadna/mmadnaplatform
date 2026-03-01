@@ -204,6 +204,48 @@ Returns personalised fight recommendations based on DNA metric weights for a giv
 ### `get_liked_fight_stats()`
 Returns aggregate stats on fights the user has liked.
 
+## Local Development Commands
+```bash
+# Frontend (from ufc-web-app/)
+npm start               # Dev server at localhost:3000
+npm run build           # Production build
+
+# Scrapers (from ufc-web-app/)
+python "master file for data update.py"   # Full pipeline — run after each UFC event
+python scrape_mmadecisions.py             # Judge scorecards — run separately
+```
+
+## Combat DNA — Concept & Metrics
+DNA metrics describe a fight's character without hardcoded categories. They power two things:
+1. **Fight identity** — each fight gets a fingerprint based on how it was actually fought
+2. **User profile** — a user's rated fights are averaged into a DNA profile that represents the *style* of fights they enjoy, used to drive personalised recommendations
+
+### Metric definitions
+All metrics are pre-calculated and stored in `fight_dna_metrics`. The frontend averages them across a user's rated fights via `dataService.getCombatDNA()`.
+
+| DB column | Frontend key | What it measures | Unit / scale |
+|---|---|---|---|
+| `metric_pace` | `strikePace` | Significant strikes landed per minute | Rate (UFC avg: ~16.3) |
+| `metric_violence` | `violenceIndex` | Knockdown rate — aggression / finishing power | Small decimal (UFC avg: ~0.27) |
+| `metric_intensity` | `intensityScore` | Sig strikes landed ÷ control time — pressure under fire | Ratio (UFC avg: ~5.4) |
+| `metric_control` | `engagementStyle` | Grappling control time | Seconds per round (UFC avg: ~40s) |
+| `metric_finish` | `finishRate` | Did the fight end by finish (KO/TKO/Sub)? | Binary 0 or 1 (UFC avg: ~52%) |
+| `metric_duration` | `avgFightTime` | Total fight duration | Minutes (UFC avg: ~10.6) |
+| `raw_head_strikes` | `totalHeadStrikes` | Total significant head strikes | Count |
+| `raw_body_strikes` | `totalBodyStrikes` | Total significant body strikes | Count |
+| `raw_leg_strikes` | `totalLegStrikes` | Total significant leg strikes | Count |
+
+### `ufc_baselines` — league averages
+Used to render the background "grey polygon" on the DNA radar chart so the user's profile is always shown relative to a typical UFC fight:
+`strikePace: 16.27, violenceIndex: 0.27, intensityScore: 5.38, engagementStyle: 40.1, finishRate: 52.0, avgFightTime: 10.6`
+
+### Views
+**`fight_scraping_status`** — joins `fights`, `fight_meta_details`, and `round_fight_stats` to show completeness of scraped data per fight.
+Columns: `event_name`, `event_date`, `bout`, `fight_url`, `rounds_fought`, `expected_rows`, `actual_rows`, `missing_rows`, `fight_status`
+Status values: `✅ COMPLETE`, `⚠️ PARTIAL`, `❌ MISSING`, `❓ NO META DATA`
+
+> Note: View SQL definitions are not retrievable via the REST API — they require the Supabase Management API or direct DB access.
+
 ## Key Conventions
 - Bout name format is always `Fighter1 vs Fighter2` (no period after "vs")
 - `clean_bout_name()` in the master scraper standardises this and strips `\xa0`
