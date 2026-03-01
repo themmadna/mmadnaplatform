@@ -30,6 +30,19 @@
 
 ---
 
+## Performance & dead code cleanup — 2026-03-01
+
+**Patterns confirmed:**
+- `CombatDNACard` had its own `getGlobalBaselines()` call in a `useEffect`, duplicating the parent's fetch. Always check if a child component is re-fetching data the parent already has — pass it as a prop instead.
+- `getCombatDNA` and `getComparisonData` queried the same table with identical filters. Whenever two sequential `await` calls hit the same table with the same `.in()` + `.eq()`, merge them into one and split the result client-side.
+- `recommendationReason` was normalised in `dataService` but never rendered anywhere in `App.js`. Before writing a data mapping, grep for the key in the render tree first.
+- `import React` is not needed in React 17+ with the new JSX transform (Create React App default). IDE will flag it as an unused import — safe to remove.
+
+**What I'd do differently:**
+- When auditing dead code, grep for the key in the JSX render tree before concluding it's unused. A key set in `dataService` might be used in a component — check both layers.
+
+---
+
 ## Data engineering review & pipeline fixes — 2026-03-01
 
 **Bugs / errors encountered:**
