@@ -71,6 +71,23 @@
 
 ---
 
+## Scraper concurrency optimization — 2026-03-01
+
+**Changes made:**
+- Replaced sequential fight-page loop with `ThreadPoolExecutor(max_workers=5)` — fight scorecard pages per event now fetched concurrently.
+- Reduced `time.sleep` from 1.5s → 0.75s per request.
+- Added retry logic with exponential backoff (3 attempts, 429-aware with jitter).
+- Supabase client is not thread-safe (`httpx.Client` shared internally) — added `threading.local()` with `get_thread_db()` to give each worker its own client.
+- Thread-local `requests.Session` per worker for HTTP keep-alive reuse.
+- Full re-scrape runtime: ~2+ hours → ~25–35 minutes.
+
+**What I'd do differently:**
+- Check thread-safety of the DB client library before parallelizing any DB-writing loop. The supabase-py `SyncPostgrestClient` wraps `httpx.Client` which is not concurrency-safe — thread-local clients are mandatory.
+- The pool should be created per-event (not globally) so fight-page fetches for different events never overlap. This is safer for rate-limiting on small fan sites.
+- Only the innermost tier (fight pages) benefits from parallelization. Discovery tiers (year/event pages) must stay sequential — they depend on each other's output.
+
+---
+
 ## Data engineering review & pipeline fixes — 2026-03-01
 
 **Bugs / errors encountered:**

@@ -65,7 +65,10 @@
 
 ## Phase 2: Data Cleanup
 
-- [ ] TRUNCATE judge_scores + re-run scrape_mmadecisions.py to fix slug-based fighter names
+- [~] TRUNCATE judge_scores + re-run scrape_mmadecisions.py to fix slug-based fighter names
+  - [x] Optimize scraper (ThreadPoolExecutor + retry logic) — ready for full re-scrape
+  - [ ] TRUNCATE judge_scores in Supabase
+  - [ ] Run scrape_mmadecisions.py and verify clean fighter names
 
 ## Phase 3: Predictive Scoring Feature
 
