@@ -441,7 +441,7 @@ export default function UFCFightRating() {
     setEventFights([]);
     setLoadingFights(true);
     const [{ data: bouts }, { data: metaDetails }] = await Promise.all([
-      supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name),
+      supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name).order('id', { ascending: true }),
       supabase.from('fight_meta_details').select('fight_url, weight_class').eq('event_name', event.event_name)
     ]);
     if (bouts && session) {
