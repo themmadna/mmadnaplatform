@@ -1,7 +1,10 @@
 import os
 import time
+import random
 import logging
 import argparse
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -14,6 +17,10 @@ load_dotenv(dotenv_path=Path(__file__).parent / '.env')
 DEFAULT_START_YEAR = 2010
 CURRENT_YEAR = datetime.now().year
 STOP_THRESHOLD = 10
+MAX_WORKERS  = 5     # concurrent fight-page fetches per event
+BASE_SLEEP   = 0.75  # seconds between requests (was 1.5)
+MAX_RETRIES  = 3
+BACKOFF_BASE = 2     # exponential backoff: 2s, 4s, 8s on retries
 
 
 url = os.environ.get("REACT_APP_SUPABASE_URL")
@@ -27,6 +34,17 @@ supabase_db: Client = create_client(url, key)
 logging.basicConfig(filename=str(Path(__file__).parent / 'scrape_errors.log'), level=logging.ERROR,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
+_thread_local = threading.local()
+
+def get_thread_db():
+    """Return a thread-local Supabase client. Creates one on first call per thread."""
+    if not hasattr(_thread_local, 'db'):
+        _thread_local.db = create_client(
+            os.environ["REACT_APP_SUPABASE_URL"],
+            os.environ["SUPABASE_SERVICE_KEY"]
+        )
+    return _thread_local.db
+
 
 # --- 2. HELPER FUNCTIONS ---
 
@@ -38,16 +56,33 @@ def clean_string(text):
     # 3. Remove leading/trailing whitespace
     return text.replace(' vs. ', ' vs ').replace('\xa0', ' ').strip()
 
-def fetch_page(url):
-    print(f"Fetching: {url}")
-    try:
-        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
-        response.raise_for_status()
-        time.sleep(1.5)
-        return response.text
-    except Exception as e:
-        logging.error(f"Failed to fetch {url}: {e}")
-        return None
+def fetch_page(url, session=None):
+    """Fetch a URL with retry + exponential backoff.
+    Pass a requests.Session for thread-local HTTP keep-alive reuse.
+    """
+    getter = session.get if session else requests.get
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = getter(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=15)
+            response.raise_for_status()
+            time.sleep(BASE_SLEEP)
+            return response.text
+        except requests.exceptions.HTTPError as e:
+            if e.response is not None and e.response.status_code == 429:
+                wait = BACKOFF_BASE ** attempt + random.uniform(0, 1)
+                print(f"  429 rate-limited. Waiting {wait:.1f}s before retry {attempt}...")
+                time.sleep(wait)
+            elif attempt == MAX_RETRIES:
+                logging.error(f"HTTP error after {MAX_RETRIES} attempts for {url}: {e}")
+                return None
+            else:
+                time.sleep(BACKOFF_BASE ** attempt)
+        except Exception as e:
+            if attempt == MAX_RETRIES:
+                logging.error(f"Failed to fetch {url} after {MAX_RETRIES} attempts: {e}")
+                return None
+            time.sleep(BACKOFF_BASE ** attempt)
+    return None
 
 def extract_fight_data(html_content, url, bout_display=None):
     if not html_content: return None
@@ -102,7 +137,31 @@ def extract_fight_data(html_content, url, bout_display=None):
 
 # --- 3. SUPABASE LOADING FUNCTION ---
 
-def insert_judge_data_supabase(raw_data):
+def fetch_fight_page_and_insert(args):
+    """Worker function for ThreadPoolExecutor.
+    args: (base_url, b_link, b_name)
+    Returns True if new data was inserted, False otherwise.
+    """
+    base_url, b_link, b_name = args
+
+    if not hasattr(_thread_local, 'http_session'):
+        _thread_local.http_session = requests.Session()
+        _thread_local.http_session.headers.update({'User-Agent': 'Mozilla/5.0'})
+
+    fight_url = base_url + b_link.strip()
+    html = fetch_page(fight_url, session=_thread_local.http_session)
+    if not html:
+        return False
+
+    res = extract_fight_data(html, fight_url, b_name)
+    if res and res.get('data'):
+        insert_judge_data_supabase(res['data'], db=get_thread_db())
+        return True
+    return False
+
+def insert_judge_data_supabase(raw_data, db=None):
+    if db is None:
+        db = supabase_db
     clean_rows = []
     for entry in raw_data:
         try:
@@ -133,14 +192,14 @@ def insert_judge_data_supabase(raw_data):
 
     if clean_rows:
         try:
-            # Use UPSERT to match existing rows and prevent duplicates
-            supabase_db.table("judge_scores").upsert(
-                clean_rows, 
-                on_conflict='bout,date,judge,fighter,round' # Add event_name here if it's part of your unique key
+            db.table("judge_scores").upsert(
+                clean_rows,
+                on_conflict='bout,date,judge,fighter,round'
             ).execute()
-            print(f"✅ Supabase Sync: Processed {len(clean_rows)} scorecard rows.")
+            print(f"✅ Processed {len(clean_rows)} scorecard rows.")
         except Exception as e:
             print(f"❌ Supabase Sync Error: {e}")
+            logging.error(f"UPSERT failed: {e}")
 
 # --- 4. MAIN ORCHESTRATOR (OPTIMIZED) ---
 
@@ -184,18 +243,25 @@ def scrapeDataFunction(start_year, end_year):
             ]
 
             new_fights_processed = 0
+            new_bouts = []
             for b_link, b_name in bouts:
-                # SKIP if we already have this bout for this event
                 if b_name in existing_bouts:
                     print(f"  ⏭️ Skipping existing bout: {b_name}")
-                    continue
+                else:
+                    new_bouts.append((base_url, b_link, b_name))
 
-                # Only fetch the page if it's a NEW fight
-                res = extract_fight_data(fetch_page(base_url + b_link.strip()), base_url + b_link, b_name)
-                
-                if res and res.get('data'):
-                    insert_judge_data_supabase(res['data'])
-                    new_fights_processed += 1
+            if new_bouts:
+                with ThreadPoolExecutor(max_workers=MAX_WORKERS) as executor:
+                    futures = {
+                        executor.submit(fetch_fight_page_and_insert, args): args
+                        for args in new_bouts
+                    }
+                    for future in as_completed(futures):
+                        try:
+                            if future.result():
+                                new_fights_processed += 1
+                        except Exception as e:
+                            logging.error(f"Worker exception for {futures[future][1]}: {e}")
 
             # Update skip logic
             if new_fights_processed == 0 and len(bouts) > 0:
