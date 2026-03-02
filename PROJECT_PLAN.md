@@ -69,7 +69,10 @@
   - [x] Optimize scraper (ThreadPoolExecutor + retry logic) — ready for full re-scrape
   - [x] TRUNCATE judge_scores in Supabase
   - [x] Run scrape_mmadecisions.py (2020–2026) and verify clean fighter names — 29,556 rows, zero slugs
-- [ ] Backfill historical data: run scrape_mmadecisions.py --start 1995 --end 2019
+- [x] Backfill historical data: run scrape_mmadecisions.py --start 1995 --end 2019
+  - [x] Fix UnicodeEncodeError (charmap/❌ emoji) bug — stdout UTF-8 reconfigure + skip non-numeric scores
+  - [x] Re-scrape 2020–2026 to recover 129 fights previously skipped by the bug
+  - [x] scrape_errors.log cleared — all errors reconciled
 
 ## Phase 3: Predictive Scoring Feature
 

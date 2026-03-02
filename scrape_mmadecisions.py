@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 import random
 import logging
@@ -11,6 +12,12 @@ from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
 from supabase import create_client, Client
+
+# Force stdout/stderr to UTF-8 so Windows charmap never chokes on emoji in print()
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+if hasattr(sys.stderr, 'reconfigure'):
+    sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 # --- 1. INITIALIZATION ---
 load_dotenv(dotenv_path=Path(__file__).parent / '.env')
@@ -165,20 +172,23 @@ def insert_judge_data_supabase(raw_data, db=None):
     clean_rows = []
     for entry in raw_data:
         try:
-            # 1. Standardize score to integer
-            score_val = int(entry['score'])
-            
+            # 1. Skip non-numeric scores (e.g. ❌ used on mmadecisions for DQ/NC rounds)
+            raw_score = str(entry.get('score', '')).strip()
+            if not raw_score.lstrip('-').isdigit():
+                continue
+            score_val = int(raw_score)
+
             # 2. Standardize Date
             date_str = entry['date'].replace('.', '').strip()
             try:
                 parsed_date = datetime.strptime(date_str, "%B %d, %Y").date().isoformat()
             except ValueError:
                 parsed_date = datetime.strptime(date_str, "%b %d, %Y").date().isoformat()
-            
+
             # 3. APPLY THE CLEANING STATION HERE
             # We use the clean_string helper you already defined in Section 2
             clean_rows.append({
-                "event_name": clean_string(entry['event']), # Changed key to event_name and added cleaning
+                "event_name": clean_string(entry['event']),
                 "bout": clean_string(entry['bout']),
                 "date": parsed_date,
                 "fighter": clean_string(entry['fighter']),
@@ -188,7 +198,8 @@ def insert_judge_data_supabase(raw_data, db=None):
                 "referee": entry['referee'].strip()
             })
         except Exception as e:
-            print(f"[WARN] Formatting error for row: {e}")
+            # Use repr() so non-ASCII characters in e never cause a secondary UnicodeEncodeError
+            print(f"[WARN] Formatting error for row: {e!r}")
 
     if clean_rows:
         try:
