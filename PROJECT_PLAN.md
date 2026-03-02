@@ -69,6 +69,7 @@
   - [x] Optimize scraper (ThreadPoolExecutor + retry logic) — ready for full re-scrape
   - [x] TRUNCATE judge_scores in Supabase
   - [x] Run scrape_mmadecisions.py (2020–2026) and verify clean fighter names — 29,556 rows, zero slugs
+- [ ] Backfill historical data: run scrape_mmadecisions.py --start 1995 --end 2019
 
 ## Phase 3: Predictive Scoring Feature
 
