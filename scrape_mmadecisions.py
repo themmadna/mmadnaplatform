@@ -7,7 +7,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 import requests
 from bs4 import BeautifulSoup
-import pandas as pd
 from supabase import create_client, Client
 
 # --- 1. INITIALIZATION ---
@@ -19,9 +18,13 @@ STOP_THRESHOLD = 10
 
 url = os.environ.get("REACT_APP_SUPABASE_URL")
 key = os.environ.get("SUPABASE_SERVICE_KEY")
+
+if not url or not key:
+    raise ValueError(f"❌ Error: .env file not loaded correctly.\nLooking at: {Path(__file__).parent / '.env'}\nMake sure REACT_APP_SUPABASE_URL and SUPABASE_SERVICE_KEY are inside.")
+
 supabase_db: Client = create_client(url, key)
 
-logging.basicConfig(filename='scrape_errors.log', level=logging.ERROR, 
+logging.basicConfig(filename=str(Path(__file__).parent / 'scrape_errors.log'), level=logging.ERROR,
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 

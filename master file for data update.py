@@ -129,7 +129,7 @@ def parse_base_stats_table(table, event_name, fight_name):
                         "bout": clean_bout_name(fight_name),
                         "round": round_num,
                         "fighter_name": clean_bout_name(f[0]),
-                        "kd": int(f[1]),
+                        "kd": int(f[1]) if f[1].isdigit() else 0,
                         "sig_strikes_landed": l_sig,
                         "sig_strikes_attempted": a_sig,
                         "sig_strike_pct": round(l_sig / a_sig, 3) if a_sig > 0 else None,
@@ -138,8 +138,8 @@ def parse_base_stats_table(table, event_name, fight_name):
                         "takedowns_landed": l_td,
                         "takedowns_attempted": a_td,
                         "takedown_pct": round(l_td / a_td, 3) if a_td > 0 else None,
-                        "sub_attempts": int(f[7]),
-                        "reversals": int(f[8]),
+                        "sub_attempts": int(f[7]) if f[7].isdigit() else 0,
+                        "reversals": int(f[8]) if f[8].isdigit() else 0,
                         "control_time": f[9],
                         "control_time_sec": time_to_seconds(f[9])
                     })
@@ -181,7 +181,7 @@ def parse_zone_stats_table(table, event_name, fight_name):
 
 def sync_upcoming_events():
     print("🔮 Phase 0: Syncing Upcoming Events (Next Event Only)...")
-    res = requests.get("http://ufcstats.com/statistics/events/upcoming")
+    res = requests.get("http://ufcstats.com/statistics/events/upcoming", timeout=15)
     soup = BeautifulSoup(res.text, 'html.parser')
     rows = soup.find('table', class_='b-statistics__table-events').find_all('tr', class_='b-statistics__table-row')
     
@@ -240,7 +240,7 @@ def sync_upcoming_fights():
         existing = supabase_db.table("fights").select("bout").eq("event_name", event['event_name']).execute().data
         existing_bouts = {f['bout'] for f in existing}
 
-        res = requests.get(event['event_url'])
+        res = requests.get(event['event_url'], timeout=15)
         soup = BeautifulSoup(res.text, 'html.parser')
         tbody = soup.find('tbody')
         if not tbody: continue
@@ -283,7 +283,7 @@ def sync_upcoming_fights():
 
 def sync_events():
     print("🚀 Phase 1: Syncing Completed Events...")
-    res = requests.get("http://ufcstats.com/statistics/events/completed?page=all")
+    res = requests.get("http://ufcstats.com/statistics/events/completed?page=all", timeout=15)
     soup = BeautifulSoup(res.text, 'html.parser')
     rows = soup.find('table', class_='b-statistics__table-events').find_all('tr', class_='b-statistics__table-row')
     consecutive_existing = 0
@@ -325,10 +325,10 @@ def sync_fights():
 
         scraped_ids = [] 
 
-        res = requests.get(event['event_url'])
+        res = requests.get(event['event_url'], timeout=15)
         soup = BeautifulSoup(res.text, 'html.parser')
         tbody = soup.find('tbody')
-        
+
         # Only parse rows if tbody exists
         if tbody:
             rows = tbody.find_all('tr', class_='b-fight-details__table-row')
@@ -434,7 +434,7 @@ def sync_round_stats():
             z_map = {(z["fighter_name"], z["round"]): z for z in zone}
             merged = [{**m, **z_map.get((m["fighter_name"], m["round"]), {})} for m in main]
             
-            supabase_db.table("round_fight_stats").insert(merged).execute()
+            supabase_db.table("round_fight_stats").upsert(merged, on_conflict="event_name,bout,round,fighter_name").execute()
             stats_summary["new_round_rows"] += len(merged)
     except Exception as e:
         print(f"Skipping Round Stats (View might be missing): {e}")
@@ -474,14 +474,14 @@ def sync_event_times():
             
             match_found = False
             for espn_event in events:
+                # Guard: only match UFC events — skip boxing or other combat sports on same date
+                if 'UFC' not in espn_event.get('name', '').upper(): continue
+
                 # Get the exact UTC start time
                 espn_time_str = espn_event.get('date', '')
                 if not espn_time_str: continue
 
-                # Optional: Strict Name Check (Useful if multiple cards are on the same day)
-                # But usually, querying by date is unique enough for UFC.
-                
-                print(f"      ✅ Found match! Updating start time to: {espn_time_str}")
+                print(f"      Found match! Updating start time to: {espn_time_str}")
                 
                 # 4. Update the Database
                 supabase_db.table("ufc_events").update({
