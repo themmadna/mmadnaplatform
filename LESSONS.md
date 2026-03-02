@@ -71,6 +71,19 @@
 
 ---
 
+## Phase 2: judge_scores re-scrape — 2026-03-02
+
+**Bugs / errors encountered:**
+- Windows `cp1252` terminal encoding can't render emoji characters (✅ ❌ ⚠️ ⏭️). `print()` calls with emojis inside worker threads threw `UnicodeEncodeError` AFTER the Supabase UPSERT had already committed. This caused `fetch_fight_page_and_insert` to raise instead of returning `True`, so `new_fights_processed` stayed 0 for every event, the consecutive-skip counter hit `STOP_THRESHOLD=10`, and the run terminated after only 10 events.
+- Data was actually being inserted (visible in row count) but the counter was silently broken — only caught by cross-checking the DB.
+
+**What I'd do differently:**
+- Never use emoji in `print()` on Windows unless stdout is explicitly UTF-8. Use plain ASCII tags: `[OK]`, `[ERROR]`, `[WARN]`.
+- After any scraper run that "stopped early", immediately check the DB row count — it tells you whether data was inserted despite apparent failures.
+- Per-year timing added to the year loop was useful: ~4 min/year is a reliable baseline for dense UFC years.
+
+---
+
 ## Scraper concurrency optimization — 2026-03-01
 
 **Changes made:**

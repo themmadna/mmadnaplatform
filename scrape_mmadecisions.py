@@ -27,7 +27,7 @@ url = os.environ.get("REACT_APP_SUPABASE_URL")
 key = os.environ.get("SUPABASE_SERVICE_KEY")
 
 if not url or not key:
-    raise ValueError(f"❌ Error: .env file not loaded correctly.\nLooking at: {Path(__file__).parent / '.env'}\nMake sure REACT_APP_SUPABASE_URL and SUPABASE_SERVICE_KEY are inside.")
+    raise ValueError(f"[ERROR] .env file not loaded correctly.\nLooking at: {Path(__file__).parent / '.env'}\nMake sure REACT_APP_SUPABASE_URL and SUPABASE_SERVICE_KEY are inside.")
 
 supabase_db: Client = create_client(url, key)
 
@@ -188,7 +188,7 @@ def insert_judge_data_supabase(raw_data, db=None):
                 "referee": entry['referee'].strip()
             })
         except Exception as e:
-            print(f"⚠️ Formatting error for row: {e}")
+            print(f"[WARN] Formatting error for row: {e}")
 
     if clean_rows:
         try:
@@ -196,9 +196,9 @@ def insert_judge_data_supabase(raw_data, db=None):
                 clean_rows,
                 on_conflict='bout,date,judge,fighter,round'
             ).execute()
-            print(f"✅ Processed {len(clean_rows)} scorecard rows.")
+            print(f"[OK] Processed {len(clean_rows)} scorecard rows.")
         except Exception as e:
-            print(f"❌ Supabase Sync Error: {e}")
+            print(f"[ERROR] Supabase Sync Error: {e}")
             logging.error(f"UPSERT failed: {e}")
 
 # --- 4. MAIN ORCHESTRATOR (OPTIMIZED) ---
@@ -216,6 +216,7 @@ def scrapeDataFunction(start_year, end_year):
     events_skipped_in_a_row = 0
 
     for y in years_to_process:
+        year_start = time.time()
         print(f"\n--- Processing Year: {y} ---")
         year_html = fetch_page(f"{url}{y}/")
         if not year_html: continue
@@ -246,7 +247,7 @@ def scrapeDataFunction(start_year, end_year):
             new_bouts = []
             for b_link, b_name in bouts:
                 if b_name in existing_bouts:
-                    print(f"  ⏭️ Skipping existing bout: {b_name}")
+                    print(f"  [skip] {b_name}")
                 else:
                     new_bouts.append((base_url, b_link, b_name))
 
@@ -274,6 +275,9 @@ def scrapeDataFunction(start_year, end_year):
             if events_skipped_in_a_row >= STOP_THRESHOLD:
                 print(f"\nReached {STOP_THRESHOLD} consecutive existing events. Stopping scraper.")
                 return
+
+        elapsed = time.time() - year_start
+        print(f"\n--- Year {y} complete in {elapsed:.1f}s ---")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
