@@ -442,16 +442,16 @@ export default function UFCFightRating() {
     setLoadingFights(true);
     const [{ data: bouts }, { data: metaDetails }] = await Promise.all([
       supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name),
-      supabase.from('fight_meta_details').select('bout, weight_class').eq('event_name', event.event_name)
+      supabase.from('fight_meta_details').select('fight_url, weight_class').eq('event_name', event.event_name)
     ]);
     if (bouts && session) {
       const { data: userVotes } = await supabase.from('user_votes').select('*').eq('user_id', session.user.id);
-      const metaMap = Object.fromEntries((metaDetails || []).map(m => [m.bout, m.weight_class]));
+      const metaMap = Object.fromEntries((metaDetails || []).map(m => [m.fight_url, m.weight_class]));
       const merged = bouts.map(f => ({
         ...f,
         ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
         userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type,
-        weight_class: metaMap[f.bout] || null
+        weight_class: metaMap[f.fight_url] || null
       }));
       setEventFights(merged);
     }

@@ -55,6 +55,9 @@
 - [x] Add env var guard (same pattern as master file)
 - [x] Fix `scrape_errors.log` path — now resolves relative to script, not cwd
 
+#### Bonus bug found during review
+- [x] Weight class shows "MAIN CARD" on ~2,997 fight cards — `metaMap` keyed on `bout` string which is reversed between `fights` and `fight_meta_details`; fixed by keying on `fight_url` instead — App.js:445,449,454
+
 #### Schema verification
 - [x] `fight_dna_metrics` view columns confirmed match `getDNAAndChartData()` usage
 - [x] `get_fight_recommendations` RPC confirmed receives all 7 params correctly
