@@ -238,11 +238,11 @@ export default function UFCFightRating() {
   // --- FILTER STATE ---
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    maxDuration: 25, 
-    minPace: 0,      
-    minViolence: 0,   
-    maxControl: 100,   // Default 100%
-    minGrappling: 0   
+    duration:  { min: 0,   max: 25  },
+    pace:      { min: 0,   max: 60  },
+    violence:  { min: 0.0, max: 2.0 },
+    control:   { min: 0,   max: 100 },
+    grappling: { min: 0.0, max: 20.0 },
   });
   const [displayLimit, setDisplayLimit] = useState(10); 
 
@@ -276,17 +276,28 @@ export default function UFCFightRating() {
   useEffect(() => { localStorage.setItem('ufc_app_theme', theme); }, [theme]);
 
   // --- HELPER: Reset Filters to DNA Defaults ---
+  const DEFAULT_FILTERS = {
+    duration:  { min: 0,   max: 25  },
+    pace:      { min: 0,   max: 60  },
+    violence:  { min: 0.0, max: 2.0 },
+    control:   { min: 0,   max: 100 },
+    grappling: { min: 0.0, max: 20.0 },
+  };
+
   const resetFiltersToDNA = () => {
-    if (combatDNA) {
+    if (comparisonData && comparisonData.length >= 2) {
+      // Q1 = 25th percentile, Q3 = 75th percentile of user's rated fights
+      const pct = (arr, p) => {
+        const sorted = arr.filter(v => v != null).sort((a, b) => a - b);
+        return sorted[Math.floor(sorted.length * p)] ?? 0;
+      };
       setFilters({
-        maxDuration: Math.ceil(combatDNA.avgFightTime / 5) * 5 || 25, 
-        minPace: Math.floor(combatDNA.strikePace) || 0,
-        minViolence: parseFloat((combatDNA.violenceIndex * 0.8).toFixed(2)) || 0,
-        maxControl: combatDNA.engagementStyle < 40 ? 40 : 100,
-        minGrappling: parseFloat((combatDNA.intensityScore * 0.8).toFixed(1)) || 0
+        duration:  { min: Math.floor(pct(comparisonData.map(d => d.duration), 0.25)),  max: Math.ceil(pct(comparisonData.map(d => d.duration), 0.75))   },
+        pace:      { min: Math.floor(pct(comparisonData.map(d => d.pace),     0.25)),  max: Math.ceil(pct(comparisonData.map(d => d.pace),     0.75))   },
+        violence:  { min: parseFloat(pct(comparisonData.map(d => d.violence), 0.25).toFixed(1)), max: parseFloat(pct(comparisonData.map(d => d.violence), 0.75).toFixed(1)) },
+        control:   { min: Math.floor(pct(comparisonData.map(d => d.control),  0.25)),  max: Math.ceil(pct(comparisonData.map(d => d.control),  0.75))   },
+        grappling: { min: parseFloat(pct(comparisonData.map(d => d.intensity),0.25).toFixed(1)), max: parseFloat(pct(comparisonData.map(d => d.intensity),0.75).toFixed(1)) },
       });
-    } else {
-      setFilters({ maxDuration: 25, minPace: 0, minViolence: 0, maxControl: 100, minGrappling: 0 });
     }
   };
 
@@ -373,16 +384,12 @@ export default function UFCFightRating() {
 
       if (showFilters) {
           let statsQuery = supabase.from('fight_dna_metrics').select('fight_id');
-          
-          statsQuery = statsQuery.lte('metric_duration', filters.maxDuration);
-          statsQuery = statsQuery.gte('metric_pace', filters.minPace);
-          statsQuery = statsQuery.gte('metric_violence', filters.minViolence);
-          
-          // Max Control: Less Than
-          statsQuery = statsQuery.lte('metric_control', filters.maxControl);
-          
-          // Grappling Intensity
-          statsQuery = statsQuery.gte('metric_intensity', filters.minGrappling);
+
+          statsQuery = statsQuery.gte('metric_duration', filters.duration.min).lte('metric_duration', filters.duration.max);
+          statsQuery = statsQuery.gte('metric_pace',     filters.pace.min    ).lte('metric_pace',     filters.pace.max    );
+          statsQuery = statsQuery.gte('metric_violence', filters.violence.min ).lte('metric_violence', filters.violence.max );
+          statsQuery = statsQuery.gte('metric_control',  filters.control.min  ).lte('metric_control',  filters.control.max  );
+          statsQuery = statsQuery.gte('metric_intensity',filters.grappling.min).lte('metric_intensity',filters.grappling.max);
 
           const { data: metricResults, error: metricError } = await statsQuery;
           
@@ -680,7 +687,7 @@ export default function UFCFightRating() {
                         <div className="flex items-center gap-2">
                             <Settings2 size={14} className={currentTheme.accent} />
                             <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">Fight Finder</h3>
-                            <button onClick={() => setFilters({ maxDuration: 25, minPace: 0, minViolence: 0, maxControl: 100, minGrappling: 0 })} className="text-[10px] uppercase font-bold opacity-30 hover:opacity-70 transition-opacity">Reset</button>
+                            <button onClick={() => setFilters(DEFAULT_FILTERS)} className="text-[10px] uppercase font-bold opacity-30 hover:opacity-70 transition-opacity">Reset</button>
                         </div>
                         {combatDNA && (
                             <button onClick={resetFiltersToDNA} className={`text-[10px] uppercase font-bold ${currentTheme.accent} hover:text-white transition-colors flex items-center gap-1`}>
@@ -693,82 +700,139 @@ export default function UFCFightRating() {
                         {/* DURATION */}
                         <div>
                             <div className="flex justify-between text-xs mb-2">
-                                <span className="opacity-50 font-bold uppercase tracking-wider">Max Duration</span>
-                                <span className="font-bold">{filters.maxDuration} mins</span>
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Duration</span>
+                                <span className="font-bold">{filters.duration.min} – {filters.duration.max} mins</span>
                             </div>
-                            <input 
-                                type="range" min="1" max="25" step="1"
-                                value={filters.maxDuration}
-                                onChange={(e) => setFilters({...filters, maxDuration: parseInt(e.target.value)})}
-                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                            />
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Min</span>
+                                    <input type="range" min="0" max="25" step="1"
+                                        value={filters.duration.min}
+                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, duration: { ...filters.duration, min: Math.min(v, filters.duration.max) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Max</span>
+                                    <input type="range" min="0" max="25" step="1"
+                                        value={filters.duration.max}
+                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, duration: { ...filters.duration, max: Math.max(v, filters.duration.min) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* PACE */}
                         <div>
                             <div className="flex justify-between text-xs mb-2">
-                                <span className="opacity-50 font-bold uppercase tracking-wider">Min Pace</span>
-                                <span className="font-bold">{filters.minPace} strikes/min</span>
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Pace</span>
+                                <span className="font-bold">{filters.pace.min} – {filters.pace.max} strikes/min</span>
                             </div>
-                            <input 
-                                type="range" min="0" max="60" step="1"
-                                value={filters.minPace}
-                                onChange={(e) => setFilters({...filters, minPace: parseInt(e.target.value)})}
-                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                            />
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Min</span>
+                                    <input type="range" min="0" max="60" step="1"
+                                        value={filters.pace.min}
+                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, pace: { ...filters.pace, min: Math.min(v, filters.pace.max) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Max</span>
+                                    <input type="range" min="0" max="60" step="1"
+                                        value={filters.pace.max}
+                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, pace: { ...filters.pace, max: Math.max(v, filters.pace.min) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* VIOLENCE */}
                         <div>
                             <div className="flex justify-between text-xs mb-2">
-                                <span className="opacity-50 font-bold uppercase tracking-wider">Min Violence Index</span>
-                                <span className="font-bold">{filters.minViolence}</span>
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Violence Index</span>
+                                <span className="font-bold">{filters.violence.min} – {filters.violence.max}</span>
                             </div>
-                            <input 
-                                type="range" min="0" max="2" step="0.1"
-                                value={filters.minViolence}
-                                onChange={(e) => setFilters({...filters, minViolence: parseFloat(e.target.value)})}
-                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                            />
-                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
-                                <span>Low</span>
-                                <span>Bloodbath</span>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Min</span>
+                                    <input type="range" min="0" max="2" step="0.1"
+                                        value={filters.violence.min}
+                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, violence: { ...filters.violence, min: Math.min(v, filters.violence.max) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Max</span>
+                                    <input type="range" min="0" max="2" step="0.1"
+                                        value={filters.violence.max}
+                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, violence: { ...filters.violence, max: Math.max(v, filters.violence.min) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
+                                <span>Low</span><span>Bloodbath</span>
                             </div>
                         </div>
 
                         {/* CONTROL */}
                         <div>
                             <div className="flex justify-between text-xs mb-2">
-                                <span className="opacity-50 font-bold uppercase tracking-wider">Max Control %</span>
-                                <span className="font-bold">{filters.maxControl}%</span>
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Control %</span>
+                                <span className="font-bold">{filters.control.min} – {filters.control.max}%</span>
                             </div>
-                            <input 
-                                type="range" min="0" max="100" step="5"
-                                value={filters.maxControl}
-                                onChange={(e) => setFilters({...filters, maxControl: parseInt(e.target.value)})}
-                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                            />
-                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
-                                <span>Standup War</span>
-                                <span>Total Control</span>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Min</span>
+                                    <input type="range" min="0" max="100" step="5"
+                                        value={filters.control.min}
+                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, control: { ...filters.control, min: Math.min(v, filters.control.max) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Max</span>
+                                    <input type="range" min="0" max="100" step="5"
+                                        value={filters.control.max}
+                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, control: { ...filters.control, max: Math.max(v, filters.control.min) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
+                                <span>Standup War</span><span>Total Control</span>
                             </div>
                         </div>
 
                         {/* GRAPPLING / INTENSITY */}
                         <div>
                             <div className="flex justify-between text-xs mb-2">
-                                <span className="opacity-50 font-bold uppercase tracking-wider">Min Grappling Intensity</span>
-                                <span className="font-bold">{filters.minGrappling}</span>
+                                <span className="opacity-50 font-bold uppercase tracking-wider">Grappling Intensity</span>
+                                <span className="font-bold">{filters.grappling.min} – {filters.grappling.max}</span>
                             </div>
-                            <input 
-                                type="range" min="0" max="20" step="0.5"
-                                value={filters.minGrappling}
-                                onChange={(e) => setFilters({...filters, minGrappling: parseFloat(e.target.value)})}
-                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                            />
-                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
-                                <span>Lay & Pray</span>
-                                <span>Mauler</span>
+                            <div className="space-y-1">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Min</span>
+                                    <input type="range" min="0" max="20" step="0.5"
+                                        value={filters.grappling.min}
+                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, grappling: { ...filters.grappling, min: Math.min(v, filters.grappling.max) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[10px] opacity-40 w-6">Max</span>
+                                    <input type="range" min="0" max="20" step="0.5"
+                                        value={filters.grappling.max}
+                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, grappling: { ...filters.grappling, max: Math.max(v, filters.grappling.min) }}); }}
+                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
+                                <span>Lay & Pray</span><span>Mauler</span>
                             </div>
                         </div>
                     </div>

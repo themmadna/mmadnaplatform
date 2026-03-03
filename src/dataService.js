@@ -69,7 +69,8 @@ export const dataService = {
         pace: metric.metric_pace,
         intensity: metric.metric_intensity || 0,
         violence: metric.metric_violence,
-        control: metric.metric_control
+        control: metric.metric_control,
+        duration: metric.metric_duration,
       };
     });
 
