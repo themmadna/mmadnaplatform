@@ -754,7 +754,7 @@ export default function UFCFightRating() {
                                 value={filters.violence}
                                 onChange={(v) => setFilters({...filters, violence: v})}
                             />
-                            <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
                                 <span>Low</span><span>Bloodbath</span>
                             </div>
                         </div>
@@ -769,7 +769,7 @@ export default function UFCFightRating() {
                                 value={filters.control}
                                 onChange={(v) => setFilters({...filters, control: v})}
                             />
-                            <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
                                 <span>Standup War</span><span>Total Control</span>
                             </div>
                         </div>
@@ -784,7 +784,7 @@ export default function UFCFightRating() {
                                 value={filters.grappling}
                                 onChange={(v) => setFilters({...filters, grappling: v})}
                             />
-                            <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
+                            <div className="flex justify-between text-[10px] opacity-30 mt-1">
                                 <span>Lay & Pray</span><span>Mauler</span>
                             </div>
                         </div>

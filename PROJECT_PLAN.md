@@ -120,6 +120,14 @@ Fight detail click only works in the event fights view. Profile, search results,
   - [x] Fix UnicodeEncodeError (charmap/❌ emoji) bug — stdout UTF-8 reconfigure + skip non-numeric scores
   - [x] Re-scrape 2020–2026 to recover 129 fights previously skipped by the bug
   - [x] scrape_errors.log cleared — all errors reconciled
+- [ ] Fill historical judge_scores gaps — ~30 events from 2015–2023 have zero rows (identified by diagnose_judge_scores.py Check 1)
+  - Known missing: UFC 293, UFC 284, UFC 275, UFC 253, UFC 251, UFC Fight Night: Makhachev vs Moises, many 2020 Fight Night cards, multiple TUF Finales, several Australian events (2015–2018)
+  - Run `scrape_mmadecisions.py` targeting the specific missing event dates
+  - [ ] After re-scrape: run `diagnose_judge_scores2.py` to confirm gaps filled
+  - [ ] Build a persistent coverage tracker: a DB table or view that lists every completed bout where judge scoring is expected (decision fights + multi-round fights) but has zero or partial judge_scores rows — so missing coverage is visible at any time, not just at scrape time
+    - "Expected" = method ILIKE '%decision%' OR (CAST(round) > 1 AND method NOT ILIKE '%decision%') to catch non-decision fights with judged rounds before the finish
+    - "Partial" = matched rows < (rounds_fought × 2 fighters × 3 judges)
+    - Store result as a view or materialised table; refresh after each scraper run
 
 ## Phase 3: Predictive Scoring Feature
 

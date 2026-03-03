@@ -60,7 +60,15 @@ function matchesFighter(jsName, metaName) {
   if (a === b) return true;
 
   // Handles "Rong Zhu" vs "Rongzhu" — same letters, different spacing
-  if (a.replace(/\s/g, '') === b.replace(/\s/g, '')) return true;
+  const aCol = a.replace(/\s/g, '');
+  const bCol = b.replace(/\s/g, '');
+  if (aCol === bCol) return true;
+
+  // Handles "Zha Yi" vs "Yizha", "Sulangrangbo" vs "Rangbo Sulang" —
+  // same characters in different segment order (cross-source Chinese name transliterations)
+  if (aCol.length >= 5 && aCol.length === bCol.length) {
+    if ([...aCol].sort().join('') === [...bCol].sort().join('')) return true;
+  }
 
   const aWords = a.split(' ');
   const bWords = b.split(' ');

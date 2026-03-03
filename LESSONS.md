@@ -2,6 +2,23 @@
 
 ---
 
+## judge_scores name matching audit & anagram fix — 2026-03-03
+
+**What was done:**
+- Ran `diagnose_judge_scores2.py` to audit coverage of `judge_scores` against `fight_meta_details`
+- Discovered diagnostic scripts used exact date joins, reporting all Australian/international events as missing (false positives). Fixed both diagnostic scripts to use `±1 day` date window.
+- Identified a genuine JS `matchesFighter` failure for Chinese names where ufcstats and mmadecisions use completely different character orderings: "Yizha"↔"Zha Yi", "Sulangrangbo"↔"Rangbo Sulang", "SuYoung You"↔"You Su Young"
+- Fix: added a character-sort anagram check in `matchesFighter` — if both space-collapsed names have the same length (≥5 chars) and same sorted characters, treat as a match. Handles any source that reverses/reorders Chinese name segments.
+- Also removed the leftover `pl-8` padding from filter legend labels (orphaned from the old dual-slider layout).
+
+**What to watch:**
+- Character-sort anagram check only fires when `aCol.length === bCol.length && length >= 5`. This prevents false positives on short names while catching the multi-character Chinese name segment reordering pattern.
+- Diagnostic Check 4 SQL always shows 9/18 for fights where one fighter's name needs a JS fallback — this is expected (SQL can't replicate JS fuzzy logic). Only 0/18 rows warrant investigation.
+- `Steve Erceg vs Ode Osbourne` (Aug 2025) shows 0/18 and is genuinely absent from mmadecisions — not a code issue.
+- Historical events from 2015-2023 with zero judge_scores rows (UFC 293, UFC 284, UFC 275, many 2020 events, TUF Finales, Australian events) need the scraper re-run. These are data gaps, not code bugs.
+
+---
+
 ## Dual-range filter + Q1/Q3 DNA presets — 2026-03-03
 
 **What was done:**
