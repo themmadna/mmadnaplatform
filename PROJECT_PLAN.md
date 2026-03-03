@@ -63,6 +63,52 @@
 - [x] `get_fight_recommendations` RPC confirmed receives all 7 params correctly
 - [~] `supabase/views/` and `supabase/functions/` not yet populated — run `fetch_schema.py` when needed
 
+## Phase 1d: Mobile Responsiveness — Critical Fixes
+
+Targeted Tailwind class changes only. No structural redesigns. Test at iPhone SE (375px) and Galaxy S8 (360px) in Chrome DevTools device toolbar.
+
+### App.js
+- [ ] Header title: `text-3xl` → `text-2xl md:text-3xl` — "MMA DNA" crowds on < 380px (line 624)
+- [ ] FightCard fighter names: `text-xl` → `text-base sm:text-xl` — long names overflow on narrow phones (line 151)
+- [ ] CombatDNACard Strike Pace & Violence Index values: `text-3xl` → `text-2xl sm:text-3xl` — cramped in 2-column grid at 375px (lines 55, 63)
+- [ ] CombatDNACard Finish Rate & Avg Duration: `text-2xl` → `text-xl sm:text-2xl` — same reason (lines 115, 120)
+- [ ] DNA filter buttons: `px-4` → `px-3 sm:px-4` — 3 buttons at px-4 can be tight at 360px (line 911)
+
+### FightDetailView.js
+- [ ] Fighter names in fight header: `text-2xl` → `text-lg sm:text-2xl` — long names wrap awkwardly on mobile (lines 260, 262)
+- [ ] Round card padding: `px-6`/`p-6` → `px-4 sm:px-6`/`p-4 sm:p-6` — leaves too little room for 3-column stats grid at 375px (lines 299, 303)
+- [ ] Stats rows text: `text-sm` → `text-xs sm:text-sm` — tighter at 3 columns on mobile (line 315)
+- [ ] Summary scorecard header padding: `px-6` → `px-4 sm:px-6` — consistent with round card fix (line 384)
+
+### Not changing (deferred or not critical)
+- CombatScatterPlot — medium priority, deferred
+- Vote button touch targets — `py-3` gives ~44px height, meets guidelines
+- Theme dropdown positioning — opens rightward from top-left button, fine on all widths
+- Judge score text (`text-xs`) — scores are short numbers, legible at xs
+
+---
+
+## Phase 1e: Fight Card Click — All Views
+
+Fight detail click only works in the event fights view. Profile, search results, and "For You" all render `FightCard` without an `onClick` prop so the card is not clickable.
+
+### Root cause
+- `handleFightClick` (App.js:466) sets `event_date` from `selectedEvent?.event_date` — this is null on every view except the fights view
+- `onClick={handleFightClick}` is only passed in the fights view (App.js:881) — missing on:
+  - Profile page (App.js:956)
+  - Search results (App.js:772)
+  - For You / recommendations (App.js:824)
+
+### Fix required (App.js)
+1. **`handleFightClick`** — use `fight.event_date` when `selectedEvent` is null:
+   - `setSelectedFight({ ...fight, event_date: fight.event_date ?? selectedEvent?.event_date })`
+2. **Profile page** (line 956) — add `onClick={handleFightClick}`
+3. **Search results** (line 772) — add `onClick={handleFightClick}` (fight objects already carry `event_date`)
+4. **For You** (line 824) — add `onClick={handleFightClick}`, verify `event_date` is included on recommendation fight objects
+5. **Verify** `userHistory` fight objects include `event_date` — if not, add it to the `getUserHistory()` select in `dataService.js`
+
+---
+
 ## Phase 2: Data Cleanup
 
 - [x] TRUNCATE judge_scores + re-run scrape_mmadecisions.py to fix slug-based fighter names
@@ -83,6 +129,12 @@
 - [x] Wire up App.js — fight cards clickable, new `fightDetail` view, back navigation
 - [x] Fix event name mismatch — judge_scores queried by date not event_name
 - [x] Fix fighter name mismatch — normalized fuzzy matching across ufcstats/mmadecisions sources
+
+#### Bugs
+- [ ] **Judge scores missing on many decision fights** — FightDetailView shows "No scorecard data" even for fights that clearly went to the judges. Two root causes to investigate:
+  1. **Name normalization failure** — `normName()` does exact match after stripping punctuation; any spelling difference between ufcstats and mmadecisions (middle names, hyphenation, nickname usage) causes silent miss. `matchesFighter()` in FightDetailView.js:56 may need a partial/contains fallback.
+  2. **Coverage gap in judge_scores** — mmadecisions.com may not have data for some events. Need to cross-check: query `judge_scores` by date for a known-missing fight and see if rows exist at all.
+  - **Debug steps**: (a) open browser console on a missing fight → check what `judgeScores` array returns from the DB query; (b) if rows exist, log `normName()` of both sides to see where the match fails; (c) if rows are empty, the event isn't in `judge_scores` yet.
 
 ### 3b. Rules-Based Baseline Model — complete (temporary placeholder)
 - [x] `scoreRound()` in FightDetailView.js — weights: sig strikes ×1.0, KD ×5.0, takedowns ×2.5, control ×0.015, sub attempts ×1.5
