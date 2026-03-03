@@ -205,3 +205,56 @@ there ARE completed rounds before the finish. The model can score those rounds u
 round_fight_stats data. e.g. a fight that ends by KO in round 3 has full stats for rounds 1 and 2
 which can be model-scored and displayed in FightDetailView even though no judges scored them.
 This extends the model's value well beyond the ~40% of fights that go to decision.
+
+---
+
+## Phase 4: Judge Profile Pages
+
+One page per judge. Data source: `judge_scores` (round-level scores) joined with
+`round_fight_stats` (stats for each round) and `fight_meta_details` (weight class, method).
+
+### 4a. Style Preference Analysis
+What kind of fighting does this judge reward?
+- Correlate round winner (per judge) with stat differentials: sig strikes, takedowns, control time
+- Surface as a radar/bar chart: "Strikes-heavy", "Grappling-friendly", "Control time matters", etc.
+- Compare to the average judge profile (league baseline) so users see how this judge deviates
+
+### 4b. Consensus & Controversy Score
+How often does this judge agree with the other two?
+- Per round: flag rounds where this judge's winner differs from the majority of the 3-judge panel
+- "Outlier rate" — % of rounds where they are the lone dissenter
+- "Most controversial decision" — the fight where their card deviated most from the other two
+- Compare outlier rate across all judges to rank most/least predictable judges
+
+### 4c. 10-8 Round Tendency
+How trigger-happy are they with dominant round scores?
+- Count 10-8 rounds scored per judge and as % of total rounds judged
+- Break down by weight class — do they give 10-8s more in heavyweight bouts?
+- Surface their most dominant 10-8 rounds (which fights, which rounds)
+
+### 4d. Weight Class Breakdown
+Do they judge differently by division?
+- Show outlier rate and style preference split by weight class
+- Useful to know if a judge consistently under-values grappling in a grappling-heavy division
+
+### 4e. Era / Trend Analysis
+Has their scoring style changed over time?
+- Plot outlier rate and style preference weights by year
+- Identify if a judge has gotten more or less striker-friendly over their career
+
+### 4f. Head-to-Head Judge Comparison
+Let users compare two judges side by side:
+- Style preference radar (overlaid)
+- Outlier rate, 10-8 frequency, rounds judged, years active
+- Fights they both judged and disagreed on
+
+### 4g. Judge Leaderboard / Directory
+Landing page for the judge section:
+- Table of all judges with: rounds judged, outlier rate, 10-8 frequency, style tag (striker/grappler/balanced)
+- Sortable columns, filterable by weight class or era
+- Click through to individual judge profile
+
+### Data notes
+- All analysis is feasible with current `judge_scores` + `round_fight_stats` join (same logic as ML pipeline)
+- fighter name matching across sources uses same `normName()` / `matchesFighter()` logic
+- Judge profiles should only show judges with a minimum threshold of rounds judged (e.g. 50+) to avoid noise
