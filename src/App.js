@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ThumbsUp, ThumbsDown, Star, ChevronLeft, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
@@ -143,11 +143,11 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 
   return (
     <div
-      className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative${onClick ? ' cursor-pointer hover:scale-[1.01]' : ''}`}
+      className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative group${onClick ? ' cursor-pointer hover:scale-[1.01]' : ''}`}
       onClick={onClick ? () => onClick(fight) : undefined}
     >
       
-      <div className="p-4 bg-black/20 text-center">
+      <div className="p-4 bg-black/20 text-center relative">
         <h2 className={`text-base sm:text-xl font-bold ${currentTheme.text}`}>
           {fighters[0]} <span className={currentTheme.accent}>VS</span> {fighters[1]}
         </h2>
@@ -158,6 +158,12 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             fight.weight_class || 'MAIN CARD'
           )}
         </p>
+        {onClick && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-25 group-hover:opacity-60">
+            <span className="text-[9px] uppercase tracking-widest font-bold hidden sm:block">Details</span>
+            <ChevronRight size={14} />
+          </div>
+        )}
       </div>
 
       <div className="p-6">

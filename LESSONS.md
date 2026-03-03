@@ -2,6 +2,20 @@
 
 ---
 
+## Phase 3a: FightCard indicator + judge scores matching — 2026-03-02
+
+**What was done:**
+- Added ChevronRight "Details" indicator to FightCard (visible on all clickable cards, fades on hover via `group`/`group-hover`)
+- Improved `matchesFighter()` with two fallbacks beyond exact normName: last-name match (handles "Alex" vs "Alexander"), and word-subset match (handles Jr., middle names, extra suffixes)
+- Added console.log diagnostics in FightDetailView load — shows all judge_scores fighters returned for the date and the names being matched
+
+**What to watch:**
+- If console shows `judgeScores.length === 0`, it's a coverage gap in judge_scores (event not scraped), not a matching issue
+- `matchesFighter` fallback 2 could false-positive on very common single-word last names — guarded by `w.length > 1`
+- `group-hover` on the chevron requires `group` class on the card root div — don't remove it
+
+---
+
 ## Phase 1d + 1e: Mobile responsiveness & fight click all views — 2026-03-02
 
 **What was done:**

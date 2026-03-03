@@ -54,7 +54,23 @@ function normName(name) {
 }
 
 function matchesFighter(jsName, metaName) {
-  return normName(jsName) === normName(metaName);
+  const a = normName(jsName);
+  const b = normName(metaName);
+  if (!a || !b) return false;
+  if (a === b) return true;
+
+  const aWords = a.split(' ');
+  const bWords = b.split(' ');
+
+  // Fallback 1: same last name (handles nickname/middle-name differences like "Alex" vs "Alexander")
+  const aLast = aWords[aWords.length - 1];
+  const bLast = bWords[bWords.length - 1];
+  if (aLast === bLast && aLast.length > 3) return true;
+
+  // Fallback 2: all words of the shorter name appear in the longer (handles Jr., suffixes, middle names)
+  const shorter = aWords.length <= bWords.length ? aWords : bWords;
+  const longer  = aWords.length <= bWords.length ? bWords : aWords;
+  return shorter.filter(w => w.length > 1).every(w => longer.includes(w));
 }
 
 function buildRoundData(meta, roundStats, judgeScores) {
@@ -141,6 +157,15 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
         );
         if (!m) { setError('Fight details not yet available.'); return; }
         setMeta(m);
+        // Debug: log judge_scores coverage for this fight
+        if (judgeScores.length === 0) {
+          console.warn(`[FightDetail] No judge_scores rows for date=${fight.event_date} — event may not be in DB yet`);
+        } else {
+          const jsNames = [...new Set(judgeScores.map(js => js.fighter))];
+          console.log(`[FightDetail] judge_scores fighters on ${fight.event_date}:`, jsNames);
+          console.log(`[FightDetail] Looking for: "${m.fighter1_name}" / "${m.fighter2_name}"`);
+          console.log(`[FightDetail] normName f1="${normName(m.fighter1_name)}" f2="${normName(m.fighter2_name)}"`);
+        }
         const roundData = buildRoundData(m, roundStats, judgeScores);
         setRounds(roundData);
         setSummary(buildSummaryTotals(roundData, judgeScores, m));

@@ -123,19 +123,19 @@ Fight detail click only works in the event fights view. Profile, search results,
 
 ## Phase 3: Predictive Scoring Feature
 
-### 3a. Fight Detail UI — complete (minor polish pending)
-- [ ] Add "Details" indicator to FightCard so it's clear the card is clickable (small icon/label, fights view only)
+### 3a. Fight Detail UI — complete
+- [x] Add "Details" indicator to FightCard — ChevronRight icon shown on all clickable cards (App.js)
 - [x] Add `getFightDetail()` to dataService.js (meta + round stats + judge scores)
 - [x] Build `FightDetailView.js` component (round-by-round stats, model prediction, judge scorecards)
 - [x] Wire up App.js — fight cards clickable, new `fightDetail` view, back navigation
 - [x] Fix event name mismatch — judge_scores queried by date not event_name
 - [x] Fix fighter name mismatch — normalized fuzzy matching across ufcstats/mmadecisions sources
 
-#### Bugs
-- [ ] **Judge scores missing on many decision fights** — FightDetailView shows "No scorecard data" even for fights that clearly went to the judges. Two root causes to investigate:
-  1. **Name normalization failure** — `normName()` does exact match after stripping punctuation; any spelling difference between ufcstats and mmadecisions (middle names, hyphenation, nickname usage) causes silent miss. `matchesFighter()` in FightDetailView.js:56 may need a partial/contains fallback.
-  2. **Coverage gap in judge_scores** — mmadecisions.com may not have data for some events. Need to cross-check: query `judge_scores` by date for a known-missing fight and see if rows exist at all.
-  - **Debug steps**: (a) open browser console on a missing fight → check what `judgeScores` array returns from the DB query; (b) if rows exist, log `normName()` of both sides to see where the match fails; (c) if rows are empty, the event isn't in `judge_scores` yet.
+#### Judge scores bug — fixed
+- [x] `matchesFighter()` now has two fallbacks beyond exact normName match:
+  1. Same last name (last word, length > 3) — handles "Alex" vs "Alexander", "Jon" vs "Jonathan"
+  2. Word-subset match — all words of the shorter name appear in the longer — handles Jr., middle names, suffixes
+- [x] Added console logging in FightDetailView load: logs all `judge_scores` fighters for the date, the names being matched, and their normName forms — open browser console on a missing fight to diagnose any remaining misses
 
 ### 3b. Rules-Based Baseline Model — complete (temporary placeholder)
 - [x] `scoreRound()` in FightDetailView.js — weights: sig strikes ×1.0, KD ×5.0, takedowns ×2.5, control ×0.015, sub attempts ×1.5
