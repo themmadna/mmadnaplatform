@@ -240,11 +240,7 @@ def scrapeDataFunction(start_year, end_year):
         
         for e_link, e_name in ufc_events:
             print(f"\nChecking Event: {e_name}")
-            
-            # QUICK CHECK: Get all bouts already in DB for this event
-            existing_res = supabase_db.table("judge_scores").select("bout").eq("event_name", e_name).execute()
-            existing_bouts = set(row['bout'] for row in existing_res.data)
-            
+
             event_html = fetch_page(base_url + e_link)
             if not event_html: continue
             bout_soup = BeautifulSoup(event_html, 'html.parser')
@@ -255,10 +251,23 @@ def scrapeDataFunction(start_year, end_year):
                 if 'decision/' in a.get('href', '') and a.get_text(strip=True)
             ]
 
+            # QUICK CHECK: derive expected bout name from URL slug, which matches
+            # what extract_fight_data stores (event page uses "X def. Y" format, never "X vs Y",
+            # so bout_display never has " vs " and the URL-fallback path always runs)
+            def url_to_bout(href):
+                return href.strip().split('/')[-1].replace('-', ' ')
+
+            url_bout_names = [url_to_bout(b_link) for b_link, _ in bouts]
+            if url_bout_names:
+                existing_res = supabase_db.table("judge_scores").select("bout").in_("bout", url_bout_names).execute()
+                existing_bouts = set(row['bout'] for row in existing_res.data)
+            else:
+                existing_bouts = set()
+
             new_fights_processed = 0
             new_bouts = []
             for b_link, b_name in bouts:
-                if b_name in existing_bouts:
+                if url_to_bout(b_link) in existing_bouts:
                     print(f"  [skip] {b_name}")
                 else:
                     new_bouts.append((base_url, b_link, b_name))
@@ -295,9 +304,18 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--start", type=int, default=DEFAULT_START_YEAR)
     parser.add_argument("--end", type=int, default=CURRENT_YEAR)
+    parser.add_argument("--no-stop", action="store_true",
+                        help="Disable early-stop threshold (use for targeted gap-fill runs)")
+    parser.add_argument("--yes", "-y", action="store_true",
+                        help="Skip confirmation prompt")
     args = parser.parse_args()
 
-    # You can change this to skip the input prompt for automation
-    confirm = input(f"Start incremental judge scrape from {args.start} to {args.end}? (yes/no): ")
+    if args.no_stop:
+        STOP_THRESHOLD = 999999
+
+    if args.yes:
+        confirm = 'yes'
+    else:
+        confirm = input(f"Start incremental judge scrape from {args.start} to {args.end}? (yes/no): ")
     if confirm.lower() == 'yes':
         scrapeDataFunction(args.start, args.end)

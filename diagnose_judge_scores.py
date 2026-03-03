@@ -25,6 +25,8 @@ def sql(query):
     return r.json()
 
 # ── 1. Which event dates have NO rows in judge_scores? ──────────────────────
+# Uses ±1 day window to handle international events (Australia, Abu Dhabi, Fight Island)
+# where judge_scores.date is +1 day vs ufc_events.event_date
 print("\n=== CHECK 1: Event dates for decision fights with ZERO judge_scores rows ===")
 rows = sql("""
 SELECT
@@ -34,7 +36,8 @@ SELECT
     COUNT(js.id) AS score_rows
 FROM fight_meta_details fmd
 JOIN ufc_events ue ON fmd.event_name = ue.event_name
-LEFT JOIN judge_scores js ON js.date = ue.event_date
+LEFT JOIN judge_scores js
+    ON js.date BETWEEN ue.event_date - INTERVAL '1 day' AND ue.event_date + INTERVAL '1 day'
 WHERE fmd.method ILIKE '%decision%'
 GROUP BY ue.event_date, ue.event_name
 HAVING COUNT(js.id) = 0
@@ -49,6 +52,7 @@ else:
         print(f"  {r['event_date']:<14} {r['decision_fights']:<18} {r['event_name']}")
 
 # ── 2. Per-fight: expected vs actual rows (by date join only, no name filter) ──
+# Uses ±1 day window for international events
 print("\n=== CHECK 2: Per-fight row count (date join, no name filter) ===")
 rows = sql("""
 SELECT
@@ -62,7 +66,8 @@ SELECT
     COUNT(js.id) AS total_rows_on_date
 FROM fight_meta_details fmd
 JOIN ufc_events ue ON fmd.event_name = ue.event_name
-LEFT JOIN judge_scores js ON js.date = ue.event_date
+LEFT JOIN judge_scores js
+    ON js.date BETWEEN ue.event_date - INTERVAL '1 day' AND ue.event_date + INTERVAL '1 day'
 WHERE fmd.method ILIKE '%decision%'
   AND fmd.round ~ '^[0-9]'
 GROUP BY ue.event_date, fmd.event_name, fmd.fighter1_name, fmd.fighter2_name, fmd.method, fmd.round
