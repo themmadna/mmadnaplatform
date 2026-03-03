@@ -76,7 +76,59 @@
 
 ## Phase 3: Predictive Scoring Feature
 
-- [ ] Design round scoring model (rules-based: strikes + takedowns + control time weighted per UFC judging criteria)
-- [ ] Build fight detail page / modal in frontend (triggered by clicking a fight card)
-- [ ] Add dataService function to fetch judge_scores joined via date + bout
-- [ ] Display judge scorecards round by round alongside model predictions
+### 3a. Fight Detail UI — complete (minor polish pending)
+- [ ] Add "Details" indicator to FightCard so it's clear the card is clickable (small icon/label, fights view only)
+- [x] Add `getFightDetail()` to dataService.js (meta + round stats + judge scores)
+- [x] Build `FightDetailView.js` component (round-by-round stats, model prediction, judge scorecards)
+- [x] Wire up App.js — fight cards clickable, new `fightDetail` view, back navigation
+- [x] Fix event name mismatch — judge_scores queried by date not event_name
+- [x] Fix fighter name mismatch — normalized fuzzy matching across ufcstats/mmadecisions sources
+
+### 3b. Rules-Based Baseline Model — complete (temporary placeholder)
+- [x] `scoreRound()` in FightDetailView.js — weights: sig strikes ×1.0, KD ×5.0, takedowns ×2.5, control ×0.015, sub attempts ×1.5
+- [x] `validate_scoring_model.py` — measures agreement rate vs judges overall, per judge, per weight class
+- Note: this model will be replaced by the trained ML model in Phase 3c
+
+### 3c. ML Scoring Model — Python training pipeline
+
+#### Step 1: Data extraction
+- [ ] Script to join `round_fight_stats` + `judge_scores` using normalized name matching (same logic as frontend)
+- [ ] Export matched dataset to CSV: one row per (fight, round, judge) with fighter stat differentials and judge winner label
+- [ ] Report how many rounds matched cleanly vs had name mismatches (data quality baseline)
+
+#### Step 2: Exploratory data analysis
+- [ ] Distribution of round winners (how often does the fighter with more sig strikes win the round per judge?)
+- [ ] Feature correlations — which stats most predict the judge's decision?
+- [ ] Class balance — how common are 10-8 rounds in the data?
+- [ ] Compare rules-based model accuracy to a naive "more sig strikes wins" baseline
+
+#### Step 3: Feature engineering
+- [ ] Compute differential features per round: f1_stat - f2_stat for each stat column
+- [ ] Add ratio features: sig_strike_acc_diff, takedown_acc_diff
+- [ ] Decide on 10-8 prediction: binary (win/lose round) first, then optionally multi-class (10-9 / 10-8 / 10-10)
+
+#### Step 4: Train general model
+- [ ] Train logistic regression on all fights — interpretable baseline
+- [ ] Train random forest / XGBoost — likely more accurate
+- [ ] Cross-validate (time-based split: train on older fights, test on recent)
+- [ ] Compare accuracy vs rules-based model and naive baseline
+
+#### Step 5: Per-weight-class analysis
+- [ ] Train separate models per weight class
+- [ ] Compare per-class accuracy vs general model — does specialisation help?
+- [ ] Identify which weight classes the general model struggles with most
+
+#### Step 6: Per-judge analysis
+- [ ] For judges with 50+ scored rounds in the data, train judge-specific models
+- [ ] Compare per-judge accuracy vs general model — do judges weight strikes vs grappling differently?
+- [ ] Identify the most "predictable" and "unpredictable" judges
+
+#### Step 7: Model selection & export
+- [ ] Pick the best model(s) based on validation accuracy
+- [ ] Export model coefficients/weights to JSON (for logistic regression this is straightforward)
+- [ ] OR pre-compute round predictions and store in DB if model is too complex for client-side
+
+#### Step 8: Integrate into app
+- [ ] Replace rules-based `scoreRound()` in FightDetailView.js with ML model predictions
+- [ ] If per-weight-class models are used, select correct model based on `meta.weight_class`
+- [ ] Show model confidence alongside predictions (probability of winner, not just binary)

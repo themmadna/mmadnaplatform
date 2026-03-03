@@ -104,6 +104,41 @@ export const dataService = {
     return data || [];
   },
 
+  // --- FIGHT DETAIL (meta + round stats + judge scores) ---
+  async getFightDetail(fightUrl, eventName, eventDate) {
+    const { data: meta, error: metaErr } = await supabase
+      .from('fight_meta_details')
+      .select('*')
+      .eq('fight_url', fightUrl)
+      .single();
+
+    if (metaErr || !meta) {
+      if (metaErr) console.error('getFightDetail meta error:', metaErr);
+      return { meta: null, roundStats: [], judgeScores: [] };
+    }
+
+    const fighters = [meta.fighter1_name, meta.fighter2_name];
+
+    const [{ data: roundStats, error: statsErr }, { data: judgeScores, error: scoresErr }] = await Promise.all([
+      supabase
+        .from('round_fight_stats')
+        .select('*')
+        .eq('event_name', eventName)
+        .in('fighter_name', fighters)
+        .order('round', { ascending: true }),
+      supabase
+        .from('judge_scores')
+        .select('*')
+        .eq('date', eventDate)
+        .order('round', { ascending: true })
+    ]);
+
+    if (statsErr) console.error('round_fight_stats error:', statsErr);
+    if (scoresErr) console.error('judge_scores error:', scoresErr);
+
+    return { meta, roundStats: roundStats || [], judgeScores: judgeScores || [] };
+  },
+
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
   // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {

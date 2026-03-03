@@ -101,6 +101,21 @@
 
 ---
 
+## Phase 3: Fight detail view + scoring model — 2026-03-02
+
+**Bugs / errors encountered:**
+- `judge_scores.event_name` is sourced from mmadecisions.com link text (e.g. "UFC Fight Night 241: Holloway vs Allen") while `fights.event_name` comes from ufcstats.com (e.g. "UFC Fight Night: Holloway vs Allen"). These never match — querying `judge_scores` by `event_name` always returns zero rows. Fix: query by `date` instead, which is a plain calendar date and consistent across both sources.
+- Fighter names in `judge_scores.fighter` can differ from `fight_meta_details.fighter1_name` due to apostrophe/quote character variants (e.g. straight `'` vs right single quote `'`). This caused the DB `.in('fighter', fighters)` filter to silently drop rows for the non-matching fighter. Fix: remove the fighter filter from the DB query and do normalized name matching in JS instead (`normName()` strips all punctuation + lowercases before comparing).
+- `buildSummaryTotals` derived judge names from `judgeScores` array directly. After removing the fighter filter, `judgeScores` contains all fights on that date — judge names from other fights would bleed into the summary. Fix: derive judge names from `rounds.flatMap(r => r.judges)` which is already filtered to this fight's fighters.
+- The rules-based scoring model was mistaken by the user for the ML model that was requested. Clarified: the rules-based `scoreRound()` is a temporary placeholder; the real goal is a trained ML pipeline (Phase 3c).
+
+**What I'd do differently:**
+- When a join spans two different data sources (ufcstats + mmadecisions), never assume shared text fields like `event_name` or `bout` will match exactly. Use date or a normalized key as the join column. Verify this assumption at the start of any cross-source join.
+- When removing a DB-side filter to improve fuzzy matching, audit all downstream consumers of that array to check whether the broader result set causes new bugs (e.g. summary totals picking up other fights).
+- Be explicit with the user about what "model" means — rules-based weighted computation vs trained ML model are very different things. When a plan says "build a model", confirm which is intended before writing any code.
+
+---
+
 ## Data engineering review & pipeline fixes — 2026-03-01
 
 **Bugs / errors encountered:**

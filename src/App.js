@@ -5,6 +5,7 @@ import { dataService } from './dataService';
 import LoginPage from './Login';
 import CombatDNAVisual from './CombatDNAVisual';
 import CombatScatterPlot from './components/CombatScatterPlot';
+import FightDetailView from './components/FightDetailView';
 
 // --- CombatDNA Card (The 5 Metrics + Intensity) ---
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
@@ -128,7 +129,7 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
 };
 
 // --- FightCard Component (Favorites First) ---
-const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false }) => {
+const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null }) => {
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
@@ -141,7 +142,10 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
   const fighters = fight.bout ? fight.bout.split(/ vs /i) : ["Unknown", "Fighter"];
 
   return (
-    <div className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative`}>
+    <div
+      className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative${onClick ? ' cursor-pointer hover:scale-[1.01]' : ''}`}
+      onClick={onClick ? () => onClick(fight) : undefined}
+    >
       
       <div className="p-4 bg-black/20 text-center">
         <h2 className={`text-xl font-bold ${currentTheme.text}`}>
@@ -163,9 +167,9 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
           {/* 1. FAVORITE */}
           <button 
             disabled={locked}
-            onClick={() => handleVote(fight.id, 'favorite')} 
+            onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'favorite'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all border border-transparent
-                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' : 
+                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
                   (isFav ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/5 hover:bg-yellow-500/20 hover:text-yellow-400')}`}
           >
              <Star size={18} className={isFav ? 'fill-current' : ''} />
@@ -175,9 +179,9 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
           {/* 2. LIKE */}
           <button 
             disabled={locked}
-            onClick={() => handleVote(fight.id, 'like')} 
+            onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'like'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all border border-transparent
-                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' : 
+                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
                   (isLike ? 'bg-blue-600 text-white' : 'bg-white/5 hover:bg-white/10')}`}
           >
              <ThumbsUp size={18} className={isLike ? 'fill-current' : ''} />
@@ -187,9 +191,9 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
           {/* 3. DISLIKE */}
           <button 
             disabled={locked}
-            onClick={() => handleVote(fight.id, 'dislike')} 
+            onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'dislike'); }}
             className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all border border-transparent
-                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' : 
+                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
                   (isDislike ? 'bg-red-900/50 border-red-600 text-red-500' : 'bg-white/5 hover:bg-white/10')}`}
           >
              <ThumbsDown size={18} className={isDislike ? 'fill-current' : ''} />
@@ -219,6 +223,7 @@ export default function UFCFightRating() {
   const [events, setEvents] = useState([]);
   const [eventFights, setEventFights] = useState([]);
   const [loadingFights, setLoadingFights] = useState(false);
+  const [selectedFight, setSelectedFight] = useState(null);
   const [userHistory, setUserHistory] = useState([]);
   const [combatDNA, setCombatDNA] = useState(null);
   const [dnaFilter, setDnaFilter] = useState('combined'); 
@@ -456,6 +461,11 @@ export default function UFCFightRating() {
       setEventFights(merged);
     }
     setLoadingFights(false);
+  };
+
+  const handleFightClick = (fight) => {
+    setSelectedFight({ ...fight, event_date: selectedEvent?.event_date });
+    setCurrentView('fightDetail');
   };
 
   // --- VOTING LOGIC ---
@@ -868,13 +878,23 @@ export default function UFCFightRating() {
                         currentTheme={currentTheme}
                         handleVote={handleVote}
                         locked={eventLocked}
+                        onClick={handleFightClick}
                     />
                 ));
             })()}
           </div>
         )}
 
-        {/* --- 3. COMBAT DNA VIEW --- */}
+        {/* --- 3. FIGHT DETAIL VIEW --- */}
+        {currentView === 'fightDetail' && selectedFight && (
+          <FightDetailView
+            fight={selectedFight}
+            currentTheme={currentTheme}
+            onBack={() => setCurrentView('fights')}
+          />
+        )}
+
+        {/* --- 4. COMBAT DNA VIEW --- */}
         {currentView === 'dna' && (
             <div className="animate-in slide-in-from-right pb-20">
                <div className="flex items-center gap-2 mb-6 opacity-60">
