@@ -198,3 +198,10 @@ Fight detail click only works in the event fights view. Profile, search results,
 - [ ] Replace rules-based `scoreRound()` in FightDetailView.js with ML model predictions
 - [ ] If per-weight-class models are used, select correct model based on `meta.weight_class`
 - [ ] Show model confidence alongside predictions (probability of winner, not just binary)
+
+#### Note: Model use case for non-decision fights
+For fights that didn't go the distance (KO/TKO/submission), there are no judge scorecards — but
+there ARE completed rounds before the finish. The model can score those rounds using the same
+round_fight_stats data. e.g. a fight that ends by KO in round 3 has full stats for rounds 1 and 2
+which can be model-scored and displayed in FightDetailView even though no judges scored them.
+This extends the model's value well beyond the ~40% of fights that go to decision.
