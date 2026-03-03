@@ -2,6 +2,23 @@
 
 ---
 
+## Judge scores bug investigation — 2026-03-02
+
+**Bugs fixed:**
+- `judge_scores.date` is stored from mmadecisions.com's local event date. For international events (Australia, Singapore, Abu Dhabi, Fight Island) this is consistently +1 day vs `ufc_events.event_date`. Fix: widen `getFightDetail` judge_scores query to ±1 day with `gte`/`lte` instead of `eq`.
+- "Rong Zhu" (judge_scores) vs "Rongzhu" (fight_meta_details) — `matchesFighter()` failed all three strategies. Fix: added space-collapse step (`a.replace(/\s/g,'') === b.replace(/\s/g,'')`) before word-split fallbacks.
+- `scrape_mmadecisions.py` event filter only matched `'UFC' in name`, skipping TUF Finale events listed as "TUF Latin America 3 Finale: ..." or "The Ultimate Fighter: ...". Fix: added `or 'TUF' in a.text or 'The Ultimate Fighter' in a.text`.
+
+**Diagnostic approach that worked:**
+- Check 1 (exact date join) incorrectly flagged ~20 events as "never scraped" — they were actually present with +1 day offset. Always verify with a ±2 day LATERAL join before concluding data is missing.
+- Check 3 (exact norm match in SQL) flags names that `matchesFighter()` would actually catch via fuzzy fallbacks — SQL exact match is stricter than JS fuzzy logic. Use Check 4 (matched row count vs expected) as the real signal.
+
+**What to watch:**
+- The ±1 day window could theoretically pull scores from an adjacent event if UFC runs back-to-back days — hasn't happened yet; fighter name matching provides the safety net.
+- One event genuinely has no data: "UFC Fight Night: Dos Anjos vs Ferguson" (2016-11-05) — mmadecisions lists it as "TUF Latin America 3 Finale: dos Anjos vs. Ferguson" and it was never scraped. Now covered by the TUF filter fix.
+
+---
+
 ## Phase 3a: FightCard indicator + judge scores matching — 2026-03-02
 
 **What was done:**
