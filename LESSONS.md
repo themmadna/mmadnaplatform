@@ -2,6 +2,21 @@
 
 ---
 
+## Dual-range filter + Q1/Q3 DNA presets — 2026-03-03
+
+**What was done:**
+- Converted all 5 fight filters from single-bound to `{ min, max }` range objects
+- Two sliders per metric (Min/Max); each clamps against the other to prevent inversion
+- "Apply My Stats" now uses Q1 (25th pct) → min and Q3 (75th pct) → max from `comparisonData`
+- Added `duration` to `chartData` in `getDNAAndChartData` so Q1/Q3 can be computed for it
+- `DEFAULT_FILTERS` constant defined once, used by both initial state and Reset button
+
+**What to watch:**
+- `comparisonData` must have `duration` populated — if it's null for some fights (no `metric_duration` in the view), Q1/Q3 will silently use 0
+- Q1/Q3 requires `comparisonData.length >= 2`; "Apply My Stats" button is only shown when `combatDNA` is truthy, which is tied to having rated fights — may still show with only 1 fight (edge case, low priority)
+
+---
+
 ## Judge scores bug investigation — 2026-03-02
 
 **Bugs fixed:**
