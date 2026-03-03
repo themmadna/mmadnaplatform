@@ -235,7 +235,8 @@ def scrapeDataFunction(start_year, end_year):
         
         # Get all links and their text (Event Names)
         links = year_soup.find_all('a')
-        ufc_events = [(a.get('href'), a.text.strip()) for a in links if 'UFC' in a.text]
+        ufc_events = [(a.get('href'), a.text.strip()) for a in links
+                      if 'UFC' in a.text or 'TUF' in a.text or 'The Ultimate Fighter' in a.text]
         
         for e_link, e_name in ufc_events:
             print(f"\nChecking Event: {e_name}")

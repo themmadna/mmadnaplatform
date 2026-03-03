@@ -59,6 +59,9 @@ function matchesFighter(jsName, metaName) {
   if (!a || !b) return false;
   if (a === b) return true;
 
+  // Handles "Rong Zhu" vs "Rongzhu" — same letters, different spacing
+  if (a.replace(/\s/g, '') === b.replace(/\s/g, '')) return true;
+
   const aWords = a.split(' ');
   const bWords = b.split(' ');
 

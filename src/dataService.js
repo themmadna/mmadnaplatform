@@ -119,6 +119,12 @@ export const dataService = {
 
     const fighters = [meta.fighter1_name, meta.fighter2_name];
 
+    // Widen the date window by ±1 day to handle international events (e.g. Australia)
+    // where mmadecisions.com records the local date, which is 1 day ahead of ufc_events.
+    const d = new Date(eventDate);
+    const dateMinus1 = new Date(d.getTime() - 86400000).toISOString().split('T')[0];
+    const datePlus1  = new Date(d.getTime() + 86400000).toISOString().split('T')[0];
+
     const [{ data: roundStats, error: statsErr }, { data: judgeScores, error: scoresErr }] = await Promise.all([
       supabase
         .from('round_fight_stats')
@@ -129,7 +135,8 @@ export const dataService = {
       supabase
         .from('judge_scores')
         .select('*')
-        .eq('date', eventDate)
+        .gte('date', dateMinus1)
+        .lte('date', datePlus1)
         .order('round', { ascending: true })
     ]);
 
