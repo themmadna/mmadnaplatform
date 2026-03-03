@@ -258,3 +258,90 @@ Landing page for the judge section:
 - All analysis is feasible with current `judge_scores` + `round_fight_stats` join (same logic as ML pipeline)
 - fighter name matching across sources uses same `normName()` / `matchesFighter()` logic
 - Judge profiles should only show judges with a minimum threshold of rounds judged (e.g. 50+) to avoid noise
+
+---
+
+## Phase 5: Weight Class Analytics
+
+One analytics page per division. Data source: existing `fight_meta_details` + `round_fight_stats` +
+`fight_dna_metrics`. No new data required.
+
+### 5a. Division Overview
+- Total fights, finish rate, average fight duration, avg rounds per fight
+- Decision rate vs KO/TKO rate vs submission rate — and how that's changed over the years
+- "Most exciting division" ranking by DNA violence index and finish rate
+
+### 5b. Style Trends Over Time
+- Per division, plot avg sig strikes, takedowns, control time per round by year
+- Is the division getting more striker-heavy? More grappling-focused? More defensive?
+- Surface inflection points — e.g. did HW striking volume drop after a certain era?
+
+### 5c. Style Fingerprint per Division
+- Radar chart showing the "DNA" of each division vs the UFC average
+- Lightweight: high pace, high volume? Heavyweight: high KD, lower volume?
+- Makes for a compelling visual comparison across all divisions side by side
+
+### 5d. Most Controversial Division
+- Cross-reference with judge data (Phase 4): which division has the highest judge outlier rate?
+- Which division produces the most split decisions?
+
+### Data notes
+- All computable from existing tables — no new scraping needed
+- `fight_meta_details.weight_class` is the join key; filter out non-standard bouts (open weight, etc.)
+
+---
+
+## Phase 6: User Round Scoring
+
+Let users score individual rounds themselves. Compare their cards to judges, the ML model, and
+the community consensus. Builds engagement and generates a unique user "scoring profile".
+
+### Part A: Historical Fight Scoring (immediately buildable — no new data needed)
+Round stats are already in `round_fight_stats`. The FightDetailView already shows round-by-round
+stats. Users just need UI to submit their own round winner pick.
+
+- Add round scoring UI to FightDetailView: per round, tap Fighter A / Fighter B (or 10-8)
+- Store in a new `user_round_scores` table: (user_id, fight_url, round, winner_picked, score)
+- After submitting full card, show comparison:
+  - Their card vs each judge's card
+  - Their card vs ML model prediction
+  - Their card vs community consensus (aggregate of all user scores for that fight)
+- "Controversial rounds" — rounds where community is split (e.g. 52% vs 48%)
+
+### Part B: User Scoring Profile (flows from Part A)
+Once users have scored enough fights, surface analytics on their scoring style:
+- Style preference radar — same analysis as judge profiles (Phase 4a), but for the user
+- Agreement rate with official judges overall and per judge
+- Agreement rate with the ML model
+- "Most contrarian" fights — where their card differed most from everyone else
+- How their scoring profile has changed over time
+
+### Part C: Controversial Decision Analysis (flows from Part A)
+Aggregate user scores across all fights to surface the most debated decisions:
+- Rank fights by community disagreement (rounds closest to 50/50 split)
+- Compare community consensus card to official scorecards — identify fights where majority of
+  users scored it differently from the judges
+- Filter by weight class, era, specific judge
+
+### Part D: Live Scoring — future consideration (requires live data source)
+For users to score rounds as they happen during a live event, round stats would need to be
+available in real time. UFCStats.com only publishes stats after the fight ends.
+
+Options to investigate:
+- **ESPN unofficial MMA API** (already used for event times) — probe for live fight data depth
+- **SportRadar** — enterprise-level live UFC feed, likely expensive
+- **Crowdsourced live stats** — users self-report live, then reconcile with official stats after
+
+Recommendation: build Part A–C first (no blockers). Revisit live scoring once the historical
+scoring feature has traction and the data source question is clearer.
+
+### New DB table needed: `user_round_scores`
+```
+user_id       text   (FK → auth.users)
+fight_url     text   (FK → fights.fight_url)
+round         int
+winner_picked text   (fighter name or "draw")
+score         text   (e.g. "10-9", "10-8", "10-10")
+created_at    timestamptz
+UNIQUE (user_id, fight_url, round)
+```
