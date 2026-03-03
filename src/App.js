@@ -128,6 +128,29 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
   );
 };
 
+// --- Dual-thumb Range Slider ---
+const RangeSlider = ({ min, max, step, value, onChange }) => {
+  const minPct = ((value.min - min) / (max - min)) * 100;
+  const maxPct = ((value.max - min) / (max - min)) * 100;
+  return (
+    <div className="relative h-5 flex items-center">
+      <div className="absolute inset-x-0 h-1 bg-gray-700 rounded-full" />
+      <div className="absolute h-1 bg-red-500 rounded-full pointer-events-none"
+        style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }} />
+      <input type="range" min={min} max={max} step={step} value={value.min}
+        onChange={(e) => { const v = +e.target.value; onChange({ ...value, min: Math.min(v, value.max) }); }}
+        className="range-thumb"
+        style={{ zIndex: value.min >= max ? 5 : 3 }}
+      />
+      <input type="range" min={min} max={max} step={step} value={value.max}
+        onChange={(e) => { const v = +e.target.value; onChange({ ...value, max: Math.max(v, value.min) }); }}
+        className="range-thumb"
+        style={{ zIndex: 4 }}
+      />
+    </div>
+  );
+};
+
 // --- FightCard Component (Favorites First) ---
 const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null }) => {
   const likes = fight.ratings?.likes_count || 0;
@@ -703,24 +726,10 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Duration</span>
                                 <span className="font-bold">{filters.duration.min} – {filters.duration.max} mins</span>
                             </div>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Min</span>
-                                    <input type="range" min="0" max="25" step="1"
-                                        value={filters.duration.min}
-                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, duration: { ...filters.duration, min: Math.min(v, filters.duration.max) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Max</span>
-                                    <input type="range" min="0" max="25" step="1"
-                                        value={filters.duration.max}
-                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, duration: { ...filters.duration, max: Math.max(v, filters.duration.min) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                            </div>
+                            <RangeSlider min={0} max={25} step={1}
+                                value={filters.duration}
+                                onChange={(v) => setFilters({...filters, duration: v})}
+                            />
                         </div>
 
                         {/* PACE */}
@@ -729,24 +738,10 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Pace</span>
                                 <span className="font-bold">{filters.pace.min} – {filters.pace.max} strikes/min</span>
                             </div>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Min</span>
-                                    <input type="range" min="0" max="60" step="1"
-                                        value={filters.pace.min}
-                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, pace: { ...filters.pace, min: Math.min(v, filters.pace.max) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Max</span>
-                                    <input type="range" min="0" max="60" step="1"
-                                        value={filters.pace.max}
-                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, pace: { ...filters.pace, max: Math.max(v, filters.pace.min) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                            </div>
+                            <RangeSlider min={0} max={60} step={1}
+                                value={filters.pace}
+                                onChange={(v) => setFilters({...filters, pace: v})}
+                            />
                         </div>
 
                         {/* VIOLENCE */}
@@ -755,24 +750,10 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Violence Index</span>
                                 <span className="font-bold">{filters.violence.min} – {filters.violence.max}</span>
                             </div>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Min</span>
-                                    <input type="range" min="0" max="2" step="0.1"
-                                        value={filters.violence.min}
-                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, violence: { ...filters.violence, min: Math.min(v, filters.violence.max) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Max</span>
-                                    <input type="range" min="0" max="2" step="0.1"
-                                        value={filters.violence.max}
-                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, violence: { ...filters.violence, max: Math.max(v, filters.violence.min) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                            </div>
+                            <RangeSlider min={0} max={2} step={0.1}
+                                value={filters.violence}
+                                onChange={(v) => setFilters({...filters, violence: v})}
+                            />
                             <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
                                 <span>Low</span><span>Bloodbath</span>
                             </div>
@@ -784,24 +765,10 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Control %</span>
                                 <span className="font-bold">{filters.control.min} – {filters.control.max}%</span>
                             </div>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Min</span>
-                                    <input type="range" min="0" max="100" step="5"
-                                        value={filters.control.min}
-                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, control: { ...filters.control, min: Math.min(v, filters.control.max) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Max</span>
-                                    <input type="range" min="0" max="100" step="5"
-                                        value={filters.control.max}
-                                        onChange={(e) => { const v = parseInt(e.target.value); setFilters({...filters, control: { ...filters.control, max: Math.max(v, filters.control.min) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                            </div>
+                            <RangeSlider min={0} max={100} step={5}
+                                value={filters.control}
+                                onChange={(v) => setFilters({...filters, control: v})}
+                            />
                             <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
                                 <span>Standup War</span><span>Total Control</span>
                             </div>
@@ -813,24 +780,10 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Grappling Intensity</span>
                                 <span className="font-bold">{filters.grappling.min} – {filters.grappling.max}</span>
                             </div>
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Min</span>
-                                    <input type="range" min="0" max="20" step="0.5"
-                                        value={filters.grappling.min}
-                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, grappling: { ...filters.grappling, min: Math.min(v, filters.grappling.max) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[10px] opacity-40 w-6">Max</span>
-                                    <input type="range" min="0" max="20" step="0.5"
-                                        value={filters.grappling.max}
-                                        onChange={(e) => { const v = parseFloat(e.target.value); setFilters({...filters, grappling: { ...filters.grappling, max: Math.max(v, filters.grappling.min) }}); }}
-                                        className="flex-1 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-red-500"
-                                    />
-                                </div>
-                            </div>
+                            <RangeSlider min={0} max={20} step={0.5}
+                                value={filters.grappling}
+                                onChange={(v) => setFilters({...filters, grappling: v})}
+                            />
                             <div className="flex justify-between text-[10px] opacity-30 mt-1 pl-8">
                                 <span>Lay & Pray</span><span>Mauler</span>
                             </div>
