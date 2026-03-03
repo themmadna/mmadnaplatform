@@ -257,9 +257,9 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
             {/* FIGHT HEADER */}
             <div className={`${currentTheme.card} p-6 rounded-xl border mb-6 shadow-lg text-center`}>
               <div className="flex items-center justify-center gap-4 mb-3 flex-wrap">
-                <h1 className="text-2xl font-black">{meta.fighter1_name}</h1>
+                <h1 className="text-lg sm:text-2xl font-black">{meta.fighter1_name}</h1>
                 <span className={`text-lg font-bold ${currentTheme.accent} opacity-60`}>VS</span>
-                <h1 className="text-2xl font-black">{meta.fighter2_name}</h1>
+                <h1 className="text-lg sm:text-2xl font-black">{meta.fighter2_name}</h1>
               </div>
               <p className="text-xs opacity-50 uppercase tracking-widest">
                 {fight.weight_class || meta.weight_class || ''}
@@ -296,11 +296,11 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
               <div key={rd.round} className={`${currentTheme.card} rounded-xl border mb-4 shadow-lg overflow-hidden`}>
 
                 {/* ROUND HEADER */}
-                <div className="px-6 py-3 bg-black/30 border-b border-white/10">
+                <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10">
                   <p className="text-xs font-black uppercase tracking-widest opacity-60">Round {rd.round}</p>
                 </div>
 
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   {/* FIGHTER NAME HEADERS */}
                   <div className="grid grid-cols-3 text-xs opacity-40 uppercase tracking-widest mb-3">
                     <span className="font-bold">{meta.fighter1_name.split(' ').pop()}</span>
@@ -312,7 +312,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                   {(rd.f1Stats || rd.f2Stats) ? (
                     <div className="space-y-2 mb-5">
                       {STATS_ROWS(rd).map(row => (
-                        <div key={row.label} className="grid grid-cols-3 items-center text-sm">
+                        <div key={row.label} className="grid grid-cols-3 items-center text-xs sm:text-sm">
                           <span className={`text-left font-bold ${row.f1Raw > row.f2Raw ? currentTheme.accent : 'opacity-80'}`}>
                             {row.f1}
                           </span>
@@ -381,7 +381,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
             {/* SUMMARY TOTALS */}
             {summary && summary.judges.length > 0 && (
               <div className={`${currentTheme.card} rounded-xl border mb-6 shadow-lg overflow-hidden`}>
-                <div className="px-6 py-3 bg-black/30 border-b border-white/10 flex items-center justify-between">
+                <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10 flex items-center justify-between">
                   <p className="text-xs font-black uppercase tracking-widest opacity-60">Final Scorecard</p>
                   <span className={`text-xs font-bold uppercase tracking-widest ${currentTheme.accent}`}>
                     {getDecisionType(summary.judges)} Decision

@@ -2,6 +2,24 @@
 
 ---
 
+## Phase 1d + 1e: Mobile responsiveness & fight click all views — 2026-03-02
+
+**What was done:**
+- Phase 1d: Tailwind responsive class fixes across App.js and FightDetailView.js — all targeted, no structural changes.
+- Phase 1e: Fight card click now works from all views (profile, search, For You, fights).
+
+**Key decisions:**
+- Added `previousView` state to track which view was active before entering fightDetail. `onBack` uses this to return correctly — profile → profile, search → events, fights → fights.
+- `handleFightClick` now uses `fight.event_date ?? selectedEvent?.event_date`. This means every fight object must carry `event_date` before it can open fightDetail.
+- `fetchUserHistory` was missing `event_date` (fights table has no event_date column). Fixed by adding a batch lookup against `ufc_events` after the fights fetch — same pattern already used in search results merge.
+- `loadForYou` similarly needed a batch event_date lookup. Refactored from two divergent code paths (recs vs favs) into a unified `fights` array → single lookup → `setRecommendations`.
+
+**What to watch:**
+- If the RPC `get_fight_recommendations` is changed to return event_date directly, remove the batch lookup in `loadForYou`.
+- The `event_date` on fight objects added during `handleVote` (line ~516 `newHistoryItem`) does NOT include event_date — these are ephemeral optimistic updates, so it's fine as long as the user's next `fetchUserHistory` refresh picks it up.
+
+---
+
 ## Project cleanup & git consolidation — 2026-03-01
 
 **Bugs / errors encountered:**

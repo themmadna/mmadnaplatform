@@ -68,17 +68,17 @@
 Targeted Tailwind class changes only. No structural redesigns. Test at iPhone SE (375px) and Galaxy S8 (360px) in Chrome DevTools device toolbar.
 
 ### App.js
-- [ ] Header title: `text-3xl` → `text-2xl md:text-3xl` — "MMA DNA" crowds on < 380px (line 624)
-- [ ] FightCard fighter names: `text-xl` → `text-base sm:text-xl` — long names overflow on narrow phones (line 151)
-- [ ] CombatDNACard Strike Pace & Violence Index values: `text-3xl` → `text-2xl sm:text-3xl` — cramped in 2-column grid at 375px (lines 55, 63)
-- [ ] CombatDNACard Finish Rate & Avg Duration: `text-2xl` → `text-xl sm:text-2xl` — same reason (lines 115, 120)
-- [ ] DNA filter buttons: `px-4` → `px-3 sm:px-4` — 3 buttons at px-4 can be tight at 360px (line 911)
+- [x] Header title: `text-3xl` → `text-2xl md:text-3xl` — "MMA DNA" crowds on < 380px (line 624)
+- [x] FightCard fighter names: `text-xl` → `text-base sm:text-xl` — long names overflow on narrow phones (line 151)
+- [x] CombatDNACard Strike Pace & Violence Index values: `text-3xl` → `text-2xl sm:text-3xl` — cramped in 2-column grid at 375px (lines 55, 63)
+- [x] CombatDNACard Finish Rate & Avg Duration: `text-2xl` → `text-xl sm:text-2xl` — same reason (lines 115, 120)
+- [x] DNA filter buttons: `px-4` → `px-3 sm:px-4` — 3 buttons at px-4 can be tight at 360px (line 911)
 
 ### FightDetailView.js
-- [ ] Fighter names in fight header: `text-2xl` → `text-lg sm:text-2xl` — long names wrap awkwardly on mobile (lines 260, 262)
-- [ ] Round card padding: `px-6`/`p-6` → `px-4 sm:px-6`/`p-4 sm:p-6` — leaves too little room for 3-column stats grid at 375px (lines 299, 303)
-- [ ] Stats rows text: `text-sm` → `text-xs sm:text-sm` — tighter at 3 columns on mobile (line 315)
-- [ ] Summary scorecard header padding: `px-6` → `px-4 sm:px-6` — consistent with round card fix (line 384)
+- [x] Fighter names in fight header: `text-2xl` → `text-lg sm:text-2xl` — long names wrap awkwardly on mobile (lines 260, 262)
+- [x] Round card padding: `px-6`/`p-6` → `px-4 sm:px-6`/`p-4 sm:p-6` — leaves too little room for 3-column stats grid at 375px (lines 299, 303)
+- [x] Stats rows text: `text-sm` → `text-xs sm:text-sm` — tighter at 3 columns on mobile (line 315)
+- [x] Summary scorecard header padding: `px-6` → `px-4 sm:px-6` — consistent with round card fix (line 384)
 
 ### Not changing (deferred or not critical)
 - CombatScatterPlot — medium priority, deferred
@@ -99,13 +99,14 @@ Fight detail click only works in the event fights view. Profile, search results,
   - Search results (App.js:772)
   - For You / recommendations (App.js:824)
 
-### Fix required (App.js)
-1. **`handleFightClick`** — use `fight.event_date` when `selectedEvent` is null:
-   - `setSelectedFight({ ...fight, event_date: fight.event_date ?? selectedEvent?.event_date })`
-2. **Profile page** (line 956) — add `onClick={handleFightClick}`
-3. **Search results** (line 772) — add `onClick={handleFightClick}` (fight objects already carry `event_date`)
-4. **For You** (line 824) — add `onClick={handleFightClick}`, verify `event_date` is included on recommendation fight objects
-5. **Verify** `userHistory` fight objects include `event_date` — if not, add it to the `getUserHistory()` select in `dataService.js`
+### Fix applied (App.js)
+- [x] Added `previousView` state; `handleFightClick` stores current view before navigating
+- [x] `handleFightClick` uses `fight.event_date ?? selectedEvent?.event_date` fallback
+- [x] `onBack` uses `previousView` so back goes to correct view (profile/events/fights)
+- [x] Profile page — added `onClick={handleFightClick}`
+- [x] Search results — added `onClick={handleFightClick}` (fight objects already carry `event_date`)
+- [x] For You — added `onClick={handleFightClick}`; `loadForYou` now batch-fetches `event_date` from `ufc_events`
+- [x] `fetchUserHistory` — now batch-fetches `event_date` from `ufc_events` and merges into fight objects
 
 ---
 
