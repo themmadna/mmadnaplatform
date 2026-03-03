@@ -128,8 +128,8 @@ Fight detail click only works in the event fights view. Profile, search results,
   - Fixed Check 1 & 2 in diagnose_judge_scores.py to use ±1 day BETWEEN window
   - [x] Verified via diagnose_judge_scores2.py: 5,412 complete, 55 partial (name-match SQL artefacts), 678 missing (pre-2010 / mmadecisions has no data)
   - [x] Built `judge_scores_coverage` view — SQL in `supabase/views/judge_scores_coverage.sql`
-- [ ] Add Phase 6 to `master file for data update.py`: after round stats sync, call
-  `subprocess.run(["python", "scrape_mmadecisions.py", "--yes"])` so a single run of
+- [x] Add Phase 6 to `master file for data update.py`: after round stats sync, call
+  `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` so a single run of
   the master file keeps judge scores up to date automatically
   - Keep scrapers as separate files (different sources, failure modes, rate limits)
   - `--yes` flag already added to scrape_mmadecisions.py for non-interactive use

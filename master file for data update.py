@@ -1,12 +1,14 @@
 import os
+import sys
 import time
+import subprocess
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from supabase import create_client, Client
 from dateutil import parser
-from pathlib import Path # <--- Add this import
+from pathlib import Path
 
 # --- 1. INITIALIZATION ---
 # This forces the script to look for .env in the same folder as the script file
@@ -497,6 +499,16 @@ def sync_event_times():
         except Exception as e:
             print(f"      ❌ Error syncing time: {e}")
 
+def sync_judge_scores():
+    print("⚖️  Phase 6: Syncing Judge Scores (mmadecisions.com)...")
+    scraper = Path(__file__).parent / "scrape_mmadecisions.py"
+    result = subprocess.run([sys.executable, str(scraper), "--yes"], text=True)
+    if result.returncode != 0:
+        print(f"   ⚠️  scrape_mmadecisions.py exited with code {result.returncode}")
+    else:
+        print("   ✅ Judge scores sync complete.")
+
+
 # --- 6. EXECUTION ---
 if __name__ == "__main__":
     start_time = time.time()
@@ -510,6 +522,7 @@ if __name__ == "__main__":
     sync_fights()
     sync_meta()
     sync_round_stats()
+    sync_judge_scores()
     sync_event_times()
     
     duration = round(time.time() - start_time, 2)
