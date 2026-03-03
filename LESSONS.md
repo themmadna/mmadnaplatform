@@ -2,6 +2,25 @@
 
 ---
 
+## Phase 2 data cleanup — scraper dedup bug + gap fill — 2026-03-03
+
+**What was done:**
+- Identified and fixed a long-standing dedup bug in `scrape_mmadecisions.py`: the event-level dedup was querying `judge_scores` by `event_name` using the mmadecisions year-listing name (e.g. "UFC 309: Jones vs. Miocic"), but stored `event_name` comes from individual fight detail pages and is formatted differently. The query always returned 0 results, so every bout was re-fetched on every run.
+- Root cause of the mismatch: mmadecisions event page link text uses "X def. Y" format (last names only), never "X vs Y". So `bout_display` in `extract_fight_data` never has " vs " and the URL slug fallback always runs. Stored `bout` = slug with hyphens replaced by spaces = "First Last vs First Last".
+- Fix: replaced `eq("event_name", e_name)` with `in_("bout", [url_to_bout(b_link) for ...])` where `url_to_bout` extracts the slug's last path component and replaces hyphens with spaces. This matches the stored bout name reliably.
+- Added `--no-stop` flag (disables STOP_THRESHOLD=10 for targeted gap-fill runs) and `--yes`/`-y` flag (non-interactive).
+- Ran scrapers for 2015–2026 and 2010–2014. Most of the original "30 gaps" were false positives (international events, exact date join bug in Check 1). Genuine missing data: TUF Finale events 2010–2017, which mmadecisions names differently from UFC Stats.
+- Fixed Check 1 & 2 in `diagnose_judge_scores.py` to use ±1 day BETWEEN window.
+- Created `judge_scores_coverage` DB view for persistent coverage tracking.
+
+**Key lessons:**
+- Always verify that dedup/skip logic actually works before a long scraper run — a quick debug query first would have saved the wasted runs.
+- When a diagnostic shows "gaps", distinguish between: (a) data genuinely missing, (b) wrong join condition (date offset for international events), (c) event name format mismatch across sources. All three appeared here.
+- Background bash tasks on Windows don't flush Python output unless `-u` (unbuffered) flag is passed.
+- `echo yes | python script.py` piping doesn't work in background task mode — need an explicit `--yes` argparse flag instead.
+
+---
+
 ## judge_scores name matching audit & anagram fix — 2026-03-03
 
 **What was done:**
