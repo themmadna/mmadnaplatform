@@ -41,14 +41,6 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
 
   return (
     <div className={`${currentTheme.card} p-6 rounded-2xl border mb-8 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-700`}>
-      <div className="flex items-center gap-3 mb-6 border-b border-white/10 pb-4">
-        <Activity className={currentTheme.accent} size={24} />
-        <div>
-          <h2 className="text-xl font-black uppercase tracking-wider">Your Combat DNA</h2>
-          <p className="text-xs opacity-50">Based on bout totals and compared with UFC averages</p>
-        </div>
-      </div>
-
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
           <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Strike Pace</p>
