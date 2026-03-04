@@ -7,10 +7,10 @@
 All bugs, performance issues, dead code, and UX gaps identified and fixed. Full detail in git history.
 
 ### Deferred (low priority, not yet actioned)
-- [ ] Initial "Loading..." spinner is unstyled
-- [ ] Back button loses year/scroll position
-- [ ] Year tabs have no scroll affordance on mobile
-- [ ] Redundant DNA headers
+- [x] Initial "Loading..." spinner is unstyled
+- [x] Back button loses year/scroll position
+- [x] Year tabs have no scroll affordance on mobile
+- [x] Redundant DNA headers
 - [ ] CombatScatterPlot mobile responsiveness
 - [ ] `fetchYears` optimisation — query already light (~6KB); true distinct requires a DB function
 

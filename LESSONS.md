@@ -66,6 +66,14 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## UX polish fixes
+
+- **CSS mask-image is the cleanest scroll affordance on mobile.** Apply `maskImage: 'linear-gradient(to right, black 80%, transparent 100%)'` directly to the scrollable container — no background colour knowledge needed, works across all themes.
+- **Scroll restoration needs two refs: a saved position and a previous-view tracker.** Save `window.scrollY` before navigating away, then in a `useEffect` watching `currentView`, restore when transitioning FROM the detail view (not on every render).
+- **Card-level headers inside a page that already has a section header are redundant.** If the page header + context makes the card's purpose obvious, remove the card's own header rather than keeping both.
+
+---
+
 ## Git hygiene
 
 - **Before any cleanup or file deletion work, check for multiple `.git` directories** (`find . -name ".git" -maxdepth 3`). Two repos pointing to the same remote will produce destructive-looking commits from the other repo's perspective.
