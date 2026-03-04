@@ -76,10 +76,10 @@ Rules-based `scoreRound()` in FightDetailView.js is a temporary placeholder pend
 - [x] Exported `scoring_model/scoring_model.json` — 19 features, coefficients + scaler for client-side JS
 - [x] Key insight: ctrl_sec_diff is #1 feature (coef=+1.007) — massively underweighted in rules model
 
-#### Step 8: Integrate into app
-- [ ] Replace rules-based `scoreRound()` in FightDetailView.js with ML model predictions
-- [ ] If per-weight-class models are used, select correct model based on `meta.weight_class`
-- [ ] Show model confidence alongside predictions (probability of winner, not just binary)
+#### Step 8: Integrate into app — complete
+- [x] Replace rules-based `scoreRound()` in FightDetailView.js with ML model predictions
+- [x] General model used (per-weight-class not needed — general model is competitive across all divisions)
+- [x] Show model confidence alongside predictions (probability %, shown next to round score)
 
 **Note:** For fights that didn't go to decision (KO/TKO/sub), the model can still score completed rounds before the finish using `round_fight_stats`. A fight ending in round 3 has full stats for rounds 1 and 2. This extends the model's value well beyond the ~40% of fights that go to decision.
 
@@ -89,6 +89,8 @@ Rules-based `scoreRound()` in FightDetailView.js is a temporary placeholder pend
 
 One page per judge. Data source: `judge_scores` joined with `round_fight_stats` and `fight_meta_details`.
 All analysis feasible with current data. Min threshold: 50+ rounds judged to avoid noise.
+
+**Cross-source join strategy note:** When joining `judge_scores` to fights at scale, the ±1 day date window returns all bouts on the card. Individual fuzzy name matching risks cross-fight collisions (e.g. two fighters named "Silva" on the same card). For Phase 4 data pipelines, use **pair-matching**: extract unique fighter pairs per event from `judge_scores`, score each pair against the target fight's fighters as a unit (`max(sim(a,f1)+sim(b,f2), sim(a,f2)+sim(b,f1))`), and take the highest-scoring pair. More robust than per-name matching and avoids the both-sides requirement workaround used in FightDetailView.
 
 ### 4a. Style Preference
 Correlate round winner (per judge) with stat differentials (sig strikes, takedowns, control time).

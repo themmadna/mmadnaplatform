@@ -2,47 +2,91 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { dataService } from '../dataService';
 
-// --- SCORING MODEL ---
+// --- SCORING MODEL (Logistic Regression, 82.50% holdout accuracy) ---
+// Feature order and scaler values from scoring_model/scoring_model.json
 
-const WEIGHTS = {
-  sig_strikes_landed: 1.0,
-  kd: 5.0,
-  takedowns_landed: 2.5,
-  control_time_sec: 0.015,
-  sub_attempts: 1.5,
-};
+const MODEL_COEFFICIENTS = [
+  0.5984894,   // kd_diff
+  0.49823478,  // sig_landed_diff
+  -0.04311526, // sig_pct_diff
+  0.60252248,  // head_landed_diff
+  0.06992616,  // body_landed_diff
+  -0.01308783, // leg_landed_diff
+  0.3025662,   // dist_landed_diff
+  0.18665426,  // clinch_landed_diff
+  0.50149266,  // ground_landed_diff
+  0.44193818,  // td_landed_diff
+  0.13082277,  // td_pct_diff
+  1.00686459,  // ctrl_sec_diff  ← #1 feature
+  0.44003705,  // sub_attempts_diff
+  0.50136414,  // sig_landed_ratio
+  0.0610226,   // head_landed_ratio
+  -0.28223356, // td_landed_ratio
+  -0.04561826, // ctrl_sec_ratio
+  0.0333875,   // ground_landed_ratio
+  -0.0,        // post_2016
+];
+const MODEL_INTERCEPT = -0.0;
+const SCALER_MEAN = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.77731692];
+const SCALER_STD  = [0.29094502, 12.68527486, 21.57676883, 10.05561868, 4.61613633, 4.68220269, 9.50068422, 3.8118023, 5.45206403, 1.2199469, 53.55316046, 116.89020126, 0.50086893, 0.1769014, 0.21193544, 0.41433619, 0.40837406, 0.43765438, 0.41604726];
 
-function computeRoundScore(stats) {
-  if (!stats) return 0;
-  return (
-    (stats.sig_strikes_landed || 0) * WEIGHTS.sig_strikes_landed +
-    (stats.kd || 0) * WEIGHTS.kd +
-    (stats.takedowns_landed || 0) * WEIGHTS.takedowns_landed +
-    (stats.control_time_sec || 0) * WEIGHTS.control_time_sec +
-    (stats.sub_attempts || 0) * WEIGHTS.sub_attempts
-  );
-}
+function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
 
-function scoreRound(f1Stats, f2Stats) {
-  const s1 = computeRoundScore(f1Stats);
-  const s2 = computeRoundScore(f2Stats);
-  const margin = Math.abs(s1 - s2);
-  const winner = s1 > s2 ? 'f1' : s2 > s1 ? 'f2' : 'draw';
-  const f1KD = (f1Stats?.kd || 0) > 0;
-  const f2KD = (f2Stats?.kd || 0) > 0;
-  // 10-8: winner scored a KD, OR margin is very large
-  const dominant = (winner === 'f1' && (f1KD || margin > 15)) ||
-                   (winner === 'f2' && (f2KD || margin > 15));
+function scoreRound(f1Stats, f2Stats, eventYear) {
+  // No stats available — skip model
+  if (!f1Stats && !f2Stats) return { f1Score: 10, f2Score: 10, winner: 'draw', confidence: null };
 
-  let f1Score, f2Score;
-  if (winner === 'draw') {
-    f1Score = 10; f2Score = 10;
-  } else if (winner === 'f1') {
-    f1Score = 10; f2Score = dominant ? 8 : 9;
-  } else {
-    f2Score = 10; f1Score = dominant ? 8 : 9;
-  }
-  return { f1Score, f2Score, winner, margin };
+  const g = (s, k) => s?.[k] || 0;
+
+  // 13 differential features (f1_stat - f2_stat)
+  const diffs = [
+    g(f1Stats, 'kd')                         - g(f2Stats, 'kd'),
+    g(f1Stats, 'sig_strikes_landed')          - g(f2Stats, 'sig_strikes_landed'),
+    g(f1Stats, 'sig_strike_pct')              - g(f2Stats, 'sig_strike_pct'),
+    g(f1Stats, 'sig_strikes_head_landed')     - g(f2Stats, 'sig_strikes_head_landed'),
+    g(f1Stats, 'sig_strikes_body_landed')     - g(f2Stats, 'sig_strikes_body_landed'),
+    g(f1Stats, 'sig_strikes_leg_landed')      - g(f2Stats, 'sig_strikes_leg_landed'),
+    g(f1Stats, 'sig_strikes_distance_landed') - g(f2Stats, 'sig_strikes_distance_landed'),
+    g(f1Stats, 'sig_strikes_clinch_landed')   - g(f2Stats, 'sig_strikes_clinch_landed'),
+    g(f1Stats, 'sig_strikes_ground_landed')   - g(f2Stats, 'sig_strikes_ground_landed'),
+    g(f1Stats, 'takedowns_landed')            - g(f2Stats, 'takedowns_landed'),
+    g(f1Stats, 'takedown_pct')                - g(f2Stats, 'takedown_pct'),
+    g(f1Stats, 'control_time_sec')            - g(f2Stats, 'control_time_sec'),
+    g(f1Stats, 'sub_attempts')                - g(f2Stats, 'sub_attempts'),
+  ];
+
+  // 5 ratio features: f1 / (f1 + f2 + 1)
+  const ratioKeys = [
+    'sig_strikes_landed',
+    'sig_strikes_head_landed',
+    'takedowns_landed',
+    'control_time_sec',
+    'sig_strikes_ground_landed',
+  ];
+  const ratios = ratioKeys.map(k => {
+    const a = g(f1Stats, k), b = g(f2Stats, k);
+    return a / (a + b + 1);
+  });
+
+  const post2016 = (eventYear || 0) >= 2016 ? 1 : 0;
+  const features = [...diffs, ...ratios, post2016];
+
+  const score = features.reduce((sum, f, i) => {
+    const scaled = (f - SCALER_MEAN[i]) / SCALER_STD[i];
+    return sum + MODEL_COEFFICIENTS[i] * scaled;
+  }, MODEL_INTERCEPT);
+
+  const p = sigmoid(score); // P(f1 wins round)
+  const winner = p >= 0.5 ? 'f1' : 'f2';
+  const confidence = Math.max(p, 1 - p);
+
+  // 10-8 detection: knockdown by the winner
+  const dominant = (winner === 'f1' && g(f1Stats, 'kd') > 0) ||
+                   (winner === 'f2' && g(f2Stats, 'kd') > 0);
+  const f1Score = winner === 'f1' ? 10 : (dominant ? 8 : 9);
+  const f2Score = winner === 'f2' ? 10 : (dominant ? 8 : 9);
+
+  return { f1Score, f2Score, winner, confidence };
 }
 
 // --- DATA JOIN ---
@@ -84,7 +128,7 @@ function matchesFighter(jsName, metaName) {
   return shorter.filter(w => w.length > 1).every(w => longer.includes(w));
 }
 
-function buildRoundData(meta, roundStats, judgeScores) {
+function buildRoundData(meta, roundStats, judgeScores, eventYear) {
   const roundsFought = parseInt((meta.round || '').split(' ')[0]) || 0;
   if (roundsFought === 0) return [];
 
@@ -92,7 +136,7 @@ function buildRoundData(meta, roundStats, judgeScores) {
     const r = i + 1;
     const f1Stats = roundStats.find(s => s.fighter_name === meta.fighter1_name && s.round === r) || null;
     const f2Stats = roundStats.find(s => s.fighter_name === meta.fighter2_name && s.round === r) || null;
-    const model = scoreRound(f1Stats, f2Stats);
+    const model = scoreRound(f1Stats, f2Stats, eventYear);
 
     // Filter judge rows for this round that belong to this fight's fighters
     const roundJudgeRows = judgeScores.filter(js =>
@@ -103,15 +147,14 @@ function buildRoundData(meta, roundStats, judgeScores) {
     const judges = judgeNames.map(judgeName => {
       const f1Row = roundJudgeRows.find(js => js.judge === judgeName && matchesFighter(js.fighter, meta.fighter1_name));
       const f2Row = roundJudgeRows.find(js => js.judge === judgeName && matchesFighter(js.fighter, meta.fighter2_name));
-      const f1Score = f1Row?.score ?? null;
-      const f2Score = f2Row?.score ?? null;
-      let matchesModel = null;
-      if (f1Score !== null && f2Score !== null) {
-        const jWinner = f1Score > f2Score ? 'f1' : f2Score > f1Score ? 'f2' : 'draw';
-        matchesModel = jWinner === model.winner;
-      }
+      // Require both sides — a judge with only one fighter is a cross-fight name collision
+      if (!f1Row || !f2Row) return null;
+      const f1Score = f1Row.score;
+      const f2Score = f2Row.score;
+      const jWinner = f1Score > f2Score ? 'f1' : f2Score > f1Score ? 'f2' : 'draw';
+      const matchesModel = jWinner === model.winner;
       return { judgeName, f1Score, f2Score, matchesModel };
-    });
+    }).filter(Boolean);
 
     return { round: r, f1Stats, f2Stats, model, judges };
   });
@@ -177,7 +220,8 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
           console.log(`[FightDetail] Looking for: "${m.fighter1_name}" / "${m.fighter2_name}"`);
           console.log(`[FightDetail] normName f1="${normName(m.fighter1_name)}" f2="${normName(m.fighter2_name)}"`);
         }
-        const roundData = buildRoundData(m, roundStats, judgeScores);
+        const eventYear = fight.event_date ? new Date(fight.event_date).getFullYear() : new Date().getFullYear();
+        const roundData = buildRoundData(m, roundStats, judgeScores, eventYear);
         setRounds(roundData);
         setSummary(buildSummaryTotals(roundData, judgeScores, m));
       } catch (err) {
@@ -363,29 +407,23 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                     <p className="text-xs opacity-40 text-center mb-5 uppercase tracking-widest">No stats for this round</p>
                   )}
 
-                  {/* MODEL PREDICTION */}
-                  <div className="bg-black/20 rounded-lg px-4 py-3 mb-3 flex items-center justify-between">
-                    <span className="text-xs uppercase tracking-widest opacity-50 font-bold">Model</span>
-                    <span className="text-sm font-black">
-                      <span className={rd.model.winner === 'f1' ? currentTheme.accent : 'opacity-50'}>
-                        {rd.model.f1Score}
-                      </span>
-                      <span className="opacity-30 mx-2">–</span>
-                      <span className={rd.model.winner === 'f2' ? currentTheme.accent : 'opacity-50'}>
-                        {rd.model.f2Score}
-                      </span>
-                    </span>
-                    <span className={`text-xs font-bold uppercase tracking-wider ${
-                      (rd.model.f1Score === 8 || rd.model.f2Score === 8) ? 'text-red-400' : 'opacity-30'
-                    }`}>
-                      {(rd.model.f1Score === 8 || rd.model.f2Score === 8) ? '10-8' :
-                       rd.model.winner === 'draw' ? '10-10' : '10-9'}
-                    </span>
-                  </div>
-
-                  {/* JUDGE SCORES */}
-                  {rd.judges.length > 0 ? (
+                  {/* MODEL PREDICTION + JUDGE SCORES */}
+                  {(rd.model.confidence !== null || rd.judges.length > 0) && (
                     <div className="space-y-2">
+                      {rd.model.confidence !== null && (
+                        <div className="grid grid-cols-3 items-center text-xs pb-2 border-b border-white/10">
+                          <span className={`font-bold ${rd.model.winner === 'f1' ? currentTheme.accent : 'opacity-60'}`}>
+                            {rd.model.f1Score}
+                          </span>
+                          <span className="text-center flex flex-col items-center opacity-50">
+                            <span className="font-bold uppercase tracking-wider">Model</span>
+                            <span className="opacity-80">({Math.round(rd.model.confidence * 100)}%)</span>
+                          </span>
+                          <span className={`text-right font-bold ${rd.model.winner === 'f2' ? currentTheme.accent : 'opacity-60'}`}>
+                            {rd.model.f2Score}
+                          </span>
+                        </div>
+                      )}
                       {rd.judges.map(j => (
                         <div key={j.judgeName} className="grid grid-cols-3 items-center text-xs">
                           <span className={`font-bold ${j.f1Score > j.f2Score ? currentTheme.accent : 'opacity-60'}`}>
@@ -405,14 +443,20 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                         </div>
                       ))}
                     </div>
-                  ) : (
-                    fight.status === 'completed' && (
-                      <p className="text-xs opacity-30 text-center uppercase tracking-widest">No scorecard data for this round</p>
-                    )
+                  )}
+                  {rd.judges.length === 0 && fight.status === 'completed' && (
+                    <p className="text-xs opacity-30 text-center uppercase tracking-widest">No judges' scorecard for this round</p>
                   )}
                 </div>
               </div>
             ))}
+
+            {/* STOPPAGE NOTE */}
+            {meta.method && !meta.method.toLowerCase().includes('decision') && (
+              <p className="text-xs opacity-40 text-center uppercase tracking-widest mb-6">
+                Ended by {meta.method} — no judges' scorecard available
+              </p>
+            )}
 
             {/* SUMMARY TOTALS */}
             {summary && summary.judges.length > 0 && (
