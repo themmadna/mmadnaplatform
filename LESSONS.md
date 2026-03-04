@@ -43,6 +43,19 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## ML model — Phase 3c (round scoring)
+
+- **Use differential features (f1_stat - f2_stat), not raw stats, for any symmetric prediction task.** The model should be position-agnostic; raw stats let it learn that one fighter "slot" is better.
+- **Symmetric augmentation is the correct fix for positional bias in differential-feature models.** Mirror every row (negate diffs, flip label) so the training set is exactly 50/50. The LR intercept converges to ≈0 — a reliable sanity check.
+- **`validate_scoring_model.py` was broken** — it joined judge_scores to round_fight_stats on `event_name`, which never matches across sources. The correct join is date ±1 via `ufc_events`, then fuzzy name matching. The existing validator's results were almost entirely from missing matches, not real agreement.
+- **Control time is the most underweighted feature in the rules-based model.** EDA r=0.446 (third after sig_landed and total_landed), but the rules model assigns it weight=0.015. The ML model assigns it the highest coefficient (+1.007). Judges weight sustained control heavily.
+- **Knockdowns are overweighted in the rules model** (weight=5.0). EDA r=0.196 — meaningful but lower than ctrl_sec, head_landed, dist_landed. A 5:1 ratio vs sig_landed is far too aggressive.
+- **LR beats RF and XGBoost on well-engineered differential features.** The decision boundary for round scoring is largely linear — once you compute the right diffs, complex models add noise, not signal.
+- **The 2016 ABC judging criteria shift shows in the data** (takedown advantage and ctrl_sec advantage both narrowed post-2016), but the `post_2016` feature coefficient converges to ≈0 during training. The stats themselves already encode the shift — the era flag is redundant once you have the actual stats.
+- **Unicode accent normalization:** use `unicodedata.normalize('NFKD', s)` before the regex strip, not after. NFKD decomposes accented chars into base + combining mark, then the `[^a-z0-9\s]` strip removes the combining mark. This turns ñ→n, ä→a, ã→a correctly. Omitting this caused 45 name match failures.
+
+---
+
 ## Git hygiene
 
 - **Before any cleanup or file deletion work, check for multiple `.git` directories** (`find . -name ".git" -maxdepth 3`). Two repos pointing to the same remote will produce destructive-looking commits from the other repo's perspective.
