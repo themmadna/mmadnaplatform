@@ -80,11 +80,11 @@ function scoreRound(f1Stats, f2Stats, eventYear) {
   const winner = p >= 0.5 ? 'f1' : 'f2';
   const confidence = Math.max(p, 1 - p);
 
-  // 10-8 detection: knockdown by the winner
-  const dominant = (winner === 'f1' && g(f1Stats, 'kd') > 0) ||
-                   (winner === 'f2' && g(f2Stats, 'kd') > 0);
-  const f1Score = winner === 'f1' ? 10 : (dominant ? 8 : 9);
-  const f2Score = winner === 'f2' ? 10 : (dominant ? 8 : 9);
+  // 10-8 detection: model confidence >= 0.975 (empirically derived from judge_scores data —
+  // 83% of real 10-8 rounds had zero KD advantage, so KD alone is not the signal)
+  const is10_8 = confidence >= 0.975;
+  const f1Score = winner === 'f1' ? 10 : (is10_8 ? 8 : 9);
+  const f2Score = winner === 'f2' ? 10 : (is10_8 ? 8 : 9);
 
   return { f1Score, f2Score, winner, confidence };
 }
