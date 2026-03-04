@@ -56,6 +56,16 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## 10-8 round detection — empirical threshold derivation
+
+- **KD is a poor signal for 10-8 detection.** 82.9% of real judge-scored 10-8 rounds had zero KD differential — the winner didn't land more knockdowns than the loser. The original rule (`winner_kd > 0`) was almost always wrong.
+- **ML confidence is the correct signal.** 83.5% of real 10-8 rounds had model confidence ≥ 0.975, and the median was 0.997. Judges only score 10-8 when one fighter completely dominated the stats.
+- **The threshold matters — start conservative.** 0.975 still produced too many 10-8s in practice. Tightening to 0.99 filtered out rounds that were dominant but not exceptional.
+- **`ml_dataset.csv` already has an `is_10_8` flag** — no DB re-query needed for this kind of analysis. A short pure-Python script loading the CSV + `scoring_model.json` is sufficient.
+- **Always deduplicate by `(fight_url, round)` when reading `ml_dataset.csv`** — it has one row per judge, so the same round appears 3× (once per judge). Use `is_10_8 = True` if ANY judge scored it 10-8.
+
+---
+
 ## Git hygiene
 
 - **Before any cleanup or file deletion work, check for multiple `.git` directories** (`find . -name ".git" -maxdepth 3`). Two repos pointing to the same remote will produce destructive-looking commits from the other repo's perspective.
