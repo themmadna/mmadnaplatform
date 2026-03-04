@@ -832,7 +832,7 @@ export default function UFCFightRating() {
 
             {!searchQuery && !showFilters && (
               <>
-                <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide items-center">
+                <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide items-center" style={{ maskImage: 'linear-gradient(to right, black 80%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 80%, transparent 100%)' }}>
                   <button 
                     onClick={() => setSelectedYear('For You')} 
                     className={`px-6 py-2 rounded-full font-bold border transition-all flex items-center gap-2 whitespace-nowrap
