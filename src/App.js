@@ -279,6 +279,8 @@ export default function UFCFightRating() {
   const [theme, setTheme] = useState(() => localStorage.getItem('ufc_app_theme') || 'modern');
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const themeSelectorRef = useRef(null);
+  const savedScrollRef = useRef(0);
+  const prevViewRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [fetchingEvents, setFetchingEvents] = useState(false);
   
@@ -323,6 +325,16 @@ export default function UFCFightRating() {
       });
     }
   };
+
+  // Scroll to top when entering fightDetail; restore position when leaving
+  useEffect(() => {
+    if (currentView === 'fightDetail') {
+      window.scrollTo(0, 0);
+    } else if (prevViewRef.current === 'fightDetail') {
+      window.scrollTo(0, savedScrollRef.current);
+    }
+    prevViewRef.current = currentView;
+  }, [currentView]);
 
   useEffect(() => {
     if (!showThemeSelector) return;
@@ -503,6 +515,7 @@ export default function UFCFightRating() {
   };
 
   const handleFightClick = (fight) => {
+    savedScrollRef.current = window.scrollY;
     setPreviousView(currentView);
     setSelectedFight({ ...fight, event_date: fight.event_date ?? selectedEvent?.event_date });
     setCurrentView('fightDetail');
@@ -642,7 +655,7 @@ export default function UFCFightRating() {
   };
 
   if (!session) return <LoginPage />;
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Loading...</div>;
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin opacity-50" /></div>;
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} p-4 pb-20 transition-all duration-500`}>
