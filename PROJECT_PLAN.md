@@ -294,19 +294,19 @@ Full redesign of the Judging DNA page. Replaces the existing `JudgingDNACard.js`
 
 Stats 1–4, 9, 10, 11 all derivable from `user_round_scores` + `judge_scores`. Existing RPC scaffolding covers most of it.
 
-- [ ] Expand `get_user_judging_profile()` to return:
+- [x] Expand `get_user_judging_profile()` to return:
   - `rounds_scored` (already present, just ensure surfaced)
   - `agreement_breakdown` — { all3, two_of_three, one_of_three, lone_dissenter } counts + percentages
   - `outlier_rate` — % rounds as lone dissenter
   - `ten_eight_quality` — of user's 10-8 rounds, % where judges agreed it was dominant (all gave ≥10-8 equivalent)
   - `accuracy_by_class` extended — add `rounds` count + `avg_loser_score` per class
-- [ ] Redeploy via `supabase/deploy_judging_profile.py`
+- [x] Redeploy via `supabase/deploy_judging_profile.py`
 
 **Implementation — Step 2: UI overhaul**
 
 Full redesign of `JudgingDNACard.js` as a blank slate — new layout, sections, all Step 1 data wired in.
 
-- [ ] Redesign `JudgingDNACard.js` with sections:
+- [x] Redesign `JudgingDNACard.js` with sections:
   - Overview strip (rounds scored, fights scored, accuracy, outlier rate)
   - Agreement breakdown (visual breakdown of all3/2of3/1of3/0of3)
   - Judge match (closest judge name + agreement %)

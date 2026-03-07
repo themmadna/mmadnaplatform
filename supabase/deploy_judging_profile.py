@@ -61,8 +61,7 @@ BEGIN
     ),
 
     -- 2. Fetch all judge_scores rows (one row per fighter per judge per round)
-    --    that fall within ±1 day of the fight date and match this round.
-    --    judge_scores schema: id, bout, date, judge, fighter, round, score, referee
+    --    within ±1 day of the fight date that name-match either fighter.
     judge_rows AS (
       SELECT
         ur.fight_id,
@@ -79,16 +78,14 @@ BEGIN
       JOIN judge_scores js
         ON  js.date  BETWEEN ur.event_date - INTERVAL '1 day' AND ur.event_date + INTERVAL '1 day'
         AND js.round = ur.round
-        -- Row must belong to one of the two fighters in this fight (last-name match)
         AND (
           lower(split_part(ur.fighter1_name, ' ', -1)) = lower(split_part(js.fighter, ' ', -1))
           OR lower(split_part(ur.fighter2_name, ' ', -1)) = lower(split_part(js.fighter, ' ', -1))
         )
     ),
 
-    -- 3. Pivot: for each (fight_id, round, judge) produce one row with
-    --    judge_f1_score and judge_f2_score using a conditional aggregate.
-    --    Only rows where BOTH scores are found are kept (complete judge pairs).
+    -- 3. Pivot to one row per (fight, round, judge) with f1/f2 scores.
+    --    Only complete pairs (both scores found) are kept.
     pivoted AS (
       SELECT
         fight_id,
@@ -112,7 +109,7 @@ BEGIN
       WHERE judge_f1_score IS NOT NULL AND judge_f2_score IS NOT NULL
     ),
 
-    -- 4. Per (fight, round): majority vote across judges
+    -- 4. Per (fight, round): majority vote + count how many judges agree with user
     majority AS (
       SELECT
         fight_id,
@@ -125,12 +122,18 @@ BEGIN
         judge_f2_score,
         SUM(CASE WHEN judge_f1_score > judge_f2_score THEN 1 ELSE 0 END) OVER w AS f1_wins,
         SUM(CASE WHEN judge_f2_score > judge_f1_score THEN 1 ELSE 0 END) OVER w AS f2_wins,
-        COUNT(*) OVER w AS judge_count
+        COUNT(*) OVER w AS judge_count,
+        -- How many judges agree with the user's pick on this round
+        SUM(CASE
+          WHEN (user_f1 > user_f2 AND judge_f1_score > judge_f2_score)
+            OR (user_f2 > user_f1 AND judge_f2_score > judge_f1_score)
+          THEN 1 ELSE 0
+        END) OVER w AS judges_agreeing
       FROM complete_judges
       WINDOW w AS (PARTITION BY fight_id, round)
     ),
 
-    -- 5. Collapse to one row per fight/round
+    -- 5. Collapse to one row per (fight, round)
     round_accuracy AS (
       SELECT DISTINCT ON (fight_id, round)
         fight_id,
@@ -138,13 +141,30 @@ BEGIN
         weight_class,
         CASE WHEN user_f1 > user_f2 THEN 'f1' WHEN user_f2 > user_f1 THEN 'f2' ELSE 'draw' END AS user_winner,
         CASE WHEN f1_wins >= 2 THEN 'f1' WHEN f2_wins >= 2 THEN 'f2' ELSE NULL END AS majority_winner,
-        LEAST(user_f1, user_f2) AS user_loser_score
+        LEAST(user_f1, user_f2) AS user_loser_score,
+        judges_agreeing,
+        judge_count
       FROM majority
       WHERE judge_count >= 2
       ORDER BY fight_id, round
     ),
 
-    -- 6. Judge-level agreement with user (min 5 shared rounds)
+    -- 6. For 10-8 quality: collect each judge's loser score on rounds where user gave 10-8.
+    --    judge_loser_score <= 8 means that judge also scored it a dominant round.
+    ten_eight_judge_scores AS (
+      SELECT
+        CASE
+          WHEN cj.user_f1 > cj.user_f2 THEN cj.judge_f2_score
+          ELSE                               cj.judge_f1_score
+        END AS judge_loser_score
+      FROM complete_judges cj
+      JOIN round_accuracy ra ON ra.fight_id = cj.fight_id AND ra.round = cj.round
+      WHERE cj.user_f1 != cj.user_f2
+        AND LEAST(cj.user_f1, cj.user_f2) <= 8
+        AND ra.majority_winner IS NOT NULL
+    ),
+
+    -- 7. Judge-level agreement with user (min 5 shared rounds)
     judge_agreement AS (
       SELECT
         judge,
@@ -160,35 +180,62 @@ BEGIN
     )
 
     SELECT json_build_object(
-      'fights_scored',   (SELECT COUNT(DISTINCT fight_id) FROM user_rounds),
-      'rounds_scored',   (SELECT COUNT(*) FROM user_rounds),
-      'rounds_matched',  (SELECT COUNT(*) FROM round_accuracy WHERE majority_winner IS NOT NULL),
-      'accuracy',        (
+      'fights_scored',       (SELECT COUNT(DISTINCT fight_id) FROM user_rounds),
+      'rounds_scored',       (SELECT COUNT(*) FROM user_rounds),
+      'rounds_matched',      (SELECT COUNT(*) FROM round_accuracy WHERE majority_winner IS NOT NULL),
+      'accuracy',            (
         SELECT ROUND(AVG(CASE WHEN user_winner = majority_winner THEN 1.0 ELSE 0.0 END)::numeric, 3)
         FROM round_accuracy WHERE majority_winner IS NOT NULL
       ),
-      'ten_eight_rate',  (
+      -- % of rounds where 0 judges agreed with the user (lone dissenter)
+      'outlier_rate',        (
+        SELECT ROUND(AVG(CASE WHEN judges_agreeing = 0 THEN 1.0 ELSE 0.0 END)::numeric, 3)
+        FROM round_accuracy
+      ),
+      -- Per-round breakdown: how many judges agreed (all / most / some / none)
+      -- Denominator: all rounds with judge data (includes splits where majority_winner IS NULL)
+      'agreement_breakdown', (
+        SELECT json_build_object(
+          'all3',           COUNT(*) FILTER (WHERE judges_agreeing = judge_count),
+          'two_of_three',   COUNT(*) FILTER (WHERE judges_agreeing >= 2 AND judges_agreeing < judge_count),
+          'one_of_three',   COUNT(*) FILTER (WHERE judges_agreeing = 1),
+          'lone_dissenter', COUNT(*) FILTER (WHERE judges_agreeing = 0),
+          'total',          COUNT(*),
+          'all3_pct',       ROUND(COUNT(*) FILTER (WHERE judges_agreeing = judge_count)::numeric            / NULLIF(COUNT(*), 0), 3),
+          'two_pct',        ROUND(COUNT(*) FILTER (WHERE judges_agreeing >= 2 AND judges_agreeing < judge_count)::numeric / NULLIF(COUNT(*), 0), 3),
+          'one_pct',        ROUND(COUNT(*) FILTER (WHERE judges_agreeing = 1)::numeric                     / NULLIF(COUNT(*), 0), 3),
+          'lone_pct',       ROUND(COUNT(*) FILTER (WHERE judges_agreeing = 0)::numeric                     / NULLIF(COUNT(*), 0), 3)
+        )
+        FROM round_accuracy
+      ),
+      'ten_eight_rate',      (
         SELECT ROUND(AVG(CASE WHEN user_loser_score <= 8 THEN 1.0 ELSE 0.0 END)::numeric, 3)
         FROM round_accuracy WHERE majority_winner IS NOT NULL
       ),
-      'accuracy_by_class', (
+      -- Of user 10-8 rounds, % where judges also scored it dominant (their loser got <= 8)
+      'ten_eight_quality',   (
+        SELECT ROUND(AVG(CASE WHEN judge_loser_score <= 8 THEN 1.0 ELSE 0.0 END)::numeric, 3)
+        FROM ten_eight_judge_scores
+      ),
+      'accuracy_by_class',   (
         SELECT json_agg(t ORDER BY t.rounds DESC)
         FROM (
           SELECT
             weight_class,
             ROUND(AVG(CASE WHEN user_winner = majority_winner THEN 1.0 ELSE 0.0 END)::numeric, 3) AS accuracy,
-            COUNT(*) AS rounds
+            COUNT(*) AS rounds,
+            ROUND(AVG(user_loser_score)::numeric, 2) AS avg_loser_score
           FROM round_accuracy
           WHERE majority_winner IS NOT NULL AND weight_class IS NOT NULL
           GROUP BY weight_class
           HAVING COUNT(*) >= 3
         ) t
       ),
-      'judges', (
+      'judges',              (
         SELECT json_agg(json_build_object(
-          'name',           judge,
-          'agreement_pct',  ROUND(agreed::numeric / rounds, 3),
-          'rounds',         rounds
+          'name',          judge,
+          'agreement_pct', ROUND(agreed::numeric / rounds, 3),
+          'rounds',        rounds
         ) ORDER BY agreed::numeric / rounds DESC)
         FROM judge_agreement
       )

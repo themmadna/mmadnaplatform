@@ -4,6 +4,21 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## Phase 6e.2 Steps 1+2 — Judging DNA RPC overhaul + UI redesign — 2026-03-07
+
+**What worked:**
+- Adding `judges_agreeing` as a window function in the `majority` CTE alongside the existing `f1_wins`/`f2_wins` was a clean extension — no extra CTE needed, same partition.
+- For `ten_eight_quality`, joining `complete_judges` back to `round_accuracy` (instead of a correlated subquery or EXISTS) gives a clean flat join and avoids self-referencing CTE issues.
+- `agreement_breakdown` using `COUNT(*) FILTER (WHERE ...)` in a single aggregation over `round_accuracy` is much cleaner than a separate `agreement_cats` CTE — eliminates one CTE entirely.
+
+**Key design choice:**
+- `agreement_breakdown` denominator = all rounds with judge data (includes split-decision rounds where majority_winner IS NULL). `accuracy` denominator = only rounds with a clear majority. These differ intentionally — agreement is per-judge, accuracy is per-majority. If the UI ever surfaces both totals, add a tooltip clarifying the difference.
+
+**What to avoid:**
+- Don't try to use `EXISTS` referencing a CTE name inside another CTE's WHERE clause — SQL sees the CTE name as the table it's being filtered against, creating confusing scope. Use a JOIN instead.
+
+---
+
 ## Phase 6c — Schema migration (fighter_scored_for → f1_score/f2_score) — 2026-03-07
 
 **What worked:**
