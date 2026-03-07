@@ -327,6 +327,18 @@ Stats 5, 6, 7, 8, 12 all require joining `round_fight_stats` per scored round. O
   - Takedown quality bias
   - Knockdown bias stat
 
+**Implementation — Step 5: Scored Fights list**
+
+Tab or section at the bottom of the Judging DNA page showing every fight the user has scored. Styled like existing fight cards but with the user's scorecard in place of the like/dislike/favorite buttons.
+
+- [ ] Data query: fetch all fights the user has scored — `user_round_scores` grouped by `fight_id`, summed to produce total f1/f2 scorecard (e.g. 29-28). Join `fights` + `fight_meta_details` for display info (fighters, event, weight class, method, result)
+- [ ] Add to `dataService.js`: `getScoredFights(userId)` — returns fights with user totals attached
+- [ ] UI: tab or collapsible section at the bottom of the Judging DNA view
+  - Fight card layout matching existing style (fighter names, event, weight class)
+  - Replace like/dislike/fav buttons with user's total scorecard (e.g. "29–28 {f1Last}")
+  - Optionally show green/red dot indicating if user picked the correct winner
+  - Clicking a card navigates to the fight detail view (same as existing fight cards)
+
 ---
 
 ### 6f. Leaderboard (Points System — deferred)
