@@ -3,6 +3,7 @@ import { ChevronLeft } from 'lucide-react';
 import { dataService } from '../dataService';
 import { supabase } from '../supabaseClient';
 import RoundScoringPanel from './RoundScoringPanel';
+import ScorecardComparison from './ScorecardComparison';
 
 // --- SCORING MODEL (Logistic Regression, 82.50% holdout accuracy) ---
 // Feature order and scaler values from scoring_model/scoring_model.json
@@ -162,26 +163,6 @@ function buildRoundData(meta, roundStats, judgeScores, eventYear) {
   });
 }
 
-function buildSummaryTotals(rounds, judgeScores, meta) {
-  const modelF1 = rounds.reduce((a, r) => a + r.model.f1Score, 0);
-  const modelF2 = rounds.reduce((a, r) => a + r.model.f2Score, 0);
-  const allJudges = [...new Set(rounds.flatMap(r => r.judges.map(j => j.judgeName)))];
-  const judgeTotals = allJudges.map(name => {
-    let f1 = 0, f2 = 0;
-    rounds.forEach(r => {
-      const j = r.judges.find(j => j.judgeName === name);
-      if (j?.f1Score != null && j?.f2Score != null) { f1 += j.f1Score; f2 += j.f2Score; }
-    });
-    return {
-      judgeName: name,
-      f1Total: f1,
-      f2Total: f2,
-      judgeWinner: f1 > f2 ? meta.fighter1_name : f2 > f1 ? meta.fighter2_name : 'DRAW',
-    };
-  });
-  return { model: { f1: modelF1, f2: modelF2 }, judges: judgeTotals };
-}
-
 // --- HELPER: display control time ---
 function fmtControlTime(stats) {
   if (!stats) return '—';
@@ -201,8 +182,25 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
   const [rounds, setRounds] = useState([]);
-  const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
+
+  // Whether the current user has submitted any scores for this fight
+  // Gates the Final Scorecard and Scorecard Comparison reveal
+  const [hasUserScores, setHasUserScores] = useState(false);
+
+  useEffect(() => {
+    if (fight.status !== 'completed') return;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { count } = await supabase
+        .from('user_round_scores')
+        .select('id', { count: 'exact', head: true })
+        .eq('fight_id', fight.id)
+        .eq('user_id', user.id);
+      if (count > 0) setHasUserScores(true);
+    })();
+  }, [fight.id, fight.status]);
 
   // Live fight status — seeded from DB, updated by ESPN polling
   const [fightStartedAt, setFightStartedAt] = useState(fight.fight_started_at || null);
@@ -296,7 +294,6 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
         const eventYear = fight.event_date ? new Date(fight.event_date).getFullYear() : new Date().getFullYear();
         const roundData = buildRoundData(m, roundStats, judgeScores, eventYear);
         setRounds(roundData);
-        setSummary(buildSummaryTotals(roundData, judgeScores, m));
       } catch (err) {
         console.error('FightDetailView load error:', err);
         setError('Failed to load fight details.');
@@ -367,15 +364,6 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
       f2Raw: rd.f2Stats?.sig_strikes_leg_landed ?? 0,
     },
   ];
-
-  const getDecisionType = (judges) => {
-    const winnerCounts = {};
-    judges.forEach(j => { winnerCounts[j.judgeWinner] = (winnerCounts[j.judgeWinner] || 0) + 1; });
-    const counts = Object.values(winnerCounts);
-    if (counts.length === 1) return 'Unanimous';
-    if (counts.some(c => c === 2)) return 'Split';
-    return 'Majority';
-  };
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} p-4 md:p-8 animate-in fade-in`}>
@@ -502,46 +490,6 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                     <p className="text-xs opacity-40 text-center mb-5 uppercase tracking-widest">No stats for this round</p>
                   )}
 
-                  {/* MODEL PREDICTION + JUDGE SCORES */}
-                  {(rd.model.confidence !== null || rd.judges.length > 0) && (
-                    <div className="space-y-2">
-                      {rd.model.confidence !== null && (
-                        <div className="grid grid-cols-3 items-center text-xs pb-2 border-b border-white/10">
-                          <span className={`font-bold ${rd.model.winner === 'f1' ? currentTheme.accent : 'opacity-60'}`}>
-                            {rd.model.f1Score}
-                          </span>
-                          <span className="text-center flex flex-col items-center opacity-50">
-                            <span className="font-bold uppercase tracking-wider">Model</span>
-                            <span className="opacity-80">({Math.round(rd.model.confidence * 100)}%)</span>
-                          </span>
-                          <span className={`text-right font-bold ${rd.model.winner === 'f2' ? currentTheme.accent : 'opacity-60'}`}>
-                            {rd.model.f2Score}
-                          </span>
-                        </div>
-                      )}
-                      {rd.judges.map(j => (
-                        <div key={j.judgeName} className="grid grid-cols-3 items-center text-xs">
-                          <span className={`font-bold ${j.f1Score > j.f2Score ? currentTheme.accent : 'opacity-60'}`}>
-                            {j.f1Score ?? '—'}
-                          </span>
-                          <span className="text-center opacity-40 flex items-center justify-center gap-1">
-                            {j.judgeName}
-                            {j.matchesModel !== null && (
-                              <span className={j.matchesModel ? 'text-green-400' : 'text-red-400'}>
-                                {j.matchesModel ? '✓' : '✗'}
-                              </span>
-                            )}
-                          </span>
-                          <span className={`text-right font-bold ${j.f2Score > j.f1Score ? currentTheme.accent : 'opacity-60'}`}>
-                            {j.f2Score ?? '—'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {rd.judges.length === 0 && fight.status === 'completed' && (
-                    <p className="text-xs opacity-30 text-center uppercase tracking-widest">No judges' scorecard for this round</p>
-                  )}
                 </div>
               </div>
             ))}
@@ -553,50 +501,20 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
               </p>
             )}
 
-            {/* SUMMARY TOTALS */}
-            {summary && summary.judges.length > 0 && (
-              <div className={`${currentTheme.card} rounded-xl border mb-6 shadow-lg overflow-hidden`}>
-                <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10 flex items-center justify-between">
-                  <p className="text-xs font-black uppercase tracking-widest opacity-60">Final Scorecard</p>
-                  <span className={`text-xs font-bold uppercase tracking-widest ${currentTheme.accent}`}>
-                    {getDecisionType(summary.judges)} Decision
-                  </span>
-                </div>
-                <div className="p-6">
-                  {/* Column headers */}
-                  <div className="grid grid-cols-3 text-xs opacity-40 uppercase tracking-widest mb-3">
-                    <span></span>
-                    <span className="text-center font-bold">{meta.fighter1_name.split(' ').pop()}</span>
-                    <span className="text-right font-bold">{meta.fighter2_name.split(' ').pop()}</span>
-                  </div>
-                  {/* Model row */}
-                  <div className="grid grid-cols-3 items-center text-sm mb-2 pb-2 border-b border-white/10">
-                    <span className="text-xs opacity-50 uppercase tracking-wider font-bold">Model</span>
-                    <span className={`text-center font-black ${summary.model.f1 > summary.model.f2 ? currentTheme.accent : 'opacity-60'}`}>
-                      {summary.model.f1}
-                    </span>
-                    <span className={`text-right font-black ${summary.model.f2 > summary.model.f1 ? currentTheme.accent : 'opacity-60'}`}>
-                      {summary.model.f2}
-                    </span>
-                  </div>
-                  {/* Judge rows */}
-                  {summary.judges.map(j => (
-                    <div key={j.judgeName} className="grid grid-cols-3 items-center text-sm mb-1">
-                      <span className="text-xs opacity-40 truncate">{j.judgeName}</span>
-                      <span className={`text-center font-bold ${j.f1Total > j.f2Total ? currentTheme.accent : 'opacity-60'}`}>
-                        {j.f1Total}
-                      </span>
-                      <span className={`text-right font-bold ${j.f2Total > j.f1Total ? currentTheme.accent : 'opacity-60'}`}>
-                        {j.f2Total}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
             {/* YOUR SCORECARD — completed fights */}
             {fight.status === 'completed' && meta && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} />
+              <RoundScoringPanel
+                fight={fight}
+                meta={meta}
+                isLocked={false}
+                currentTheme={currentTheme}
+                onFirstScore={() => setHasUserScores(true)}
+              />
+            )}
+
+            {/* SCORECARD COMPARISON */}
+            {fight.status === 'completed' && meta && rounds.length > 0 && (
+              <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} />
             )}
           </>
         )}

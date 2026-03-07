@@ -186,6 +186,13 @@ export const dataService = {
     if (error) throw error;
   },
 
+  // --- COMMUNITY SCORECARD ---
+  async getCommunityScorecard(fightId) {
+    const { data, error } = await supabase.rpc('get_community_scorecard', { p_fight_id: fightId });
+    if (error) { console.error('getCommunityScorecard error:', error); return []; }
+    return data || [];
+  },
+
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
   // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {
