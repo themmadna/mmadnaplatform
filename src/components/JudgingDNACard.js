@@ -2,20 +2,11 @@ import { Scale } from 'lucide-react';
 
 const MIN_FIGHTS = 5;
 
-// Shorten weight class labels for compact display
+// Strip trailing " Bout" and common prefixes to keep labels clean
 const shortClass = (wc) =>
   (wc || '—')
-    .replace(' Weight', '')
-    .replace('Super ', 'S.')
-    .replace('Strawweight', 'Straw')
-    .replace('Flyweight', 'Fly')
-    .replace('Bantamweight', 'Bantam')
-    .replace('Featherweight', 'Feather')
-    .replace('Lightweight', 'Light')
-    .replace('Welterweight', 'Welter')
-    .replace('Middleweight', 'Middle')
-    .replace('Light Heavyweight', 'LHW')
-    .replace('Heavyweight', 'HW');
+    .replace(/ Bout$/i, '')
+    .replace(/^(UFC\s+)?(Interim\s+)?Women's\s+/i, "Women's ");
 
 const Stat = ({ label, value, sub, big = false }) => (
   <div className="text-center">
@@ -60,16 +51,22 @@ const AgreementBar = ({ breakdown }) => {
           ) : null
         )}
       </div>
-      {/* Labels */}
-      <div className="flex justify-between">
-        {segments.map(s => (
-          <div key={s.key} className="text-center flex-1">
-            <p className="text-[10px] font-bold opacity-70">
-              {s.pct ? `${Math.round(s.pct * 100)}%` : '0%'}
-            </p>
-            <p className="text-[9px] uppercase tracking-wide opacity-35">{s.label}</p>
-          </div>
-        ))}
+      {/* Labels — same widths as bar segments so they align */}
+      <div className="flex">
+        {segments.map(s =>
+          (s.pct || 0) > 0 ? (
+            <div
+              key={s.key}
+              className="text-center overflow-hidden min-w-0"
+              style={{ width: `${Math.round((s.pct || 0) * 100)}%` }}
+            >
+              <p className="text-[10px] font-bold opacity-70 truncate">
+                {Math.round(s.pct * 100)}%
+              </p>
+              <p className="text-[9px] uppercase tracking-wide opacity-35 truncate">{s.label}</p>
+            </div>
+          ) : null
+        )}
       </div>
     </div>
   );
@@ -177,7 +174,7 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
             <div className="space-y-2.5">
               {/* Column headers */}
               <div className="flex items-center gap-2 text-[9px] uppercase tracking-widest opacity-25 pb-1">
-                <span className="w-20 flex-shrink-0">Division</span>
+                <span className="w-32 flex-shrink-0">Division</span>
                 <span className="flex-1">Accuracy</span>
                 <span className="w-8 text-right">Acc</span>
                 <span className="w-8 text-right">Rds</span>
@@ -203,7 +200,11 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
                   </span>
                 </div>
               ))}
-              <p className="text-[9px] opacity-20 pt-1">Avg loser score — lower = stricter scoring</p>
+              <div className="pt-2 space-y-0.5">
+                <p className="text-[9px] opacity-20">Acc — % of rounds matching the judge majority</p>
+                <p className="text-[9px] opacity-20">Rds — rounds where judge scorecard data was available</p>
+                <p className="text-[9px] opacity-20">Avg loser — your average score for the losing fighter (lower = stricter)</p>
+              </div>
             </div>
           </div>
         )}
