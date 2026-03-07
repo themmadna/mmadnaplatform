@@ -269,6 +269,7 @@ export default function UFCFightRating() {
 
   const [recommendations, setRecommendations] = useState([]);
   const [activeProfileTab, setActiveProfileTab] = useState('favorite');
+  const [dnaTab, setDnaTab] = useState('combat');
   const [judgingProfile, setJudgingProfile] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('ufc_app_theme') || 'modern');
   const [showThemeSelector, setShowThemeSelector] = useState(false);
@@ -330,9 +331,9 @@ export default function UFCFightRating() {
     prevViewRef.current = currentView;
   }, [currentView]);
 
-  // Fetch judging profile once when user opens the profile view
+  // Fetch judging profile once when user opens the DNA view
   useEffect(() => {
-    if (currentView !== 'profile' || judgingProfile) return;
+    if (currentView !== 'dna' || judgingProfile) return;
     dataService.getUserJudgingProfile().then(setJudgingProfile);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
@@ -943,29 +944,50 @@ export default function UFCFightRating() {
             <div className="animate-in slide-in-from-right pb-20">
                <div className="flex items-center gap-2 mb-6 opacity-60">
                    <Dna size={20} />
-                   <span className="font-bold">COMBAT DNA ANALYSIS</span>
+                   <span className="font-bold">DNA ANALYSIS</span>
                </div>
 
-               <div className="flex justify-center mb-6">
-                    <div className="bg-white/10 p-1 rounded-xl flex gap-1">
-                        {['combined', 'likes', 'favorites'].map((type) => (
-                            <button
-                                key={type}
-                                onClick={() => setDnaFilter(type)}
-                                className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
-                                    ${dnaFilter === type 
-                                        ? (type === 'favorites' ? 'bg-yellow-500 text-black' : 'bg-white text-black') 
-                                        : 'text-white/50 hover:text-white'}`}
-                            >
-                                {type === 'combined' ? 'All Data' : type}
-                            </button>
-                        ))}
-                    </div>
+               {/* Top-level tab: Combat DNA / Judging DNA */}
+               <div className="flex bg-white/10 p-1 rounded-xl mb-6">
+                 {[['combat', 'Combat DNA'], ['judging', 'Judging DNA']].map(([key, label]) => (
+                   <button
+                     key={key}
+                     onClick={() => setDnaTab(key)}
+                     className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
+                       ${dnaTab === key ? 'bg-white text-black' : 'text-white/50 hover:text-white'}`}
+                   >
+                     {label}
+                   </button>
+                 ))}
                </div>
-               
-               <CombatDNACard dna={combatDNA} currentTheme={currentTheme} baselines={baselines} />
-               {comparisonData.length > 0 && <CombatScatterPlot data={comparisonData} baselines={baselines} currentTheme={currentTheme} />}
-               <CombatDNAVisual dna={combatDNA} currentTheme={currentTheme} />
+
+               {dnaTab === 'combat' && (
+                 <>
+                   <div className="flex justify-center mb-6">
+                     <div className="bg-white/10 p-1 rounded-xl flex gap-1">
+                       {['combined', 'likes', 'favorites'].map((type) => (
+                         <button
+                           key={type}
+                           onClick={() => setDnaFilter(type)}
+                           className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
+                             ${dnaFilter === type
+                               ? (type === 'favorites' ? 'bg-yellow-500 text-black' : 'bg-white text-black')
+                               : 'text-white/50 hover:text-white'}`}
+                         >
+                           {type === 'combined' ? 'All Data' : type}
+                         </button>
+                       ))}
+                     </div>
+                   </div>
+                   <CombatDNACard dna={combatDNA} currentTheme={currentTheme} baselines={baselines} />
+                   {comparisonData.length > 0 && <CombatScatterPlot data={comparisonData} baselines={baselines} currentTheme={currentTheme} />}
+                   <CombatDNAVisual dna={combatDNA} currentTheme={currentTheme} />
+                 </>
+               )}
+
+               {dnaTab === 'judging' && (
+                 <JudgingDNACard profile={judgingProfile} currentTheme={currentTheme} />
+               )}
             </div>
         )}
 
@@ -976,8 +998,6 @@ export default function UFCFightRating() {
                  <User size={20} />
                  <span className="font-bold">VOTING HISTORY</span>
              </div>
-
-            <JudgingDNACard profile={judgingProfile} currentTheme={currentTheme} />
 
             <div className="flex bg-gray-800/50 p-1 rounded-xl mb-8">
               {['favorite', 'like', 'dislike'].map(tab => (
