@@ -228,6 +228,13 @@ Full judge-style scoring: pick winner per round + optional 10-8 / 10-7 flag. Jud
 - Scored ALL rounds while judges were hidden (live or historical before viewing) = ✅ eligible
 - Forfeited, or modified after reveal, or scored historical fight with judges visible = ❌ ineligible
 
+**Scoring flow UX improvements (deferred — to be built during 6e.2):**
+- [ ] "View judges without scoring" option — user can choose to skip scoring and just see the judges' cards. Triggers forfeit path (marks `forfeited = true` → leaderboard-ineligible)
+- [ ] Ineligibility warning modal — shown in two situations:
+  1. User attempts to view judges before completing all rounds (currently the "Forfeit & view" path) — warn that their scoring will not count towards the leaderboard before confirming
+  2. User returns to a fight they've already fully scored and attempts to change any score — warn that editing after judges are revealed marks their scorecard as modified and removes leaderboard eligibility
+- [ ] Warning should be a confirmation step (cancel / proceed), not just a dismissible notice
+
 ---
 
 ### 6d. Scorecard Reveal View — complete
