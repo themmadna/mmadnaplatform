@@ -143,21 +143,26 @@ Which division has the highest judge outlier rate and most split decisions? (cro
 
 Users score individual rounds using full judge-style input. Compare their scorecard to official judges and the community. Build a personal judging profile showing their accuracy and tendencies over time.
 
-Live event support via api-sports.io (free tier) — polls fight status to open/close the scoring window.
+Live event support via ESPN's unofficial API (free, no key required, already used in project for event start times). Frontend clients poll fight status; the first client to detect a status change calls a Supabase Edge Function which writes the timestamp to the DB. No always-running backend needed.
 
 ---
 
 ### 6a. DB Migration
 
-New tables and constraint extension. All additive — no existing data touched.
+New tables and columns. All additive — no existing data touched.
 
-- [ ] Extend `fights.status` to include `'live'` (currently only `'upcoming'` / `'completed'`)
-- [ ] Add `fights.api_sports_id` (nullable integer — cross-reference for live status polling)
-- [ ] Add `ufc_events.api_sports_id` (nullable integer)
+- [ ] Add `fights.espn_competition_id` (nullable text — ESPN's competition ID for status polling)
+- [ ] Add `fights.fight_started_at` (nullable timestamptz — set when ESPN returns `STATUS_IN_PROGRESS`)
+- [ ] Add `fights.fight_ended_at` (nullable timestamptz — set when ESPN returns `STATUS_FINAL`)
 - [ ] Create `user_round_scores` table (schema below)
 - [ ] Create `user_fight_scorecard_state` table (schema below)
 
 ```sql
+-- fights: new columns
+ALTER TABLE fights ADD COLUMN espn_competition_id text;
+ALTER TABLE fights ADD COLUMN fight_started_at timestamptz;
+ALTER TABLE fights ADD COLUMN fight_ended_at timestamptz;
+
 -- user_round_scores
 CREATE TABLE user_round_scores (
   id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -187,14 +192,23 @@ CREATE TABLE user_fight_scorecard_state (
 
 ---
 
-### 6b. Live Event Sync — `sync_live_event.py`
+### 6b. Live Event Sync — ESPN polling + Edge Function
 
-New script alongside existing scrapers in `ufc-web-app/`. Polls api-sports.io (free tier: 100 req/day) during event windows to detect when each fight starts and ends. Triggers the main scraper when the card is complete.
+No new Python script or external API key needed. ESPN's scoreboard API is already used in the project.
 
-- [ ] Make a test API call to confirm api-sports.io `status` field values for UFC fights
-- [ ] Build `sync_live_event.py` — polls every 3-5 min, updates `fights.status` in Supabase
-- [ ] Add `APISPORTS_KEY` to `.env`
-- [ ] Test dry-run against a historical event
+**How it works:**
+1. `sync_event_times()` (existing Phase 5 scraper) is extended to also populate `fights.espn_competition_id` for upcoming fights by matching ESPN's competition list to our `fights` rows by fighter name.
+2. During a live event, each user's browser polls `https://sports.core.api.espn.com/v2/sports/mma/leagues/ufc/events/{eventId}/competitions/{competitionId}/status` every 30-60s.
+3. The first client to detect `STATUS_IN_PROGRESS` / `STATUS_FINAL` calls a Supabase Edge Function (`record-fight-status`) which writes `fight_started_at` / `fight_ended_at` using a NULL-safe update (only writes if the column is currently NULL — safe against race conditions).
+4. All subsequent clients read `fight_started_at` / `fight_ended_at` from the DB and skip ESPN entirely.
+
+**Users never write directly to `fights`.** The Edge Function runs with service role and validates the ESPN payload before writing.
+
+- [ ] Extend `sync_event_times()` to populate `fights.espn_competition_id` for upcoming fights
+- [ ] Create Supabase Edge Function `record-fight-status` (validates ESPN status, writes started_at / ended_at if NULL)
+- [ ] Frontend: poll ESPN per-fight status every 30-60s when fight is upcoming; call Edge Function on state change
+- [ ] Frontend: gate scoring UI on `fight_started_at IS NOT NULL`; lock submissions on `fight_ended_at IS NOT NULL`
+- [ ] Test against a historical ESPN event ID to confirm competition-level status data shape
 
 ---
 
