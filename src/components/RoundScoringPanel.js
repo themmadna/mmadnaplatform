@@ -109,7 +109,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   const eligibilityNote = (() => {
     if (!judgesRevealed) return null;
     if (scorecardState?.leaderboard_eligible) return { text: '✓ Eligible', positive: true };
-    if (isHistorical) return { text: 'For fun — judges visible', positive: false };
+    if (isHistorical) return null;
     if (scorecardState?.forfeited) return { text: 'Ineligible — forfeited', positive: false };
     if (scorecardState?.modified_after_reveal) return { text: 'Ineligible — edited after reveal', positive: false };
     return { text: 'Ineligible', positive: false };
