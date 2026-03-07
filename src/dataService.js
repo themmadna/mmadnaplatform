@@ -193,6 +193,15 @@ export const dataService = {
     return data || [];
   },
 
+  // --- JUDGING DNA PROFILE ---
+  async getUserJudgingProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('get_user_judging_profile');
+    if (error) { console.error('getUserJudgingProfile error:', error); return null; }
+    return data;
+  },
+
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
   // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {

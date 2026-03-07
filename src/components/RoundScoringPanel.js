@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dataService } from '../dataService';
 
-const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onFirstScore }) => {
+const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsScored }) => {
   const [user, setUser]                   = useState(null);
   const [scores, setScores]               = useState({});   // { [round]: { fighterScoredFor, points } } — from DB
   const [pending, setPending]             = useState({});   // local UI selection
@@ -83,14 +83,13 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onFirstScore }
       }
       const f1Score = p.fighterScoredFor === f1Name ? 10 : p.points;
       const f2Score = p.fighterScoredFor === f2Name ? 10 : p.points;
-      const isFirstScore = Object.keys(scores).length === 0;
       await dataService.upsertRoundScore(fight.id, round, f1Score, f2Score);
       const newScores = { ...scores, [round]: p };
       setScores(newScores);
-      if (isFirstScore) onFirstScore?.();
-      // Auto-reveal when all scoreable rounds submitted (live fight only)
-      if (!judgesRevealed && Object.keys(newScores).length >= totalRounds) {
-        await handleReveal(newScores, false);
+      // Notify parent + auto-reveal when all scoreable rounds submitted
+      if (Object.keys(newScores).length >= totalRounds) {
+        onAllRoundsScored?.();
+        if (!judgesRevealed) await handleReveal(newScores, false);
       }
     } catch (e) {
       console.error('[RoundScoring] submit error:', e);

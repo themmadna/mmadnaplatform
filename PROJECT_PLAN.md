@@ -230,31 +230,38 @@ Full judge-style scoring: pick winner per round + optional 10-8 / 10-7 flag. Jud
 
 ---
 
-### 6d. Scorecard Reveal View
+### 6d. Scorecard Reveal View — complete
 
 Shown in FightDetailView after judges are revealed.
 
-- [ ] Three-column scorecard: **User** | **Official judges (3 cards)** | **Community average**
-- [ ] Highlight round-level agreements (green) and disagreements (red) vs majority judge decision
-- [ ] Community average: aggregate of all `user_round_scores` for that fight per round
-- [ ] Add `getCommunityScorecard(fightId)` to `dataService.js`
+- [x] Three-column scorecard: **User** | **Official judges (3 cards)** | **Community average**
+- [x] Highlight round-level agreements (green) and disagreements (red) vs majority judge decision
+- [x] Community average: aggregate of all `user_round_scores` for that fight per round
+- [x] Add `getCommunityScorecard(fightId)` to `dataService.js`
+- [x] `ScorecardComparison.js` — gated by `hasUserScores` from FightDetailView
+- [x] Reveal triggers when ALL scoreable rounds scored (`onAllRoundsScored`) not just the first
 
 ---
 
-### 6e. Judging DNA Profile (User Profile Page)
+### 6e. Judging DNA Profile (User Profile Page) — complete ✅ verified
 
-Added to existing profile page alongside Combat DNA. Requires sufficient scoring history (min ~5 fights).
+Added to existing profile page (above voting history tabs). Requires ≥5 fights scored.
 
 **Accuracy stats:**
-- [ ] Overall accuracy % (rounds matching majority judge decision)
-- [ ] Accuracy by weight class and fight method
+- [x] Overall accuracy % (rounds matching majority judge decision)
+- [x] Accuracy by weight class (top 4 classes with ≥3 rounds)
 
 **Judging tendencies:**
-- [ ] Striking vs grappling bias (cross-ref round stats for disagreed rounds)
-- [ ] Aggressor bias (correlation with sig_strikes_attempted differential)
-- [ ] 10-8 rate vs judges (do they give more/fewer 10-8s?)
-- [ ] Closest official judge match (which judge's card most closely mirrors theirs)
-- [ ] Build `get_user_judging_profile(p_user_id)` Supabase RPC function
+- [x] 10-8 rate (how often user gives 10-8 rounds)
+- [x] Closest official judge match (highest agreement % with ≥5 shared rounds)
+- [ ] Striking vs grappling bias (deferred — requires round_fight_stats join)
+- [ ] Aggressor bias (deferred)
+
+**Implementation:**
+- [x] `get_user_judging_profile()` RPC — date ±1 join + last-name fighter match + majority computation. `supabase/deploy_judging_profile.py`
+- [x] `JudgingDNACard.js` — `src/components/JudgingDNACard.js`
+- [x] `dataService.getUserJudgingProfile()` → `supabase.rpc('get_user_judging_profile')`
+- [x] App.js: fetch on profile view open (once), render above voting tabs
 
 ---
 

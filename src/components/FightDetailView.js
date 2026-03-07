@@ -508,7 +508,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                 meta={meta}
                 isLocked={false}
                 currentTheme={currentTheme}
-                onFirstScore={() => setHasUserScores(true)}
+                onAllRoundsScored={() => setHasUserScores(true)}
               />
             )}
 

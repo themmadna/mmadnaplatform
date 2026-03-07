@@ -6,6 +6,7 @@ import LoginPage from './Login';
 import CombatDNAVisual from './CombatDNAVisual';
 import CombatScatterPlot from './components/CombatScatterPlot';
 import FightDetailView from './components/FightDetailView';
+import JudgingDNACard from './components/JudgingDNACard';
 
 // --- CombatDNA Card (The 5 Metrics + Intensity) ---
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
@@ -266,8 +267,9 @@ export default function UFCFightRating() {
     strikePace: 30.5, intensityScore: 4.03, violenceIndex: 0.15, engagementStyle: 45, finishRate: 48, avgFightTime: 10.5
   });
 
-  const [recommendations, setRecommendations] = useState([]); 
+  const [recommendations, setRecommendations] = useState([]);
   const [activeProfileTab, setActiveProfileTab] = useState('favorite');
+  const [judgingProfile, setJudgingProfile] = useState(null);
   const [theme, setTheme] = useState(() => localStorage.getItem('ufc_app_theme') || 'modern');
   const [showThemeSelector, setShowThemeSelector] = useState(false);
   const themeSelectorRef = useRef(null);
@@ -326,6 +328,13 @@ export default function UFCFightRating() {
       window.scrollTo(0, savedScrollRef.current);
     }
     prevViewRef.current = currentView;
+  }, [currentView]);
+
+  // Fetch judging profile once when user opens the profile view
+  useEffect(() => {
+    if (currentView !== 'profile' || judgingProfile) return;
+    dataService.getUserJudgingProfile().then(setJudgingProfile);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
 
   useEffect(() => {
@@ -967,7 +976,9 @@ export default function UFCFightRating() {
                  <User size={20} />
                  <span className="font-bold">VOTING HISTORY</span>
              </div>
-            
+
+            <JudgingDNACard profile={judgingProfile} currentTheme={currentTheme} />
+
             <div className="flex bg-gray-800/50 p-1 rounded-xl mb-8">
               {['favorite', 'like', 'dislike'].map(tab => (
                 <button 
