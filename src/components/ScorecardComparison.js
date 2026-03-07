@@ -149,7 +149,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores 
                 <div className={`grid grid-cols-3 items-center text-xs mt-1 ${commColor}`}>
                   <span className="font-bold">{parseFloat(commRow.f1_avg).toFixed(1)}</span>
                   <span className="text-center opacity-70">
-                    Avg ({commRow.user_count})
+                    Users Avg ({commRow.user_count})
                   </span>
                   <span className="text-right font-bold">{parseFloat(commRow.f2_avg).toFixed(1)}</span>
                 </div>
@@ -174,7 +174,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores 
               <span className={`font-black ${commTotal.f1 > commTotal.f2 ? currentTheme.accent : 'opacity-60'}`}>
                 {commTotal.f1.toFixed(1)}
               </span>
-              <span className="text-center text-xs opacity-40 uppercase tracking-wider">Avg Total</span>
+              <span className="text-center text-xs opacity-40 uppercase tracking-wider">Users Avg Total</span>
               <span className={`text-right font-black ${commTotal.f2 > commTotal.f1 ? currentTheme.accent : 'opacity-60'}`}>
                 {commTotal.f2.toFixed(1)}
               </span>
