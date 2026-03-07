@@ -139,41 +139,116 @@ Which division has the highest judge outlier rate and most split decisions? (cro
 
 ---
 
-## Phase 6: User Round Scoring
+## Phase 6: User Round Scoring & Judging DNA
 
-Users score individual rounds themselves. Compare their card to judges, the ML model, and the community.
+Users score individual rounds using full judge-style input. Compare their scorecard to official judges and the community. Build a personal judging profile showing their accuracy and tendencies over time.
 
-### Part A: Historical Fight Scoring — immediately buildable, no new data needed
-- Add round scoring UI to FightDetailView: per round, pick Fighter A / Fighter B / Draw (+ optional 10-8)
-- Store in new `user_round_scores` table (see schema below)
-- After submitting: show their card vs each judge, vs ML model, vs community consensus
-- Surface "controversial rounds" — rounds where community is split (e.g. 52% / 48%)
+Live event support via api-sports.io (free tier) — polls fight status to open/close the scoring window.
 
-### Part B: User Scoring Profile
-- Style preference radar (same analysis as judge profiles, but for the user)
-- Agreement rate with official judges overall and per judge; agreement rate with ML model
-- Most contrarian fights — where their card differed most from everyone else
+---
 
-### Part C: Controversial Decision Analysis
-- Rank fights by community disagreement (rounds closest to 50/50 split)
-- Fights where majority of users scored it differently from the judges
-- Filterable by weight class, era, specific judge
+### 6a. DB Migration
 
-### Part D: Live Scoring — future (requires live data source)
-UFCStats only publishes stats after the fight ends. Options to investigate:
-- ESPN unofficial MMA API (already used for event times) — probe for live fight data depth
-- SportRadar — enterprise-level live UFC feed, likely expensive
-- Crowdsourced live stats — users self-report, reconcile with official stats after
+New tables and constraint extension. All additive — no existing data touched.
 
-Build Parts A–C first (no blockers). Revisit live scoring once historical scoring has traction.
+- [ ] Extend `fights.status` to include `'live'` (currently only `'upcoming'` / `'completed'`)
+- [ ] Add `fights.api_sports_id` (nullable integer — cross-reference for live status polling)
+- [ ] Add `ufc_events.api_sports_id` (nullable integer)
+- [ ] Create `user_round_scores` table (schema below)
+- [ ] Create `user_fight_scorecard_state` table (schema below)
 
-### New DB table: `user_round_scores`
+```sql
+-- user_round_scores
+CREATE TABLE user_round_scores (
+  id                  uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id             uuid NOT NULL,
+  fight_id            bigint NOT NULL REFERENCES fights(id) ON DELETE CASCADE,
+  round               integer NOT NULL,
+  fighter_scored_for  text NOT NULL,
+  points              integer NOT NULL CHECK (points IN (10, 9, 8, 7)),
+  submitted_at        timestamptz DEFAULT now(),
+  UNIQUE (user_id, fight_id, round)
+);
+
+-- user_fight_scorecard_state
+CREATE TABLE user_fight_scorecard_state (
+  user_id                uuid NOT NULL,
+  fight_id               bigint NOT NULL REFERENCES fights(id) ON DELETE CASCADE,
+  scored_blind           boolean DEFAULT false,     -- all rounds scored before judges revealed
+  forfeited              boolean DEFAULT false,     -- chose to view judges mid-scoring
+  modified_after_reveal  boolean DEFAULT false,     -- changed a score after judges were shown
+  judges_revealed_at     timestamptz,
+  leaderboard_eligible   boolean GENERATED ALWAYS AS (
+    scored_blind AND NOT forfeited AND NOT modified_after_reveal
+  ) STORED,
+  PRIMARY KEY (user_id, fight_id)
+);
 ```
-user_id       text         (FK → auth.users)
-fight_url     text         (FK → fights.fight_url)
-round         int
-winner_picked text         (fighter name or "draw")
-score         text         ("10-9", "10-8", "10-10")
-created_at    timestamptz
-UNIQUE (user_id, fight_url, round)
-```
+
+---
+
+### 6b. Live Event Sync — `sync_live_event.py`
+
+New script alongside existing scrapers in `ufc-web-app/`. Polls api-sports.io (free tier: 100 req/day) during event windows to detect when each fight starts and ends. Triggers the main scraper when the card is complete.
+
+- [ ] Make a test API call to confirm api-sports.io `status` field values for UFC fights
+- [ ] Build `sync_live_event.py` — polls every 3-5 min, updates `fights.status` in Supabase
+- [ ] Add `APISPORTS_KEY` to `.env`
+- [ ] Test dry-run against a historical event
+
+---
+
+### 6c. Scoring UI in FightDetailView
+
+Full judge-style scoring: pick winner per round + optional 10-8 / 10-7 flag. Judge scores hidden by default.
+
+- [ ] Add round scoring panel to `FightDetailView.js` (appears for all fights — live and historical)
+- [ ] Judge scores hidden until: all rounds scored → auto-reveal, or "Forfeit & view" clicked
+- [ ] Score finality: scores submitted before judges visible = locked (no edits). Post-reveal edits allowed but mark `modified_after_reveal = true` → leaderboard-ineligible
+- [ ] Historical fights always `scored_blind = false` (judges already known) → leaderboard-ineligible
+
+**Leaderboard eligibility rules:**
+- Scored ALL rounds while judges were hidden (live or historical before viewing) = ✅ eligible
+- Forfeited, or modified after reveal, or scored historical fight with judges visible = ❌ ineligible
+
+---
+
+### 6d. Scorecard Reveal View
+
+Shown in FightDetailView after judges are revealed.
+
+- [ ] Three-column scorecard: **User** | **Official judges (3 cards)** | **Community average**
+- [ ] Highlight round-level agreements (green) and disagreements (red) vs majority judge decision
+- [ ] Community average: aggregate of all `user_round_scores` for that fight per round
+- [ ] Add `getCommunityScorecard(fightId)` to `dataService.js`
+
+---
+
+### 6e. Judging DNA Profile (User Profile Page)
+
+Added to existing profile page alongside Combat DNA. Requires sufficient scoring history (min ~5 fights).
+
+**Accuracy stats:**
+- [ ] Overall accuracy % (rounds matching majority judge decision)
+- [ ] Accuracy by weight class and fight method
+
+**Judging tendencies:**
+- [ ] Striking vs grappling bias (cross-ref round stats for disagreed rounds)
+- [ ] Aggressor bias (correlation with sig_strikes_attempted differential)
+- [ ] 10-8 rate vs judges (do they give more/fewer 10-8s?)
+- [ ] Closest official judge match (which judge's card most closely mirrors theirs)
+- [ ] Build `get_user_judging_profile(p_user_id)` Supabase RPC function
+
+---
+
+### 6f. Leaderboard (Points System — deferred)
+
+Leaderboard based on accuracy % for v1. Points system (bonus for correct 10-8 calls, etc.) added later once the feature has traction.
+
+- [ ] Leaderboard page or section: rank users by accuracy % — overall and by weight class
+- [ ] Only `leaderboard_eligible = true` scorecards count
+
+---
+
+### Build order
+6a → 6b → 6c → 6d → 6e → 6f (leaderboard deferred)
