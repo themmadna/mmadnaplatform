@@ -4,6 +4,17 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## Phase 6a — DB Migration — 2026-03-07
+
+**What worked:**
+- `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` make migrations idempotent — safe to re-run.
+- Supabase Management API (`/v1/projects/{ref}/database/query`) handles DDL fine; each statement sent separately to isolate errors.
+- `leaderboard_eligible` as a `GENERATED ALWAYS AS ... STORED` boolean column avoids app-layer logic drift — eligibility is always consistent with the source booleans.
+
+**Nothing to change** — migration was straightforward.
+
+---
+
 ## Cross-source data joining
 
 - **Never join two different data sources on `event_name` or `bout` strings.** They will differ in formatting, punctuation, and casing. Use a neutral key like `date` or a normalized URL slug.

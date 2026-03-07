@@ -151,11 +151,11 @@ Live event support via ESPN's unofficial API (free, no key required, already use
 
 New tables and columns. All additive — no existing data touched.
 
-- [ ] Add `fights.espn_competition_id` (nullable text — ESPN's competition ID for status polling)
-- [ ] Add `fights.fight_started_at` (nullable timestamptz — set when ESPN returns `STATUS_IN_PROGRESS`)
-- [ ] Add `fights.fight_ended_at` (nullable timestamptz — set when ESPN returns `STATUS_FINAL`)
-- [ ] Create `user_round_scores` table (schema below)
-- [ ] Create `user_fight_scorecard_state` table (schema below)
+- [x] Add `fights.espn_competition_id` (nullable text — ESPN's competition ID for status polling)
+- [x] Add `fights.fight_started_at` (nullable timestamptz — set when ESPN returns `STATUS_IN_PROGRESS`)
+- [x] Add `fights.fight_ended_at` (nullable timestamptz — set when ESPN returns `STATUS_FINAL`)
+- [x] Create `user_round_scores` table (schema below)
+- [x] Create `user_fight_scorecard_state` table (schema below)
 
 ```sql
 -- fights: new columns
