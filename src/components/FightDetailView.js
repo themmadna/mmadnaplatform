@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { dataService } from '../dataService';
+import { supabase } from '../supabaseClient';
 
 // --- SCORING MODEL (Logistic Regression, 82.50% holdout accuracy) ---
 // Feature order and scaler values from scoring_model/scoring_model.json
@@ -192,12 +193,79 @@ function fmtControlTime(stats) {
 
 // --- COMPONENT ---
 
+const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
+const ESPN_SCOREBOARD = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard';
+
 const FightDetailView = ({ fight, currentTheme, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
   const [rounds, setRounds] = useState([]);
   const [summary, setSummary] = useState(null);
   const [error, setError] = useState(null);
+
+  // Live fight status — seeded from DB, updated by ESPN polling
+  const [fightStartedAt, setFightStartedAt] = useState(fight.fight_started_at || null);
+  const [fightEndedAt, setFightEndedAt]     = useState(fight.fight_ended_at   || null);
+
+  // Poll ESPN every 60s for upcoming fights with a known ESPN competition ID.
+  // First client to detect a status change calls the Edge Function, which writes
+  // the timestamp to the DB. Subsequent clients read it from the DB on mount.
+  useEffect(() => {
+    if (fight.status !== 'upcoming' || !fight.espn_competition_id || fightEndedAt) return;
+
+    const dateParam = (fight.event_date || '').replace(/-/g, '');
+    if (!dateParam) return;
+
+    let prevStatus = null;
+    let stopped = false;
+
+    const callEdgeFn = async (status) => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        await fetch(EDGE_FN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ fight_id: fight.id, status }),
+        });
+      } catch (e) {
+        console.warn('[FightPoll] Edge Function call failed:', e);
+      }
+    };
+
+    const poll = async () => {
+      if (stopped) return;
+      try {
+        const res = await fetch(`${ESPN_SCOREBOARD}?dates=${dateParam}`);
+        const json = await res.json();
+        for (const ev of json.events || []) {
+          if (!ev.name?.toUpperCase().includes('UFC')) continue;
+          const comp = (ev.competitions || []).find(c => String(c.id) === fight.espn_competition_id);
+          if (!comp) continue;
+          const statusName = comp.status?.type?.name;
+          if (statusName === prevStatus) break;
+          prevStatus = statusName;
+          if (statusName === 'STATUS_IN_PROGRESS') {
+            setFightStartedAt(new Date().toISOString());
+            await callEdgeFn('in_progress');
+          } else if (statusName === 'STATUS_FINAL') {
+            const now = new Date().toISOString();
+            setFightStartedAt(s => s || now);
+            setFightEndedAt(now);
+            stopped = true;
+            await callEdgeFn('final');
+          }
+          break;
+        }
+      } catch (e) {
+        console.warn('[FightPoll] ESPN fetch failed:', e);
+      }
+    };
+
+    poll(); // immediate first check
+    const intervalId = setInterval(poll, 60000);
+    return () => { stopped = true; clearInterval(intervalId); };
+  }, [fight.id, fight.status, fight.espn_competition_id, fight.event_date, fightEndedAt]);
 
   useEffect(() => {
     const load = async () => {
