@@ -15,6 +15,18 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## Phase 6b — ESPN sync + Edge Function — 2026-03-07
+
+**Bugs / errors encountered:**
+- `esm.sh` imports (`import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'`) cause BOOT_ERROR when deploying Edge Functions via the Management API. The Supabase CLI bundles dependencies before deploy; the Management API does not. Fix: use native `fetch` against the Supabase REST API directly — no imports needed, and `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are auto-injected env vars in the Edge Function runtime.
+- Management API `verify_jwt: True` means Supabase gateway validates JWT signature only. The anon key is a valid JWT and passes through — the 401 from "no auth header" comes from the gateway, not the function body.
+
+**What I'd do differently:**
+- Always deploy a minimal no-import function first to confirm the runtime is healthy before adding imports.
+- For all future Edge Functions deployed via Management API: use `fetch` + REST API. Only switch to the JS client if the Supabase CLI is available for bundled deployments.
+
+---
+
 ## Cross-source data joining
 
 - **Never join two different data sources on `event_name` or `bout` strings.** They will differ in formatting, punctuation, and casing. Use a neutral key like `date` or a normalized URL slug.

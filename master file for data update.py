@@ -444,19 +444,48 @@ def sync_round_stats():
 
 
 # --- ADD THIS FUNCTION WITH YOUR OTHER SCRAPERS ---
+def _norm_name(s):
+    """Lowercase + strip non-alphanumeric except spaces. Mirrors frontend normName()."""
+    import re
+    return re.sub(r'[^a-z0-9 ]', '', s.lower()).strip()
+
+def _names_match(a, b):
+    """True if two fighter names refer to the same person (order-insensitive)."""
+    na, nb = _norm_name(a), _norm_name(b)
+    if na == nb:
+        return True
+    # Space-collapse (handles "Rong Zhu" / "Rongzhu")
+    if na.replace(' ', '') == nb.replace(' ', ''):
+        return True
+    # Last-name match (last word, length > 3)
+    la, lb = na.split()[-1], nb.split()[-1]
+    if len(la) > 3 and la == lb:
+        return True
+    return False
+
+def _bout_matches(espn_a, espn_b, db_bout):
+    """True if ESPN fighters {espn_a, espn_b} match the DB bout string."""
+    if ' vs ' not in db_bout:
+        return False
+    db_a, db_b = db_bout.split(' vs ', 1)
+    return (
+        (_names_match(espn_a, db_a) and _names_match(espn_b, db_b)) or
+        (_names_match(espn_a, db_b) and _names_match(espn_b, db_a))
+    )
+
 def sync_event_times():
-    print("⏰ Phase 5: Syncing Event Times from ESPN (Future Focused)...")
-    
+    print("⏰ Phase 5: Syncing Event Times + ESPN Competition IDs (Future Focused)...")
+
     # 1. Get today's date
     today = datetime.now().date().isoformat()
-    
+
     # 2. Fetch ONLY future/upcoming events from your DB
     upcoming_events = supabase_db.table("ufc_events")\
         .select("*")\
         .gte("event_date", today)\
         .order("event_date", desc=False)\
         .execute()
-        
+
     if not upcoming_events.data:
         print("   No upcoming events found in DB to sync.")
         return
@@ -466,33 +495,67 @@ def sync_event_times():
     for db_event in upcoming_events.data:
         # Convert DB date (YYYY-MM-DD) to ESPN format (YYYYMMDD)
         date_param = db_event['event_date'].replace("-", "")
-        
+
         print(f"   🔍 Querying ESPN for {db_event['event_name']} (Date: {db_event['event_date']})...")
-        
+
         try:
             # 3. Ask ESPN specifically for THIS date
             res = requests.get(f"{base_url}?dates={date_param}").json()
             events = res.get('events', [])
-            
+
             match_found = False
             for espn_event in events:
                 # Guard: only match UFC events — skip boxing or other combat sports on same date
                 if 'UFC' not in espn_event.get('name', '').upper(): continue
 
-                # Get the exact UTC start time
+                # 4a. Update event start time
                 espn_time_str = espn_event.get('date', '')
-                if not espn_time_str: continue
+                if espn_time_str:
+                    print(f"      Found match! Updating start time to: {espn_time_str}")
+                    supabase_db.table("ufc_events").update({
+                        "start_time": espn_time_str
+                    }).eq("id", db_event['id']).execute()
 
-                print(f"      Found match! Updating start time to: {espn_time_str}")
-                
-                # 4. Update the Database
-                supabase_db.table("ufc_events").update({
-                    "start_time": espn_time_str
-                }).eq("id", db_event['id']).execute()
-                
+                # 4b. Populate fights.espn_competition_id for each competition
+                db_fights = supabase_db.table("fights")\
+                    .select("id, bout, espn_competition_id")\
+                    .eq("event_name", db_event['event_name'])\
+                    .eq("status", "upcoming")\
+                    .execute().data
+
+                competitions = espn_event.get('competitions', [])
+                matched_ids, unmatched = [], []
+
+                for comp in competitions:
+                    comp_id = str(comp['id'])
+                    athletes = [c.get('athlete', {}).get('displayName', '') for c in comp.get('competitors', [])]
+                    if len(athletes) < 2:
+                        continue
+                    espn_a, espn_b = athletes[0], athletes[1]
+
+                    db_match = next(
+                        (f for f in db_fights if _bout_matches(espn_a, espn_b, f['bout'])),
+                        None
+                    )
+                    if db_match:
+                        matched_ids.append(db_match['id'])
+                        if db_match['espn_competition_id'] != comp_id:
+                            supabase_db.table("fights").update({
+                                "espn_competition_id": comp_id
+                            }).eq("id", db_match['id']).execute()
+                            print(f"      🔗 {db_match['bout']} → competition_id={comp_id}")
+                    else:
+                        unmatched.append(f"{espn_a} vs {espn_b}")
+
+                no_espn = [f['bout'] for f in db_fights if f['id'] not in matched_ids]
+                if unmatched:
+                    print(f"      ⚠️  ESPN comps not matched to DB: {unmatched}")
+                if no_espn:
+                    print(f"      ⚠️  DB fights with no ESPN match: {no_espn}")
+
                 match_found = True
                 break # Move to next DB event
-            
+
             if not match_found:
                 print(f"      ⚠️ No scheduled data found on ESPN yet for this date.")
 
