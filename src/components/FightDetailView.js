@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { dataService } from '../dataService';
 import { supabase } from '../supabaseClient';
+import RoundScoringPanel from './RoundScoringPanel';
 
 // --- SCORING MODEL (Logistic Regression, 82.50% holdout accuracy) ---
 // Feature order and scaler values from scoring_model/scoring_model.json
@@ -206,6 +207,10 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
   // Live fight status — seeded from DB, updated by ESPN polling
   const [fightStartedAt, setFightStartedAt] = useState(fight.fight_started_at || null);
   const [fightEndedAt, setFightEndedAt]     = useState(fight.fight_ended_at   || null);
+
+  // Derived: fight is currently in progress / scoring window is closed
+  const isLive   = !!fightStartedAt && !fightEndedAt;
+  const isLocked = !!fightEndedAt;
 
   // Poll ESPN every 60s for upcoming fights with a known ESPN competition ID.
   // First client to detect a status change calls the Edge Function, which writes
@@ -423,13 +428,35 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
               )}
             </div>
 
-            {/* UPCOMING NOTICE */}
-            {fight.status === 'upcoming' && (
+            {/* UPCOMING STATUS */}
+            {fight.status === 'upcoming' && !isLive && !isLocked && (
               <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
                 <p className="text-sm uppercase tracking-widest">
-                  Fight has not yet taken place. Stats and scoring will be available after the event.
+                  Fight has not yet started. Scoring opens when the fight begins.
                 </p>
               </div>
+            )}
+
+            {/* LIVE — scoring window open */}
+            {fight.status === 'upcoming' && isLive && (
+              <div className={`${currentTheme.card} p-4 rounded-xl border mb-4 text-center`}>
+                <p className="text-xs font-black uppercase tracking-widest opacity-60">🔴 Fight In Progress</p>
+              </div>
+            )}
+            {fight.status === 'upcoming' && isLive && meta && (
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} />
+            )}
+
+            {/* ENDED — scoring locked, stats incoming */}
+            {fight.status === 'upcoming' && isLocked && (
+              <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60 mb-4`}>
+                <p className="text-sm uppercase tracking-widest">
+                  Fight finished. Official stats will be available shortly.
+                </p>
+              </div>
+            )}
+            {fight.status === 'upcoming' && isLocked && meta && (
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} />
             )}
 
             {/* NO STATS YET */}
@@ -566,6 +593,10 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                   ))}
                 </div>
               </div>
+            )}
+            {/* YOUR SCORECARD — completed fights */}
+            {fight.status === 'completed' && meta && (
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} />
             )}
           </>
         )}

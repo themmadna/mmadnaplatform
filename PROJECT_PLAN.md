@@ -208,8 +208,8 @@ No new Python script or external API key needed. ESPN's scoreboard API is alread
 - [ ] **[Deferred]** Schedule master scraper to run automatically on event day: once in the morning (catch card changes) and ~1 hour before start time (confirm all competition IDs set, catch last-minute cancellations)
 - [x] Create Supabase Edge Function `record-fight-status` (validates ESPN status, writes started_at / ended_at if NULL)
 - [x] Frontend: poll ESPN per-fight status every 60s when fight is upcoming; call Edge Function on state change
-- [ ] Frontend: gate scoring UI on `fight_started_at IS NOT NULL`; lock submissions on `fight_ended_at IS NOT NULL`
-- [ ] Test against a historical ESPN event ID to confirm competition-level status data shape
+- [x] Frontend: gate scoring UI on `fight_started_at IS NOT NULL`; lock submissions on `fight_ended_at IS NOT NULL` — `isLive`/`isLocked` derived in FightDetailView; 3-state status block with TODO 6c hooks
+- [x] Test against a historical ESPN event ID to confirm competition-level status data shape — `site.api.espn.com/scoreboard?dates=YYYYMMDD` returns `STATUS_FINAL` for completed events; `comp.status.type.name` confirmed correct
 
 ---
 
@@ -217,10 +217,12 @@ No new Python script or external API key needed. ESPN's scoreboard API is alread
 
 Full judge-style scoring: pick winner per round + optional 10-8 / 10-7 flag. Judge scores hidden by default.
 
-- [ ] Add round scoring panel to `FightDetailView.js` (appears for all fights — live and historical)
-- [ ] Judge scores hidden until: all rounds scored → auto-reveal, or "Forfeit & view" clicked
-- [ ] Score finality: scores submitted before judges visible = locked (no edits). Post-reveal edits allowed but mark `modified_after_reveal = true` → leaderboard-ineligible
-- [ ] Historical fights always `scored_blind = false` (judges already known) → leaderboard-ineligible
+- [x] Add round scoring panel to `FightDetailView.js` (appears for all fights — live and historical) — `src/components/RoundScoringPanel.js`
+- [x] Judge scores hidden until: all rounds scored → auto-reveal, or "Forfeit & view" clicked
+- [x] Score finality: scores submitted before judges visible = locked (no edits). Post-reveal edits allowed but mark `modified_after_reveal = true` → leaderboard-ineligible
+- [x] Historical fights always `scored_blind = false` (judges already known) → leaderboard-ineligible
+- [x] Only scoreable rounds shown: decisions → all rounds; finishes → rounds 1 to R-1 (partial finishing round excluded)
+- [x] Schema migration: `fighter_scored_for`/`points` → `f1_score`/`f2_score` — DDL run, dataService + RoundScoringPanel updated
 
 **Leaderboard eligibility rules:**
 - Scored ALL rounds while judges were hidden (live or historical before viewing) = ✅ eligible

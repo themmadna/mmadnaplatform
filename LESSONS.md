@@ -4,6 +4,18 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## Phase 6c — Schema migration (fighter_scored_for → f1_score/f2_score) — 2026-03-07
+
+**What worked:**
+- Storing `f1_score`/`f2_score` (both sides explicitly) is cleaner than `fighter_scored_for`/`points` — makes community scorecard aggregation trivial (just avg the columns), no need to know fighter names in the query.
+- Converting at DB boundaries only (load → derive `fighterScoredFor`/`points` from f1/f2 scores; save → derive f1/f2 scores from UI state) keeps the component's internal logic untouched.
+- `f1_score >= f2_score ? f1Name : f2Name` on load correctly handles the tie edge case (10-10 draw) by defaulting to f1.
+
+**What to avoid:**
+- Don't mid-session change a DB schema without immediately updating both the data layer and the component — the gap creates a silent runtime error (upsert inserts NULL into NOT NULL columns).
+
+---
+
 ## Phase 6a — DB Migration — 2026-03-07
 
 **What worked:**
@@ -12,6 +24,21 @@ Focused on reusable engineering patterns — implementation details live in git 
 - `leaderboard_eligible` as a `GENERATED ALWAYS AS ... STORED` boolean column avoids app-layer logic drift — eligibility is always consistent with the source booleans.
 
 **Nothing to change** — migration was straightforward.
+
+---
+
+## Phase 6c — Round Scoring Panel — 2026-03-07
+
+**Key decisions:**
+- `fighter_scored_for` = winner's name; `points` = loser's score (9/8/7). Winner always gets 10. One row per (user_id, fight_id, round).
+- Scoreable rounds: decisions → all `meta.round` rounds; finishes → `meta.round - 1` (partial finishing round excluded from judging). Live fights: use scheduled rounds from `meta.time_format`; finish constraint applied post-scrape when fight is marked completed.
+- Historical fights: `judgesRevealed = true` from the start. Every save marks `modified_after_reveal = true` → leaderboard-ineligible automatically.
+- `readOnly = judgesRevealed && !isHistorical` — live fights lock inputs after reveal; historical always editable.
+- `pending` state initialized from DB scores on mount → existing selections pre-highlighted on re-visit without special logic.
+- `upsertScorecardState` with `onConflict: 'user_id,fight_id'` — only provided columns are written on conflict, so partial updates (e.g. just `modified_after_reveal: true`) don't overwrite other fields.
+
+**What I'd do differently:**
+- Consider computing `scoreable_rounds` server-side to avoid client-side finish/decision branching.
 
 ---
 
@@ -24,6 +51,13 @@ Focused on reusable engineering patterns — implementation details live in git 
 **What I'd do differently:**
 - Always deploy a minimal no-import function first to confirm the runtime is healthy before adding imports.
 - For all future Edge Functions deployed via Management API: use `fetch` + REST API. Only switch to the JS client if the Supabase CLI is available for bundled deployments.
+
+## Phase 6b — gate/lock + ESPN test — 2026-03-07
+
+**Confirmed:**
+- `site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=YYYYMMDD` returns `STATUS_FINAL` for completed historical events — the scoreboard endpoint works for past dates, not just live ones. `comp.status.type.name` is the correct field.
+- Gate/lock logic should be derived booleans (`isLive = !!fightStartedAt && !fightEndedAt`, `isLocked = !!fightEndedAt`) rather than computed inline in JSX — keeps the 3-state branching readable.
+- When a UI section will be replaced by a child component in the next phase, leave explicit `{/* TODO 6c: <ComponentName props /> */}` comments inside the placeholder block — makes the slot unambiguous.
 
 ---
 

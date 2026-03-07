@@ -147,6 +147,45 @@ export const dataService = {
     return { meta, roundStats: roundStats || [], judgeScores: judgeScores || [] };
   },
 
+  // --- USER ROUND SCORING ---
+
+  async getUserScoringData(fightId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { user: null, scores: [], scorecardState: null };
+    const [{ data: scores }, { data: state }] = await Promise.all([
+      supabase.from('user_round_scores')
+        .select('round, f1_score, f2_score')
+        .eq('fight_id', fightId)
+        .eq('user_id', user.id),
+      supabase.from('user_fight_scorecard_state')
+        .select('*')
+        .eq('fight_id', fightId)
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ]);
+    return { user, scores: scores || [], scorecardState: state || null };
+  },
+
+  async upsertRoundScore(fightId, round, f1Score, f2Score) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Login required');
+    const { error } = await supabase.from('user_round_scores').upsert(
+      { user_id: user.id, fight_id: fightId, round, f1_score: f1Score, f2_score: f2Score },
+      { onConflict: 'user_id,fight_id,round' }
+    );
+    if (error) throw error;
+  },
+
+  async upsertScorecardState(fightId, updates) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Login required');
+    const { error } = await supabase.from('user_fight_scorecard_state').upsert(
+      { user_id: user.id, fight_id: fightId, ...updates },
+      { onConflict: 'user_id,fight_id' }
+    );
+    if (error) throw error;
+  },
+
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
   // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {
