@@ -49,7 +49,7 @@ BEGIN
         ue.event_date,
         fmd.fighter1_name,
         fmd.fighter2_name,
-        fmd.weight_class,
+        COALESCE(fmd.weight_class_clean, fmd.weight_class) AS weight_class_clean,
         fmd.method
       FROM user_round_scores urs
       JOIN fights f ON f.id = urs.fight_id
@@ -68,7 +68,7 @@ BEGIN
         ur.round,
         ur.user_f1,
         ur.user_f2,
-        ur.weight_class,
+        ur.weight_class_clean,
         ur.fighter1_name,
         ur.fighter2_name,
         js.judge,
@@ -92,7 +92,7 @@ BEGIN
         round,
         user_f1,
         user_f2,
-        weight_class,
+        weight_class_clean,
         judge,
         MAX(CASE
           WHEN lower(split_part(fighter1_name, ' ', -1)) = lower(split_part(js_fighter, ' ', -1))
@@ -101,7 +101,7 @@ BEGIN
           WHEN lower(split_part(fighter2_name, ' ', -1)) = lower(split_part(js_fighter, ' ', -1))
           THEN score END) AS judge_f2_score
       FROM judge_rows
-      GROUP BY fight_id, round, user_f1, user_f2, weight_class, judge, fighter1_name, fighter2_name
+      GROUP BY fight_id, round, user_f1, user_f2, weight_class_clean, judge, fighter1_name, fighter2_name
     ),
 
     complete_judges AS (
@@ -116,7 +116,7 @@ BEGIN
         round,
         user_f1,
         user_f2,
-        weight_class,
+        weight_class_clean,
         judge,
         judge_f1_score,
         judge_f2_score,
@@ -138,7 +138,7 @@ BEGIN
       SELECT DISTINCT ON (fight_id, round)
         fight_id,
         round,
-        weight_class,
+        weight_class_clean,
         CASE WHEN user_f1 > user_f2 THEN 'f1' WHEN user_f2 > user_f1 THEN 'f2' ELSE 'draw' END AS user_winner,
         CASE WHEN f1_wins >= 2 THEN 'f1' WHEN f2_wins >= 2 THEN 'f2' ELSE NULL END AS majority_winner,
         LEAST(user_f1, user_f2) AS user_loser_score,
@@ -221,13 +221,13 @@ BEGIN
         SELECT json_agg(t ORDER BY t.rounds DESC)
         FROM (
           SELECT
-            weight_class,
+            weight_class_clean,
             ROUND(AVG(CASE WHEN user_winner = majority_winner THEN 1.0 ELSE 0.0 END)::numeric, 3) AS accuracy,
             COUNT(*) AS rounds,
             ROUND(AVG(user_loser_score)::numeric, 2) AS avg_loser_score
           FROM round_accuracy
-          WHERE majority_winner IS NOT NULL AND weight_class IS NOT NULL
-          GROUP BY weight_class
+          WHERE majority_winner IS NOT NULL AND weight_class_clean IS NOT NULL
+          GROUP BY weight_class_clean
           HAVING COUNT(*) >= 3
         ) t
       ),

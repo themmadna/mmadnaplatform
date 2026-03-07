@@ -58,6 +58,22 @@ def clean_bout_name(text):
 
 # --- 3. CORE PARSING LOGIC ---
 
+import re as _re
+
+def parse_weight_class(raw):
+    """Return (weight_class_clean, is_title_fight, is_interim_title) from raw scraped weight_class."""
+    if not raw:
+        return None, False, False
+    is_title    = bool(_re.search(r'title|championship', raw, _re.I))
+    is_interim  = bool(_re.search(r'interim', raw, _re.I))
+    clean = raw
+    clean = _re.sub(r'\s*Bout\s*$',            '', clean, flags=_re.I)
+    clean = _re.sub(r'\s*(Title|Championship)\s*$', '', clean, flags=_re.I)
+    clean = _re.sub(r'\s*Title\s*',             ' ', clean, flags=_re.I)
+    clean = _re.sub(r'^UFC\s+Interim\s+',       '',  clean, flags=_re.I)
+    clean = _re.sub(r'^UFC\s+',                 '',  clean, flags=_re.I)
+    return clean.strip(), is_title, is_interim
+
 def parse_fight_meta_details(fight_url):
     try:
         res = requests.get(fight_url, timeout=10)
@@ -84,6 +100,9 @@ def parse_fight_meta_details(fight_url):
         raw_event_name = soup.select_one("body > section > div > h2 > a").text.strip()
         cleaned_event_name = clean_bout_name(raw_event_name)
 
+        raw_weight_class = details_div.select_one("i.b-fight-details__fight-title").text.strip()
+        wc_clean, is_title, is_interim = parse_weight_class(raw_weight_class)
+
         return {
             "event_name": cleaned_event_name,
             "bout": f"{clean_bout_name(f1_name)} vs {clean_bout_name(f2_name)}",
@@ -93,7 +112,10 @@ def parse_fight_meta_details(fight_url):
             "fighter2_nickname": f2_nickname if f2_nickname else None,
             "winner": clean_bout_name(winner) if winner else None,
             "result": "win" if (r1 == "W" or r2 == "W") else "draw",
-            "weight_class": details_div.select_one("i.b-fight-details__fight-title").text.strip(),
+            "weight_class": raw_weight_class,
+            "weight_class_clean": wc_clean,
+            "is_title_fight": is_title,
+            "is_interim_title": is_interim,
             "method": details.get("method", ""),
             "method_details": details.get("details", None),
             "round": details.get("round", ""),

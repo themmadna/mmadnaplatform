@@ -403,7 +403,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                 <h1 className="text-lg sm:text-2xl font-black">{meta.fighter2_name}</h1>
               </div>
               <p className="text-xs opacity-50 uppercase tracking-widest">
-                {fight.weight_class || meta.weight_class || ''}
+                {meta.weight_class_clean || meta.weight_class || fight.weight_class || ''}
                 {meta.method ? ` · ${meta.method}` : ''}
                 {meta.round ? ` · R${meta.round}` : ''}
                 {meta.time ? ` ${meta.time}` : ''}

@@ -2,11 +2,8 @@ import { Scale } from 'lucide-react';
 
 const MIN_FIGHTS = 5;
 
-// Strip trailing " Bout" and common prefixes to keep labels clean
-const shortClass = (wc) =>
-  (wc || '—')
-    .replace(/ Bout$/i, '')
-    .replace(/^(UFC\s+)?(Interim\s+)?Women's\s+/i, "Women's ");
+// weight_class_clean is already stripped — just return as-is
+const shortClass = (wc) => wc || '—';
 
 const Stat = ({ label, value, sub, big = false }) => (
   <div className="text-center">
@@ -181,9 +178,9 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
                 <span className="w-12 text-right">Avg loser</span>
               </div>
               {topClasses.map(wc => (
-                <div key={wc.weight_class} className="flex items-center gap-2">
+                <div key={wc.weight_class_clean || wc.weight_class} className="flex items-center gap-2">
                   <span className="text-xs opacity-50 w-20 truncate flex-shrink-0">
-                    {shortClass(wc.weight_class)}
+                    {shortClass(wc.weight_class_clean || wc.weight_class)}
                   </span>
                   <div className="flex-1 bg-black/30 rounded-full h-1.5 overflow-hidden">
                     <div
