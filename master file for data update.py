@@ -294,11 +294,14 @@ def sync_upcoming_fights():
 
             print(f"⚔️  Upcoming Fight: {standardized_bout}")
 
+            raw_wc = cols[6].get_text(strip=True) if len(cols) > 6 else None
+
             supabase_db.table("fights").insert({
                 'event_name': event['event_name'],
                 'bout': standardized_bout,
                 'fight_url': fight_url,
-                'status': 'upcoming'
+                'status': 'upcoming',
+                'weight_class': raw_wc or None,
             }).execute()
             stats_summary["new_fights"] += 1
 
@@ -426,12 +429,16 @@ def sync_meta():
             # 1. Insert the detailed metadata
             supabase_db.table("fight_meta_details").insert(data).execute()
             
-            # 2. Update the main 'fights' table with the winner
+            # 2. Update the main 'fights' table with winner + weight_class
+            fights_update = {}
             if data.get('winner'):
-                print(f"🏆 Updating Winner for {data['bout']}: {data['winner']}")
-                supabase_db.table("fights").update({
-                    "winner": data['winner']
-                }).eq("fight_url", f['fight_url']).execute()
+                fights_update['winner'] = data['winner']
+            if data.get('weight_class'):
+                fights_update['weight_class'] = data['weight_class']
+            if fights_update:
+                if data.get('winner'):
+                    print(f"🏆 Updating Winner for {data['bout']}: {data['winner']}")
+                supabase_db.table("fights").update(fights_update).eq("fight_url", f['fight_url']).execute()
             
             stats_summary["new_metadata"] += 1
             time.sleep(1)
