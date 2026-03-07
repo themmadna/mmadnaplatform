@@ -118,11 +118,13 @@ Sortable table: rounds judged, outlier rate, 10-8 frequency, style tag. Click th
 
 ---
 
-## Phase 4.5: Weight Class Normalization
+## Phase 4.5: Weight Class Normalization — complete ✅
 
 **Problem:** `fight_meta_details.weight_class` stores raw scraped values like `"UFC Bantamweight Title Bout"`, `"UFC Interim Bantamweight Title Bout"`, `"Bantamweight Bout"`. These are all the same division. Grouping by raw `weight_class` produces duplicate buckets that fragment analytics, accuracy breakdowns, and fight card displays.
 
 **Goal:** Clean division name everywhere by default. Title fight status becomes a separate boolean — used only when explicitly filtering for title vs non-title fights.
+
+**Decision:** Fight cards (event list) show raw `weight_class` — context value for users. Fight detail header and all analytics use `weight_class_clean`.
 
 **Examples of normalization:**
 | Raw `weight_class` | `weight_class_clean` | `is_title_fight` | `is_interim_title` |
@@ -137,13 +139,13 @@ Sortable table: rounds judged, outlier rate, 10-8 frequency, style tag. Click th
 
 **Rule:** Keep `Women's` prefix (different division from men's). Strip everything else: `UFC`, `Interim`, `Title`, `Championship`, `Bout`.
 
-### 4.5a. DB Migration
+### 4.5a. DB Migration — complete
 
-- [ ] Add `weight_class_clean` (text) to `fight_meta_details`
-- [ ] Add `is_title_fight` (boolean, default false) to `fight_meta_details`
-- [ ] Add `is_interim_title` (boolean, default false) to `fight_meta_details`
-- [ ] One-time `UPDATE` to backfill all three columns from existing `weight_class` values using regex stripping
-- [ ] Verify: `SELECT weight_class, weight_class_clean, is_title_fight, COUNT(*) FROM fight_meta_details GROUP BY 1,2,3 ORDER BY 1` — check for edge cases
+- [x] Add `weight_class_clean` (text) to `fight_meta_details`
+- [x] Add `is_title_fight` (boolean, default false) to `fight_meta_details`
+- [x] Add `is_interim_title` (boolean, default false) to `fight_meta_details`
+- [x] One-time `UPDATE` to backfill all three columns from existing `weight_class` values using regex stripping
+- [x] Verified: all standard divisions clean; Women's prefix preserved; interim/title booleans correct. Script: `supabase/migrate_weight_class.py`
 
 **Migration SQL sketch:**
 ```sql
@@ -169,20 +171,17 @@ UPDATE fight_meta_details SET
 ```
 Run the SELECT verification query above before and after — spot-check Women's classes and any "Open Weight" / "Catchweight" rows.
 
-### 4.5b. Scraper update
+### 4.5b. Scraper update — complete
 
-- [ ] Update `master file for data update.py` Phase 3/4 (`sync_meta`) to populate `weight_class_clean`, `is_title_fight`, `is_interim_title` on every upsert going forward
-- [ ] Logic is identical to the migration — extract into a small helper function `parse_weight_class(raw)` that returns `(clean, is_title, is_interim)`
+- [x] Added `parse_weight_class(raw)` helper to `master file for data update.py` — returns `(clean, is_title, is_interim)`
+- [x] `parse_fight_meta_details()` now populates all three new fields on every new insert
 
-### 4.5c. Frontend updates
+### 4.5c. Frontend updates — complete
 
-Everywhere `weight_class` is displayed or grouped, switch to `weight_class_clean`. The raw `weight_class` column stays in the DB for reference but is never shown in the UI.
-
-- [ ] `FightDetailView.js` — weight class display in fight header
-- [ ] `FightCard.js` — weight class badge/label (if shown)
-- [ ] `JudgingDNACard.js` `accuracy_by_class` — already uses `weight_class` from the RPC; update RPC to use `weight_class_clean`
-- [ ] `get_user_judging_profile()` RPC — replace `weight_class` with `weight_class_clean` in `user_rounds` CTE and all downstream aggregations
-- [ ] Any other RPC or query that groups/filters by `weight_class`
+- [x] `FightDetailView.js` — fight header uses `meta.weight_class_clean`
+- [x] Fight cards (event list) — retain raw `weight_class` for display ("UFC Bantamweight Title Bout" shows full context)
+- [x] `JudgingDNACard.js` — reads `wc.weight_class_clean`; `shortClass()` simplified (no-op, strings already clean)
+- [x] `get_user_judging_profile()` RPC — all `weight_class` → `weight_class_clean` throughout; redeployed
 
 ### 4.5d. Title fight filter (future use)
 
