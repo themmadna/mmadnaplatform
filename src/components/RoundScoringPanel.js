@@ -52,6 +52,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
       setLoaded(true);
     };
     load();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fight.id, isHistorical]);
 
   const handleReveal = async (currentScores, forfeited) => {
