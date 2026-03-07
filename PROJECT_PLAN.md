@@ -265,6 +265,70 @@ Added to existing profile page (above voting history tabs). Requires ≥5 fights
 
 ---
 
+### 6e.2 Judging DNA — Overhaul
+
+Full redesign of the Judging DNA page. Replaces the existing `JudgingDNACard.js` UI and significantly expands the RPC.
+
+**Confirmed stats (12 total):**
+1. Rounds scored — prominently displayed (not buried in header)
+2. Agreement breakdown — % of rounds where you agreed with all 3 / 2 of 3 / 1 of 3 / 0 of 3 judges
+3. Outlier rate — % of rounds where you're the lone dissenter (opposite to 2+ judges)
+4. Judge you're most like — highest agreement % with ≥5 shared rounds (future: clickable → judge profile)
+5. Striking vs grappling bias — when you award a round, is the winner's striking or grappling advantage the driver?
+6. Aggressor bias — do you favor the fighter throwing more volume regardless of accuracy?
+7. Takedown quality — do you reward passive control time or require active ground work (sub attempts + ground strikes)?
+8. Knockdown bias — when a fighter scores a KD, do you always give them the round regardless of everything else?
+9. 10-8 call quality — when you give a 10-8, do the judges agree it was a dominant round?
+10. Rounds scored per weight class — count alongside existing accuracy breakdown
+11. Scoring strictness by weight class — avg loser score per class (9.2 vs 9.6 = stricter/more lenient)
+12. Striking vs grappling bias by weight class — does your preference shift by division?
+
+**Implementation — Step 1: RPC overhaul (Group A — no round_fight_stats join)**
+
+Stats 1–4, 9, 10, 11 all derivable from `user_round_scores` + `judge_scores`. Existing RPC scaffolding covers most of it.
+
+- [ ] Expand `get_user_judging_profile()` to return:
+  - `rounds_scored` (already present, just ensure surfaced)
+  - `agreement_breakdown` — { all3, two_of_three, one_of_three, lone_dissenter } counts + percentages
+  - `outlier_rate` — % rounds as lone dissenter
+  - `ten_eight_quality` — of user's 10-8 rounds, % where judges agreed it was dominant (all gave ≥10-8 equivalent)
+  - `accuracy_by_class` extended — add `rounds` count + `avg_loser_score` per class
+- [ ] Redeploy via `supabase/deploy_judging_profile.py`
+
+**Implementation — Step 2: UI overhaul**
+
+Full redesign of `JudgingDNACard.js` as a blank slate — new layout, sections, all Step 1 data wired in.
+
+- [ ] Redesign `JudgingDNACard.js` with sections:
+  - Overview strip (rounds scored, fights scored, accuracy, outlier rate)
+  - Agreement breakdown (visual breakdown of all3/2of3/1of3/0of3)
+  - Judge match (closest judge name + agreement %)
+  - 10-8 section (rate + call quality together)
+  - Weight class breakdown (accuracy + rounds + avg loser score per class)
+
+**Implementation — Step 3: RPC extension (Group B — round_fight_stats join)**
+
+Stats 5, 6, 7, 8, 12 all require joining `round_fight_stats` per scored round. One join, five stats.
+
+- [ ] Add `round_fight_stats` join to RPC for each user-scored round
+- [ ] Compute and return:
+  - `striking_vs_grappling_bias` — for awarded rounds, compare winner's sig_strikes_landed diff vs (takedowns_landed + control_time_sec) diff. Output: `{ striking_pct, grappling_pct }` — which was the bigger driver
+  - `aggressor_bias` — compare user award vs sig_strikes_attempted diff (volume). Flag rounds where you sided with higher-volume fighter even when accuracy favoured opponent
+  - `takedown_quality_bias` — bucket rounds: "active ground" (sub_attempts > 0 OR ground_strikes > 3) vs "passive control" (ctrl_sec > 30, low activity). % of passive-control rounds you still awarded
+  - `knockdown_bias` — on KD rounds (kd diff ≠ 0), % of time you awarded the fighter with the KD
+  - `bias_by_class` — striking vs grappling split per weight class (merge into `accuracy_by_class`)
+- [ ] Redeploy
+
+**Implementation — Step 4: UI additions for Group B**
+
+- [ ] Add bias/tendency section to redesigned `JudgingDNACard.js`
+  - Striking vs grappling bias bar (overall + by class toggle)
+  - Aggressor bias indicator
+  - Takedown quality bias
+  - Knockdown bias stat
+
+---
+
 ### 6f. Leaderboard (Points System — deferred)
 
 Leaderboard based on accuracy % for v1. Points system (bonus for correct 10-8 calls, etc.) added later once the feature has traction.
@@ -275,4 +339,4 @@ Leaderboard based on accuracy % for v1. Points system (bonus for correct 10-8 ca
 ---
 
 ### Build order
-6a → 6b → 6c → 6d → 6e → 6f (leaderboard deferred)
+6a → 6b → 6c → 6d → 6e → 6e.2 (Step 1 → Step 2 → Step 3 → Step 4) → 6f (leaderboard deferred)
