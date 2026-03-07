@@ -431,8 +431,8 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                 <p className="text-xs font-black uppercase tracking-widest opacity-60">🔴 Fight In Progress</p>
               </div>
             )}
-            {fight.status === 'upcoming' && isLive && meta && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} />
+            {fight.status === 'upcoming' && isLive && (
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} />
             )}
 
             {/* ENDED — scoring locked, stats incoming */}
@@ -443,8 +443,8 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                 </p>
               </div>
             )}
-            {fight.status === 'upcoming' && isLocked && meta && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} />
+            {fight.status === 'upcoming' && isLocked && (
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} />
             )}
 
             {/* NO STATS YET */}

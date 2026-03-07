@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import subprocess
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 from datetime import datetime
 import requests
 from bs4 import BeautifulSoup
@@ -336,7 +337,7 @@ def sync_events():
 def sync_fights():
     print("🚀 Phase 2: Syncing Completed Fights...")
     # Fetch recent events
-    events = supabase_db.table("ufc_events").select("event_name, event_url").order("event_date", desc=True).limit(10).execute()
+    events = supabase_db.table("ufc_events").select("event_name, event_url, event_date").order("event_date", desc=True).limit(10).execute()
     
     for event in events.data:
         # 1. Fetch ALL existing fights for this event
@@ -398,9 +399,12 @@ def sync_fights():
                     stats_summary["new_fights"] += 1
 
         # 4. AUTO-DELETE LOGIC (With Safety Switch)
-        # We ONLY delete missing fights if we actually found at least one result.
-        # If scraped_ids is empty, it means the event hasn't happened yet, so we touch nothing.
-        if len(scraped_ids) > 0:
+        # We ONLY delete missing fights if we actually found at least one result AND
+        # the event date is strictly in the past. For today's events (still in progress),
+        # never delete upcoming fights — ufcstats only shows bouts as they complete.
+        today_str = datetime.utcnow().strftime('%Y-%m-%d')
+        event_is_past = event.get('event_date', '') < today_str
+        if len(scraped_ids) > 0 and event_is_past:
             for f in existing_fights:
                 if f['status'] == 'upcoming' and f['id'] not in scraped_ids:
                     print(f"🚫 Deleting Cancelled Fight: {f['bout']}")

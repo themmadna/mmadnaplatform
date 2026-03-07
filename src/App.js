@@ -164,6 +164,37 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
     >
       
       <div className="p-4 bg-black/20 text-center relative">
+        {/* Status badge */}
+        {(() => {
+          const isLiveFight = fight.fight_started_at && !fight.fight_ended_at;
+          const isCompleted = fight.status === 'completed';
+          const today = new Date().toISOString().split('T')[0];
+          const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at
+            && fight.event_date && fight.event_date >= today;
+          if (isLiveFight) return (
+            <div className="flex justify-center mb-2">
+              <span className="flex items-center gap-1.5 bg-red-600/20 text-red-400 text-[10px] px-2.5 py-1 rounded-full border border-red-500/40 uppercase tracking-widest font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                Live
+              </span>
+            </div>
+          );
+          if (isCompleted) return (
+            <div className="flex justify-center mb-2">
+              <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-white/30 uppercase tracking-widest font-bold">
+                ✓ Completed
+              </span>
+            </div>
+          );
+          if (isUpcomingFight) return (
+            <div className="flex justify-center mb-2">
+              <span className="text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30 text-yellow-500/60 uppercase tracking-widest font-bold">
+                Upcoming
+              </span>
+            </div>
+          );
+          return null;
+        })()}
         <h2 className={`text-base sm:text-xl font-bold ${currentTheme.text}`}>
           {fighters[0]} <span className={currentTheme.accent}>VS</span> {fighters[1]}
         </h2>
@@ -276,6 +307,7 @@ export default function UFCFightRating() {
   const themeSelectorRef = useRef(null);
   const savedScrollRef = useRef(0);
   const prevViewRef = useRef(null);
+  const eventFightsRef = useRef([]);
   const [loading, setLoading] = useState(true);
   const [fetchingEvents, setFetchingEvents] = useState(false);
   
@@ -337,6 +369,77 @@ export default function UFCFightRating() {
     dataService.getUserJudgingProfile().then(setJudgingProfile);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView]);
+
+  // Keep ref in sync so the ESPN poll can read latest eventFights without re-triggering the effect
+  useEffect(() => { eventFightsRef.current = eventFights; }, [eventFights]);
+
+  // Poll ESPN for all upcoming fights when viewing today's event fight list.
+  // One request per 60s covers the whole card — no need to be in a specific fight detail.
+  useEffect(() => {
+    if (currentView !== 'fights' || !selectedEvent) return;
+    const today = new Date().toISOString().split('T')[0];
+    if (selectedEvent.event_date !== today) return;
+
+    const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
+    const dateParam = today.replace(/-/g, '');
+    const prevStatuses = {};
+    let stopped = false;
+
+    const callEdgeFn = async (fightId, status) => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        await fetch(EDGE_FN_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          body: JSON.stringify({ fight_id: fightId, status }),
+        });
+      } catch (e) {
+        console.warn('[EventPoll] Edge Function call failed:', e);
+      }
+    };
+
+    const poll = async () => {
+      if (stopped) return;
+      const liveFights = eventFightsRef.current.filter(
+        f => f.status === 'upcoming' && f.espn_competition_id && !f.fight_ended_at
+      );
+      if (liveFights.length === 0) { stopped = true; return; }
+      try {
+        const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${dateParam}`);
+        const json = await res.json();
+        for (const ev of json.events || []) {
+          if (!ev.name?.toUpperCase().includes('UFC')) continue;
+          for (const fight of liveFights) {
+            const comp = (ev.competitions || []).find(c => String(c.id) === String(fight.espn_competition_id));
+            if (!comp) continue;
+            const statusName = comp.status?.type?.name;
+            if (statusName === prevStatuses[fight.id]) continue;
+            prevStatuses[fight.id] = statusName;
+            if (statusName === 'STATUS_IN_PROGRESS' && !fight.fight_started_at) {
+              const now = new Date().toISOString();
+              setEventFights(prev => prev.map(f => f.id === fight.id ? { ...f, fight_started_at: now } : f));
+              await callEdgeFn(fight.id, 'in_progress');
+            } else if (statusName === 'STATUS_FINAL' && !fight.fight_ended_at) {
+              const now = new Date().toISOString();
+              setEventFights(prev => prev.map(f => f.id === fight.id
+                ? { ...f, fight_started_at: f.fight_started_at || now, fight_ended_at: now }
+                : f
+              ));
+              await callEdgeFn(fight.id, 'final');
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[EventPoll] ESPN fetch failed:', e);
+      }
+    };
+
+    poll();
+    const intervalId = setInterval(poll, 60000);
+    return () => { stopped = true; clearInterval(intervalId); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, selectedEvent?.event_name]);
 
   useEffect(() => {
     if (!showThemeSelector) return;
