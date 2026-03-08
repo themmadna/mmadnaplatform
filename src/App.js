@@ -606,6 +606,7 @@ export default function UFCFightRating() {
       const { data: userVotes } = await supabase.from('user_votes').select('*').eq('user_id', session.user.id);
       const merged = bouts.map(f => ({
         ...f,
+        event_date: event.event_date,
         ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
         userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type,
       }));
