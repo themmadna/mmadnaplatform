@@ -167,7 +167,8 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
         {/* Status badge */}
         {(() => {
           const isLiveFight = fight.fight_started_at && !fight.fight_ended_at;
-          const isCompleted = fight.status === 'completed';
+          // ESPN poll sets fight_ended_at before scraper updates status to 'completed'
+          const isCompleted = fight.status === 'completed' || !!fight.fight_ended_at;
           const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at;
           if (isLiveFight) return (
             <div className="flex justify-center mb-2">
@@ -402,7 +403,7 @@ export default function UFCFightRating() {
       const liveFights = eventFightsRef.current.filter(
         f => f.status === 'upcoming' && f.espn_competition_id && !f.fight_ended_at
       );
-      if (liveFights.length === 0) { stopped = true; return; }
+      if (liveFights.length === 0) return; // all done for now, keep interval alive
       try {
         const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${dateParam}`);
         const json = await res.json();
