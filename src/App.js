@@ -465,9 +465,10 @@ export default function UFCFightRating() {
       }
     };
 
-    poll();
+    // Delay first poll so eventFights has time to load from Supabase before we check
+    const t = setTimeout(poll, 3000);
     const intervalId = setInterval(poll, 60000);
-    return () => { stopped = true; clearInterval(intervalId); };
+    return () => { stopped = true; clearTimeout(t); clearInterval(intervalId); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, selectedEvent?.event_name]);
 
