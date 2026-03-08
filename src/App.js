@@ -168,9 +168,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
         {(() => {
           const isLiveFight = fight.fight_started_at && !fight.fight_ended_at;
           const isCompleted = fight.status === 'completed';
-          const today = new Date().toISOString().split('T')[0];
-          const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at
-            && fight.event_date && fight.event_date >= today;
+          const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at;
           if (isLiveFight) return (
             <div className="flex justify-center mb-2">
               <span className="flex items-center gap-1.5 bg-red-600/20 text-red-400 text-[10px] px-2.5 py-1 rounded-full border border-red-500/40 uppercase tracking-widest font-bold">
