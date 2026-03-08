@@ -351,7 +351,8 @@ def sync_fights():
                 p1, p2 = f['bout'].split(" vs ")
                 existing_map[f"{p2} vs {p1}"] = f
 
-        scraped_ids = [] 
+        scraped_ids = []
+        any_newly_completed = False
 
         res = requests.get(event['event_url'], timeout=15)
         soup = BeautifulSoup(res.text, 'html.parser')
@@ -363,8 +364,8 @@ def sync_fights():
             for row in rows:
                 cols = row.find_all('td')
                 if len(cols) < 10: continue
-                
-                fighters = get_texts(cols[1]) 
+
+                fighters = get_texts(cols[1])
                 if len(fighters) < 2: continue
 
                 link_tag = cols[0].find('a')
@@ -374,37 +375,39 @@ def sync_fights():
                 f2 = clean_bout_name(fighters[1])
                 standardized_bout = f"{f1} vs {f2}"
                 fight_url = link_tag['href']
-                
+
                 # 3. Check map
                 if standardized_bout in existing_map:
                     fight_record = existing_map[standardized_bout]
-                    scraped_ids.append(fight_record['id']) 
-                    
+                    scraped_ids.append(fight_record['id'])
+
                     if fight_record.get('status') == 'upcoming':
                         print(f"🔄 Updating Status (Upcoming -> Completed): {standardized_bout}")
                         supabase_db.table("fights").update({
                             "status": "completed",
                             "fight_url": fight_url,
-                            "bout": standardized_bout 
+                            "bout": standardized_bout
                         }).eq("id", fight_record['id']).execute()
                         stats_summary["updated_fights"] += 1
+                        any_newly_completed = True
                 else:
                     print(f"➕ Inserting New Completed: {standardized_bout}")
                     supabase_db.table("fights").insert({
-                        'event_name': event['event_name'], 
-                        'bout': standardized_bout, 
+                        'event_name': event['event_name'],
+                        'bout': standardized_bout,
                         'fight_url': fight_url,
-                        'status': 'completed' 
+                        'status': 'completed'
                     }).execute()
                     stats_summary["new_fights"] += 1
 
-        # 4. AUTO-DELETE LOGIC (With Safety Switch)
-        # We ONLY delete missing fights if we actually found at least one result AND
-        # the event date is strictly in the past. For today's events (still in progress),
-        # never delete upcoming fights — ufcstats only shows bouts as they complete.
-        today_str = datetime.utcnow().strftime('%Y-%m-%d')
-        event_is_past = event.get('event_date', '') < today_str
-        if len(scraped_ids) > 0 and event_is_past:
+        # 4. AUTO-DELETE LOGIC
+        # Only delete if: fights found on ufcstats AND nothing newly completed this
+        # run AND event date is strictly before today (local time, not UTC).
+        # Using local date avoids false positives when UTC has rolled over midnight
+        # but the event is still live in the user's timezone.
+        from datetime import date as _date
+        event_is_past = event.get('event_date', '') < _date.today().isoformat()
+        if len(scraped_ids) > 0 and not any_newly_completed and event_is_past:
             for f in existing_fights:
                 if f['status'] == 'upcoming' and f['id'] not in scraped_ids:
                     print(f"🚫 Deleting Cancelled Fight: {f['bout']}")

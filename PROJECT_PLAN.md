@@ -279,8 +279,10 @@ No new Python script or external API key needed. ESPN's scoreboard API is alread
 - [ ] **[Deferred]** Schedule master scraper to run automatically on event day: once in the morning (catch card changes) and ~1 hour before start time (confirm all competition IDs set, catch last-minute cancellations)
 - [x] Create Supabase Edge Function `record-fight-status` (validates ESPN status, writes started_at / ended_at if NULL)
 - [x] Frontend: poll ESPN per-fight status every 60s when fight is upcoming; call Edge Function on state change
+- [x] Frontend: event-level ESPN polling — opening the fight list is sufficient (no need to click individual fights)
 - [x] Frontend: gate scoring UI on `fight_started_at IS NOT NULL`; lock submissions on `fight_ended_at IS NOT NULL` — `isLive`/`isLocked` derived in FightDetailView; 3-state status block with TODO 6c hooks
 - [x] Test against a historical ESPN event ID to confirm competition-level status data shape — `site.api.espn.com/scoreboard?dates=YYYYMMDD` returns `STATUS_FINAL` for completed events; `comp.status.type.name` confirmed correct
+- [x] Live-tested against UFC 326 (2026-03-07): status badges, scoring panel, and polling all verified working
 
 ---
 

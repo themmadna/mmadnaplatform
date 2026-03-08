@@ -4,6 +4,20 @@ Focused on reusable engineering patterns — implementation details live in git 
 
 ---
 
+## Live event status badges + scraper auto-delete — 2026-03-07
+
+**Bugs hit:**
+- `fight.event_date` was never set on event fight objects — `fights` table has no `event_date` column; must be injected from the parent event on load (`handleEventClick`). Simplified by removing date check entirely from badge logic.
+- ESPN-detected FINAL fights set `fight_ended_at` locally but `status` remains `'upcoming'` until scraper runs — badge `isCompleted` must check `|| !!fight.fight_ended_at`, not just `status === 'completed'`.
+- Event-level poll self-stopped when `liveFights.length === 0` — changed to `return` (skip tick) not `stopped = true`.
+- Scraper Phase 2 auto-delete fired mid-event because `datetime.utcnow()` had rolled to the next UTC day while the US event was still live. Fixed by using `date.today().isoformat()` (local time) + `not any_newly_completed` as a dual guard.
+- `any_newly_completed` alone was insufficient: Phase 0.5 re-adds upcoming fights, then Phase 2 sees them as already-completed (status flip happened in a prior run), so `any_newly_completed` stays False and deletion fires. Required the local-date guard as well.
+- Scraper Unicode crash on Windows: `sys.stdout.reconfigure(encoding='utf-8', errors='replace')` must be added to master scraper (was already in `scrape_mmadecisions.py`).
+
+**What to do differently:**
+- For badge conditions that depend on DB fields not reliably present on fight objects, check at the data layer (inject on load) rather than adding conditional logic in the badge render.
+- Auto-delete logic in scrapers is dangerous during live events — always combine a time guard (local date, not UTC) with an activity guard (nothing newly completed this run).
+
 ## Phase 6e.2 Steps 1+2 — Judging DNA RPC overhaul + UI redesign — 2026-03-07
 
 **What worked:**
