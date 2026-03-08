@@ -446,7 +446,9 @@ export default function UFCFightRating() {
             const statusName = comp.status?.type?.name;
             if (statusName === prevStatuses[fight.id]) continue;
             prevStatuses[fight.id] = statusName;
-            if (statusName === 'STATUS_IN_PROGRESS' && !fight.fight_started_at) {
+            // STATUS_END_OF_ROUND = between rounds, still live
+            const isLiveStatus = statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_END_OF_ROUND';
+            if (isLiveStatus && !fight.fight_started_at) {
               const now = new Date().toISOString();
               setEventFights(prev => prev.map(f => f.id === fight.id ? { ...f, fight_started_at: now } : f));
               await callEdgeFn(fight.id, 'in_progress');

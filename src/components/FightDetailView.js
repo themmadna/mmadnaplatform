@@ -258,7 +258,8 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
           const statusName = comp.status?.type?.name;
           if (statusName === prevStatus) break;
           prevStatus = statusName;
-          if (statusName === 'STATUS_IN_PROGRESS') {
+          // STATUS_END_OF_ROUND = between rounds, still live
+          if (statusName === 'STATUS_IN_PROGRESS' || statusName === 'STATUS_END_OF_ROUND') {
             setFightStartedAt(new Date().toISOString());
             await callEdgeFn('in_progress');
           } else if (statusName === 'STATUS_FINAL') {
