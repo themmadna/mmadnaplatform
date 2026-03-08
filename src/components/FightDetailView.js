@@ -278,6 +278,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
     poll(); // immediate first check
     const intervalId = setInterval(poll, 60000);
     return () => { stopped = true; clearInterval(intervalId); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fight.id, fight.status, fight.bout, fight.event_date, fightEndedAt]);
 
   useEffect(() => {
