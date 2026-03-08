@@ -1,5 +1,30 @@
 # Lessons Learned
 
+---
+
+## ESPN polling — live badges working, round scoring not yet available — 2026-03-07
+
+**Context:** UFC 326 live test. Badges (Live/Completed/Upcoming) now update correctly from ESPN. But round scoring is not available for fights that completed tonight.
+
+**Why:** Fights completed via ESPN polling have `fight_ended_at` set but `status` still `'upcoming'` (scraper hasn't run yet). `FightDetailView` gates the scoring panel on `fight.status === 'upcoming' && isLocked` which is correct — but `meta` (from `fight_meta_details`) is null for these fights because the scraper hasn't run yet to populate it. `RoundScoringPanel` needs `meta` to know fighter names and round count.
+
+**Next session:** Enable scoring for tonight's completed fights. Options:
+1. Run scraper morning after → `status` flips to `completed`, `meta` populates, scoring works
+2. Show a "Scoring available after stats are published" message for isLocked fights with no meta
+3. Defer scoring unlock until scraper has run (gate on `meta !== null` for the locked panel)
+
+**ESPN status codes discovered:**
+- `STATUS_SCHEDULED` — not started
+- `STATUS_FIGHTERS_WALKING` — walkout, treat as upcoming (do NOT trigger live)
+- `STATUS_IN_PROGRESS` — round 1 live
+- `STATUS_IN_PROGRESS_2/3/4/5` — round N live (use `startsWith('STATUS_IN_PROGRESS')`)
+- `STATUS_END_OF_ROUND` — between rounds, treat as live
+- `STATUS_FINAL` — fight over
+
+**Edge Function 401 fix:** `verify_jwt` must be `false` on the Supabase Edge Function. Set via Management API PATCH to `/v1/projects/{ref}/functions/record-fight-status` with `{"verify_jwt": false}`. Default `true` causes Supabase middleware to reject valid user JWTs before function code runs.
+
+**Poll timing bug:** Immediate `poll()` call on effect mount fires before `eventFights` loads from Supabase → `liveFights.length === 0` → silent no-op. Fixed with `setTimeout(poll, 3000)` for the first call.
+
 Focused on reusable engineering patterns — implementation details live in git history.
 
 ---
