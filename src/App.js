@@ -144,6 +144,23 @@ const RangeSlider = ({ min, max, step, value, onChange }) => {
   );
 };
 
+// Match an ESPN competition object to a fight.bout string by fuzzy last-name comparison.
+// Eliminates the need for espn_competition_id to be pre-populated by the scraper.
+function normPollName(n) {
+  return (n || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+}
+function boutMatchesComp(bout, comp) {
+  const parts = (bout || '').split(/ vs /i);
+  if (parts.length < 2) return false;
+  const f1 = normPollName(parts[0]);
+  const f2 = normPollName(parts[1]);
+  const compNames = (comp.competitors || []).map(c => normPollName(c.athlete?.displayName || ''));
+  const lastOf = n => n.split(' ').pop();
+  const hits = (boutName, espnName) =>
+    boutName === espnName || (lastOf(boutName) === lastOf(espnName) && lastOf(boutName).length > 3);
+  return compNames.some(n => hits(f1, n)) && compNames.some(n => hits(f2, n));
+}
+
 // --- FightCard Component (Favorites First) ---
 const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null }) => {
   const likes = fight.ratings?.likes_count || 0;
@@ -376,7 +393,9 @@ export default function UFCFightRating() {
   // One request per 60s covers the whole card — no need to be in a specific fight detail.
   useEffect(() => {
     if (currentView !== 'fights' || !selectedEvent) return;
-    const today = new Date().toISOString().split('T')[0];
+    // Use local date — UFC events run Saturday US time which is already Sunday UTC
+    const d = new Date();
+    const today = [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
     if (selectedEvent.event_date !== today) return;
 
     const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
@@ -400,8 +419,9 @@ export default function UFCFightRating() {
 
     const poll = async () => {
       if (stopped) return;
+      // No espn_competition_id required — name matching is the fallback
       const liveFights = eventFightsRef.current.filter(
-        f => f.status === 'upcoming' && f.espn_competition_id && !f.fight_ended_at
+        f => f.status === 'upcoming' && !f.fight_ended_at
       );
       if (liveFights.length === 0) return; // all done for now, keep interval alive
       try {
@@ -410,8 +430,15 @@ export default function UFCFightRating() {
         for (const ev of json.events || []) {
           if (!ev.name?.toUpperCase().includes('UFC')) continue;
           for (const fight of liveFights) {
-            const comp = (ev.competitions || []).find(c => String(c.id) === String(fight.espn_competition_id));
+            // Match by competition ID if already known, else fall back to fighter name matching
+            const comp = fight.espn_competition_id
+              ? (ev.competitions || []).find(c => String(c.id) === String(fight.espn_competition_id))
+              : (ev.competitions || []).find(c => boutMatchesComp(fight.bout, c));
             if (!comp) continue;
+            // Cache the ESPN ID so future polls skip name matching
+            if (!fight.espn_competition_id) {
+              setEventFights(prev => prev.map(f => f.id === fight.id ? { ...f, espn_competition_id: String(comp.id) } : f));
+            }
             const statusName = comp.status?.type?.name;
             if (statusName === prevStatuses[fight.id]) continue;
             prevStatuses[fight.id] = statusName;

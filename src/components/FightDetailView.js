@@ -131,6 +131,14 @@ function matchesFighter(jsName, metaName) {
   return shorter.filter(w => w.length > 1).every(w => longer.includes(w));
 }
 
+// Match an ESPN competition to a bout string using the existing matchesFighter logic
+function boutMatchesComp(bout, comp) {
+  const parts = (bout || '').split(/ vs /i);
+  if (parts.length < 2) return false;
+  const compNames = (comp.competitors || []).map(c => c.athlete?.displayName || '');
+  return compNames.some(n => matchesFighter(n, parts[0])) && compNames.some(n => matchesFighter(n, parts[1]));
+}
+
 function buildRoundData(meta, roundStats, judgeScores, eventYear) {
   const roundsFought = parseInt((meta.round || '').split(' ')[0]) || 0;
   if (roundsFought === 0) return [];
@@ -214,7 +222,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
   // First client to detect a status change calls the Edge Function, which writes
   // the timestamp to the DB. Subsequent clients read it from the DB on mount.
   useEffect(() => {
-    if (fight.status !== 'upcoming' || !fight.espn_competition_id || fightEndedAt) return;
+    if (fight.status !== 'upcoming' || fightEndedAt) return;
 
     const dateParam = (fight.event_date || '').replace(/-/g, '');
     if (!dateParam) return;
@@ -243,7 +251,9 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
         const json = await res.json();
         for (const ev of json.events || []) {
           if (!ev.name?.toUpperCase().includes('UFC')) continue;
-          const comp = (ev.competitions || []).find(c => String(c.id) === fight.espn_competition_id);
+          const comp = fight.espn_competition_id
+            ? (ev.competitions || []).find(c => String(c.id) === String(fight.espn_competition_id))
+            : (ev.competitions || []).find(c => boutMatchesComp(fight.bout, c));
           if (!comp) continue;
           const statusName = comp.status?.type?.name;
           if (statusName === prevStatus) break;
@@ -268,7 +278,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
     poll(); // immediate first check
     const intervalId = setInterval(poll, 60000);
     return () => { stopped = true; clearInterval(intervalId); };
-  }, [fight.id, fight.status, fight.espn_competition_id, fight.event_date, fightEndedAt]);
+  }, [fight.id, fight.status, fight.bout, fight.event_date, fightEndedAt]);
 
   useEffect(() => {
     const load = async () => {
