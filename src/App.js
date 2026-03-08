@@ -396,6 +396,7 @@ export default function UFCFightRating() {
     // Use local date — UFC events run Saturday US time which is already Sunday UTC
     const d = new Date();
     const today = [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-');
+    console.log('[EventPoll] today=', today, 'event_date=', selectedEvent.event_date);
     if (selectedEvent.event_date !== today) return;
 
     const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
@@ -423,10 +424,12 @@ export default function UFCFightRating() {
       const liveFights = eventFightsRef.current.filter(
         f => f.status === 'upcoming' && !f.fight_ended_at
       );
+      console.log('[EventPoll] polling, liveFights=', liveFights.length);
       if (liveFights.length === 0) return; // all done for now, keep interval alive
       try {
         const res = await fetch(`https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${dateParam}`);
         const json = await res.json();
+        console.log('[EventPoll] ESPN events=', (json.events||[]).map(e=>e.name));
         for (const ev of json.events || []) {
           if (!ev.name?.toUpperCase().includes('UFC')) continue;
           for (const fight of liveFights) {
@@ -434,6 +437,7 @@ export default function UFCFightRating() {
             const comp = fight.espn_competition_id
               ? (ev.competitions || []).find(c => String(c.id) === String(fight.espn_competition_id))
               : (ev.competitions || []).find(c => boutMatchesComp(fight.bout, c));
+            console.log('[EventPoll]', fight.bout, '→', comp ? comp.status?.type?.name : 'NO MATCH');
             if (!comp) continue;
             // Cache the ESPN ID so future polls skip name matching
             if (!fight.espn_competition_id) {
