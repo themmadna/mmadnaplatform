@@ -236,7 +236,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
         if (!session) return;
         await fetch(EDGE_FN_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}` },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY },
           body: JSON.stringify({ fight_id: fight.id, status }),
         });
       } catch (e) {
