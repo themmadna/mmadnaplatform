@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { dataService } from '../dataService';
 
-const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsScored }) => {
+const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsScored, totalRoundsOverride }) => {
   const [user, setUser]                   = useState(null);
   const [scores, setScores]               = useState({});   // { [round]: { fighterScoredFor, points } } — from DB
   const [pending, setPending]             = useState({});   // local UI selection
@@ -21,13 +21,16 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   // - Live: use scheduled rounds from time_format; finish constraint applied post-scrape
   const isDecision = meta?.method?.toLowerCase().includes('decision');
   const roundsFought = parseInt((meta?.round || '').split(' ')[0]) || 0;
-  const totalRounds = isHistorical
-    ? (isDecision ? roundsFought : Math.max(0, roundsFought - 1))
-    : (parseInt(meta?.time_format?.match(/^(\d+)\s*Rnd/)?.[1]) || 3);
+  const totalRounds = totalRoundsOverride != null
+    ? totalRoundsOverride
+    : isHistorical
+      ? (isDecision ? roundsFought : Math.max(0, roundsFought - 1))
+      : (parseInt(meta?.time_format?.match(/^(\d+)\s*Rnd/)?.[1]) || 3);
 
-  // Post-reveal: read-only for live fights (inputs lock after judges shown)
-  // Historical fights stay editable (but mark modified_after_reveal on save)
-  const readOnly = judgesRevealed && !isHistorical;
+  // Post-reveal: read-only only when fight is fully over (isLocked) or historical.
+  // Live in-progress fights stay editable between rounds so users can score new rounds
+  // even after the previous round's judges have been revealed.
+  const readOnly = judgesRevealed && !isHistorical && isLocked;
 
   // Live fights: scoring closes once ESPN marks fight FINAL; historical always open
   const canSubmit = isHistorical || !isLocked;
@@ -87,10 +90,12 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
       await dataService.upsertRoundScore(fight.id, round, f1Score, f2Score);
       const newScores = { ...scores, [round]: p };
       setScores(newScores);
-      // Notify parent + auto-reveal when all scoreable rounds submitted
-      if (Object.keys(newScores).length >= totalRounds) {
+      // Notify parent + auto-reveal when all scoreable rounds submitted.
+      // For live fights: only reveal after fight ends (isLocked) to avoid locking
+      // inputs mid-fight when more rounds are still coming.
+      if (Object.keys(newScores).length >= totalRounds && totalRounds > 0) {
         onAllRoundsScored?.();
-        if (!judgesRevealed) await handleReveal(newScores, false);
+        if (!judgesRevealed && (isLocked || isHistorical)) await handleReveal(newScores, false);
       }
     } catch (e) {
       console.error('[RoundScoring] submit error:', e);

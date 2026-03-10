@@ -218,6 +218,20 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
   const isLive   = !!fightStartedAt && !fightEndedAt;
   const isLocked = !!fightEndedAt;
 
+  // ESPN-derived round data — seeded from DB (populated by live polling), persists after ESPN goes dark.
+  // scheduledRounds: 3 or 5 from format.regulation.periods — available before fight starts.
+  // scorableRounds: rounds that are fully complete and can be scored.
+  const [scheduledRounds, setScheduledRounds] = useState(fight.scheduled_rounds || null);
+  const [scorableRounds, setScorableRounds]   = useState(() => {
+    // For completed fights where ESPN data was persisted, compute scorable rounds upfront
+    if (fight.status === 'completed' && fight.rounds_fought != null) {
+      return fight.ended_by_decision
+        ? fight.rounds_fought
+        : Math.max(0, fight.rounds_fought - 1);
+    }
+    return 0;
+  });
+
   // Poll ESPN every 60s for upcoming fights with a known ESPN competition ID.
   // First client to detect a status change calls the Edge Function, which writes
   // the timestamp to the DB. Subsequent clients read it from the DB on mount.
@@ -230,14 +244,16 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
     let prevStatus = null;
     let stopped = false;
 
-    const callEdgeFn = async (status) => {
+    const callEdgeFn = async (status, extraFields = {}) => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
+        const body = { fight_id: fight.id, ...extraFields };
+        if (status) body.status = status;
         await fetch(EDGE_FN_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': process.env.REACT_APP_SUPABASE_ANON_KEY },
-          body: JSON.stringify({ fight_id: fight.id, status }),
+          body: JSON.stringify(body),
         });
       } catch (e) {
         console.warn('[FightPoll] Edge Function call failed:', e);
@@ -255,19 +271,39 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
             ? (ev.competitions || []).find(c => String(c.id) === String(fight.espn_competition_id))
             : (ev.competitions || []).find(c => boutMatchesComp(fight.bout, c));
           if (!comp) continue;
+
+          // Persist scheduled rounds on first sight — available even before fight starts.
+          // Survives after ESPN goes dark so scoring panel has correct round count.
+          const espnScheduled = comp.format?.regulation?.periods || null;
+          if (espnScheduled && !scheduledRounds) {
+            setScheduledRounds(espnScheduled);
+            callEdgeFn(null, { scheduled_rounds: espnScheduled });
+          }
+
           const statusName = comp.status?.type?.name;
           if (statusName === prevStatus) break;
           prevStatus = statusName;
-          // STATUS_IN_PROGRESS_2/3/4/5 = round N in progress; STATUS_END_OF_ROUND = between rounds
+          const period = comp.status?.period || 0;
+
           if (statusName?.startsWith('STATUS_IN_PROGRESS') || statusName === 'STATUS_END_OF_ROUND') {
-            setFightStartedAt(new Date().toISOString());
-            await callEdgeFn('in_progress');
+            setFightStartedAt(s => s || new Date().toISOString());
+            // Unlock completed rounds: between rounds → period rounds done; mid-round → period-1 done
+            const newScorable = statusName === 'STATUS_END_OF_ROUND' ? period : Math.max(0, period - 1);
+            setScorableRounds(prev => Math.max(prev, newScorable));
+            await callEdgeFn('in_progress', espnScheduled ? { scheduled_rounds: espnScheduled } : {});
           } else if (statusName === 'STATUS_FINAL') {
             const now = new Date().toISOString();
+            const isDecision = (comp.details || []).some(d => d.type?.id === '22');
+            const finalScorable = isDecision ? period : Math.max(0, period - 1);
+            setScorableRounds(finalScorable);
             setFightStartedAt(s => s || now);
             setFightEndedAt(now);
             stopped = true;
-            await callEdgeFn('final');
+            await callEdgeFn('final', {
+              ...(espnScheduled ? { scheduled_rounds: espnScheduled } : {}),
+              rounds_fought: period,
+              ended_by_decision: isDecision,
+            });
           }
           break;
         }
@@ -292,7 +328,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
           fight.event_name,
           fight.event_date
         );
-        if (!m) { setError('Fight details not yet available.'); return; }
+        if (!m) return; // meta not yet available — render handles it gracefully
         setMeta(m);
         // Debug: log judge_scores coverage for this fight
         if (judgeScores.length === 0) {
@@ -404,31 +440,35 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
           </div>
         )}
 
-        {/* CONTENT */}
-        {!loading && meta && (
+        {/* CONTENT — shown once data load completes, with or without meta */}
+        {!loading && !error && (
           <>
-            {/* FIGHT HEADER */}
+            {/* FIGHT HEADER — works with or without meta */}
             <div className={`${currentTheme.card} p-6 rounded-xl border mb-6 shadow-lg text-center`}>
               <div className="flex items-center justify-center gap-4 mb-3 flex-wrap">
-                <h1 className="text-lg sm:text-2xl font-black">{meta.fighter1_name}</h1>
+                <h1 className="text-lg sm:text-2xl font-black">
+                  {meta ? meta.fighter1_name : fight.bout?.split(' vs ')[0]?.trim()}
+                </h1>
                 <span className={`text-lg font-bold ${currentTheme.accent} opacity-60`}>VS</span>
-                <h1 className="text-lg sm:text-2xl font-black">{meta.fighter2_name}</h1>
+                <h1 className="text-lg sm:text-2xl font-black">
+                  {meta ? meta.fighter2_name : fight.bout?.split(' vs ')[1]?.trim()}
+                </h1>
               </div>
               <p className="text-xs opacity-50 uppercase tracking-widest">
-                {meta.weight_class_clean || meta.weight_class || fight.weight_class || ''}
-                {meta.method ? ` · ${meta.method}` : ''}
-                {meta.round ? ` · R${meta.round}` : ''}
-                {meta.time ? ` ${meta.time}` : ''}
-                {meta.referee ? ` · Ref: ${meta.referee}` : ''}
+                {meta?.weight_class_clean || meta?.weight_class || fight.weight_class || ''}
+                {meta?.method ? ` · ${meta.method}` : ''}
+                {meta?.round ? ` · R${meta.round}` : ''}
+                {meta?.time ? ` ${meta.time}` : ''}
+                {meta?.referee ? ` · Ref: ${meta.referee}` : ''}
               </p>
-              {meta.winner && fight.status === 'completed' && (
+              {meta?.winner && fight.status === 'completed' && (
                 <div className={`mt-3 inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full ${currentTheme.primary} text-white`}>
                   W: {meta.winner}
                 </div>
               )}
             </div>
 
-            {/* UPCOMING STATUS */}
+            {/* UPCOMING — not started */}
             {fight.status === 'upcoming' && !isLive && !isLocked && (
               <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
                 <p className="text-sm uppercase tracking-widest">
@@ -437,17 +477,17 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
               </div>
             )}
 
-            {/* LIVE — scoring window open */}
+            {/* UPCOMING — live (scoring open, rounds unlock progressively) */}
             {fight.status === 'upcoming' && isLive && (
               <div className={`${currentTheme.card} p-4 rounded-xl border mb-4 text-center`}>
                 <p className="text-xs font-black uppercase tracking-widest opacity-60">🔴 Fight In Progress</p>
               </div>
             )}
             {fight.status === 'upcoming' && isLive && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} />
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} />
             )}
 
-            {/* ENDED — scoring locked, stats incoming */}
+            {/* UPCOMING — ended, stats incoming */}
             {fight.status === 'upcoming' && isLocked && (
               <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60 mb-4`}>
                 <p className="text-sm uppercase tracking-widest">
@@ -456,77 +496,84 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
               </div>
             )}
             {fight.status === 'upcoming' && isLocked && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} />
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} />
             )}
 
-            {/* NO STATS YET */}
-            {fight.status !== 'upcoming' && rounds.length === 0 && (
+            {/* COMPLETED — stats pending (meta not available yet) */}
+            {fight.status === 'completed' && !meta && (
               <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
                 <p className="text-sm uppercase tracking-widest">Round stats not yet available for this fight.</p>
               </div>
             )}
-
-            {/* ROUND BREAKDOWN */}
-            {rounds.map(rd => (
-              <div key={rd.round} className={`${currentTheme.card} rounded-xl border mb-4 shadow-lg overflow-hidden`}>
-
-                {/* ROUND HEADER */}
-                <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10">
-                  <p className="text-xs font-black uppercase tracking-widest opacity-60">Round {rd.round}</p>
-                </div>
-
-                <div className="p-4 sm:p-6">
-                  {/* FIGHTER NAME HEADERS */}
-                  <div className="grid grid-cols-3 text-xs opacity-40 uppercase tracking-widest mb-3">
-                    <span className="font-bold">{meta.fighter1_name.split(' ').pop()}</span>
-                    <span className="text-center"></span>
-                    <span className="text-right font-bold">{meta.fighter2_name.split(' ').pop()}</span>
-                  </div>
-
-                  {/* STATS GRID */}
-                  {(rd.f1Stats || rd.f2Stats) ? (
-                    <div className="space-y-2 mb-5">
-                      {STATS_ROWS(rd).map(row => (
-                        <div key={row.label} className="grid grid-cols-3 items-center text-xs sm:text-sm">
-                          <span className={`text-left font-bold ${row.f1Raw > row.f2Raw ? currentTheme.accent : 'opacity-80'}`}>
-                            {row.f1}
-                          </span>
-                          <span className="text-center text-xs opacity-40 uppercase tracking-wider">{row.label}</span>
-                          <span className={`text-right font-bold ${row.f2Raw > row.f1Raw ? currentTheme.accent : 'opacity-80'}`}>
-                            {row.f2}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs opacity-40 text-center mb-5 uppercase tracking-widest">No stats for this round</p>
-                  )}
-
-                </div>
-              </div>
-            ))}
-
-            {/* STOPPAGE NOTE */}
-            {meta.method && !meta.method.toLowerCase().includes('decision') && (
-              <p className="text-xs opacity-40 text-center uppercase tracking-widest mb-6">
-                Ended by {meta.method} — no judges' scorecard available
-              </p>
+            {/* Still allow scoring if ESPN data was persisted (scorableRounds > 0) */}
+            {fight.status === 'completed' && !meta && scorableRounds > 0 && (
+              <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} />
             )}
 
-            {/* YOUR SCORECARD — completed fights */}
+            {/* COMPLETED — has meta */}
             {fight.status === 'completed' && meta && (
-              <RoundScoringPanel
-                fight={fight}
-                meta={meta}
-                isLocked={false}
-                currentTheme={currentTheme}
-                onAllRoundsScored={() => setHasUserScores(true)}
-              />
-            )}
+              <>
+                {/* NO STATS YET */}
+                {rounds.length === 0 && (
+                  <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
+                    <p className="text-sm uppercase tracking-widest">Round stats not yet available for this fight.</p>
+                  </div>
+                )}
 
-            {/* SCORECARD COMPARISON */}
-            {fight.status === 'completed' && meta && rounds.length > 0 && (
-              <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} />
+                {/* ROUND BREAKDOWN */}
+                {rounds.map(rd => (
+                  <div key={rd.round} className={`${currentTheme.card} rounded-xl border mb-4 shadow-lg overflow-hidden`}>
+                    <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10">
+                      <p className="text-xs font-black uppercase tracking-widest opacity-60">Round {rd.round}</p>
+                    </div>
+                    <div className="p-4 sm:p-6">
+                      <div className="grid grid-cols-3 text-xs opacity-40 uppercase tracking-widest mb-3">
+                        <span className="font-bold">{meta.fighter1_name.split(' ').pop()}</span>
+                        <span className="text-center"></span>
+                        <span className="text-right font-bold">{meta.fighter2_name.split(' ').pop()}</span>
+                      </div>
+                      {(rd.f1Stats || rd.f2Stats) ? (
+                        <div className="space-y-2 mb-5">
+                          {STATS_ROWS(rd).map(row => (
+                            <div key={row.label} className="grid grid-cols-3 items-center text-xs sm:text-sm">
+                              <span className={`text-left font-bold ${row.f1Raw > row.f2Raw ? currentTheme.accent : 'opacity-80'}`}>
+                                {row.f1}
+                              </span>
+                              <span className="text-center text-xs opacity-40 uppercase tracking-wider">{row.label}</span>
+                              <span className={`text-right font-bold ${row.f2Raw > row.f1Raw ? currentTheme.accent : 'opacity-80'}`}>
+                                {row.f2}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs opacity-40 text-center mb-5 uppercase tracking-widest">No stats for this round</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+
+                {/* STOPPAGE NOTE */}
+                {meta.method && !meta.method.toLowerCase().includes('decision') && (
+                  <p className="text-xs opacity-40 text-center uppercase tracking-widest mb-6">
+                    Ended by {meta.method} — no judges' scorecard available
+                  </p>
+                )}
+
+                {/* YOUR SCORECARD */}
+                <RoundScoringPanel
+                  fight={fight}
+                  meta={meta}
+                  isLocked={false}
+                  currentTheme={currentTheme}
+                  onAllRoundsScored={() => setHasUserScores(true)}
+                />
+
+                {/* SCORECARD COMPARISON */}
+                {rounds.length > 0 && (
+                  <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} />
+                )}
+              </>
             )}
           </>
         )}

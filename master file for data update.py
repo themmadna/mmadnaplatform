@@ -554,7 +554,7 @@ def sync_event_times():
 
                 # 4b. Populate fights.espn_competition_id for each competition
                 db_fights = supabase_db.table("fights")\
-                    .select("id, bout, espn_competition_id")\
+                    .select("id, bout, espn_competition_id, scheduled_rounds")\
                     .eq("event_name", db_event['event_name'])\
                     .eq("status", "upcoming")\
                     .execute().data
@@ -575,11 +575,16 @@ def sync_event_times():
                     )
                     if db_match:
                         matched_ids.append(db_match['id'])
+                        updates = {}
                         if db_match['espn_competition_id'] != comp_id:
-                            supabase_db.table("fights").update({
-                                "espn_competition_id": comp_id
-                            }).eq("id", db_match['id']).execute()
+                            updates['espn_competition_id'] = comp_id
                             print(f"      🔗 {db_match['bout']} → competition_id={comp_id}")
+                        # Persist scheduled rounds (3 or 5) so frontend knows round count before event
+                        scheduled = comp.get('format', {}).get('regulation', {}).get('periods')
+                        if scheduled and db_match.get('scheduled_rounds') != scheduled:
+                            updates['scheduled_rounds'] = scheduled
+                        if updates:
+                            supabase_db.table("fights").update(updates).eq("id", db_match['id']).execute()
                     else:
                         unmatched.append(f"{espn_a} vs {espn_b}")
 

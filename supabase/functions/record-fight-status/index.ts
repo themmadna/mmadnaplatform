@@ -16,10 +16,17 @@ Deno.serve(async (req) => {
       })
     }
 
-    const { fight_id, status } = await req.json()
+    const { fight_id, status, scheduled_rounds, rounds_fought, ended_by_decision } = await req.json()
 
-    if (!fight_id || !['in_progress', 'final'].includes(status)) {
-      return new Response(JSON.stringify({ error: 'Invalid payload: need fight_id and status (in_progress|final)' }), {
+    if (!fight_id) {
+      return new Response(JSON.stringify({ error: 'Invalid payload: need fight_id' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // status is optional — metadata-only calls (scheduled_rounds etc.) pass no status
+    if (status && !['in_progress', 'final'].includes(status)) {
+      return new Response(JSON.stringify({ error: 'Invalid status: must be in_progress or final' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
@@ -34,7 +41,7 @@ Deno.serve(async (req) => {
 
     // Fetch the fight row
     const fetchRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/fights?id=eq.${fight_id}&select=id,espn_competition_id,fight_started_at,fight_ended_at`,
+      `${SUPABASE_URL}/rest/v1/fights?id=eq.${fight_id}&select=id,fight_started_at,fight_ended_at`,
       { headers: dbHeaders }
     )
     const fights = await fetchRes.json()
@@ -45,16 +52,10 @@ Deno.serve(async (req) => {
     }
     const fight = fights[0]
 
-    if (!fight.espn_competition_id) {
-      return new Response(JSON.stringify({ error: 'Fight has no espn_competition_id — run sync first' }), {
-        status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    // NULL-safe updates — only write timestamps that haven't been set yet.
+    // NULL-safe timestamp updates — only write timestamps that haven't been set yet.
     // Safe against concurrent calls from multiple clients.
     const now = new Date().toISOString()
-    const updates: Record<string, string> = {}
+    const updates: Record<string, unknown> = {}
 
     if (status === 'in_progress' && !fight.fight_started_at) {
       updates.fight_started_at = now
@@ -64,8 +65,12 @@ Deno.serve(async (req) => {
       if (!fight.fight_ended_at) updates.fight_ended_at = now
     }
 
+    // ESPN-derived metadata — persist immediately so data survives after ESPN goes dark
+    if (scheduled_rounds != null) updates.scheduled_rounds = scheduled_rounds
+    if (rounds_fought != null) updates.rounds_fought = rounds_fought
+    if (ended_by_decision != null) updates.ended_by_decision = ended_by_decision
+
     if (Object.keys(updates).length === 0) {
-      // Already recorded — idempotent no-op
       return new Response(JSON.stringify({ ok: true, noop: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
