@@ -4,6 +4,7 @@ import { dataService } from '../dataService';
 import { supabase } from '../supabaseClient';
 import RoundScoringPanel from './RoundScoringPanel';
 import ScorecardComparison from './ScorecardComparison';
+import * as guestStorage from '../guestStorage';
 
 // --- SCORING MODEL (Logistic Regression, 82.50% holdout accuracy) ---
 // Feature order and scaler values from scoring_model/scoring_model.json
@@ -186,7 +187,7 @@ function fmtControlTime(stats) {
 const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
 const ESPN_SCOREBOARD = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard';
 
-const FightDetailView = ({ fight, currentTheme, onBack }) => {
+const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -198,6 +199,11 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
 
   useEffect(() => {
     if (fight.status !== 'completed') return;
+    if (isGuest) {
+      const scores = guestStorage.getFightScores(fight.id);
+      if (Object.keys(scores).length > 0) setHasUserScores(true);
+      return;
+    }
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -208,7 +214,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
         .eq('user_id', user.id);
       if (count > 0) setHasUserScores(true);
     })();
-  }, [fight.id, fight.status]);
+  }, [fight.id, fight.status, isGuest]);
 
   // Live fight status — seeded from DB, updated by ESPN polling
   const [fightStartedAt, setFightStartedAt] = useState(fight.fight_started_at || null);
@@ -484,7 +490,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
               </div>
             )}
             {fight.status === 'upcoming' && isLive && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} />
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
             )}
 
             {/* UPCOMING — ended, stats incoming */}
@@ -496,7 +502,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
               </div>
             )}
             {fight.status === 'upcoming' && isLocked && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} />
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
             )}
 
             {/* COMPLETED — stats pending (meta not available yet) */}
@@ -507,7 +513,7 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
             )}
             {/* Still allow scoring if ESPN data was persisted (scorableRounds > 0) */}
             {fight.status === 'completed' && !meta && scorableRounds > 0 && (
-              <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} />
+              <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
             )}
 
             {/* COMPLETED — has meta */}
@@ -567,11 +573,12 @@ const FightDetailView = ({ fight, currentTheme, onBack }) => {
                   isLocked={false}
                   currentTheme={currentTheme}
                   onAllRoundsScored={() => setHasUserScores(true)}
+                  isGuest={isGuest}
                 />
 
                 {/* SCORECARD COMPARISON */}
                 {rounds.length > 0 && (
-                  <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} />
+                  <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} isGuest={isGuest} />
                 )}
               </>
             )}

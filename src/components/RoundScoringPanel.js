@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { dataService } from '../dataService';
+import * as guestStorage from '../guestStorage';
 
-const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsScored, totalRoundsOverride }) => {
+const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsScored, totalRoundsOverride, isGuest = false }) => {
   const [user, setUser]                   = useState(null);
   const [scores, setScores]               = useState({});   // { [round]: { fighterScoredFor, points } } — from DB
   const [pending, setPending]             = useState({});   // local UI selection
@@ -37,6 +38,23 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
 
   useEffect(() => {
     const load = async () => {
+      if (isGuest) {
+        const rawScores = guestStorage.getFightScores(fight.id);
+        const state = guestStorage.getScorecardState(fight.id);
+        const scoresMap = {};
+        Object.entries(rawScores).forEach(([round, s]) => {
+          const fighterScoredFor = s.f1_score >= s.f2_score ? f1Name : f2Name;
+          const points = Math.min(s.f1_score, s.f2_score);
+          scoresMap[parseInt(round)] = { fighterScoredFor, points };
+        });
+        setScores(scoresMap);
+        setPending(scoresMap);
+        setScorecardState(state);
+        setJudgesRevealed(!!state?.judges_revealed_at || isHistorical);
+        setUser({ id: 'guest' });
+        setLoaded(true);
+        return;
+      }
       const { user: u, scores: rawScores, scorecardState: state } =
         await dataService.getUserScoringData(fight.id);
       setUser(u);
@@ -56,7 +74,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
     };
     load();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fight.id, isHistorical]);
+  }, [fight.id, isHistorical, isGuest]);
 
   const handleReveal = async (currentScores, forfeited) => {
     const allDone = Object.keys(currentScores).length >= totalRounds;
@@ -66,6 +84,12 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
       forfeited,
       judges_revealed_at: new Date().toISOString(),
     };
+    if (isGuest) {
+      guestStorage.setScorecardState(fight.id, updates);
+      setScorecardState(s => ({ ...(s || {}), ...updates }));
+      setJudgesRevealed(true);
+      return;
+    }
     try {
       await dataService.upsertScorecardState(fight.id, updates);
       setScorecardState(s => ({ ...(s || {}), ...updates }));
@@ -82,12 +106,14 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
     try {
       // Post-reveal edit on historical fight → mark ineligible
       if (judgesRevealed) {
-        await dataService.upsertScorecardState(fight.id, { modified_after_reveal: true });
+        if (isGuest) guestStorage.setScorecardState(fight.id, { modified_after_reveal: true });
+        else await dataService.upsertScorecardState(fight.id, { modified_after_reveal: true });
         setScorecardState(s => ({ ...(s || {}), modified_after_reveal: true }));
       }
       const f1Score = p.fighterScoredFor === f1Name ? 10 : p.points;
       const f2Score = p.fighterScoredFor === f2Name ? 10 : p.points;
-      await dataService.upsertRoundScore(fight.id, round, f1Score, f2Score);
+      if (isGuest) guestStorage.setScore(fight.id, round, f1Score, f2Score);
+      else await dataService.upsertRoundScore(fight.id, round, f1Score, f2Score);
       const newScores = { ...scores, [round]: p };
       setScores(newScores);
       // Notify parent + auto-reveal when all scoreable rounds submitted.
@@ -227,7 +253,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                   )}
                   {/* Quiet saved confirmation when pending matches DB */}
                   {saved && !isDirty && (
-                    <p className="text-xs opacity-30 text-center tracking-widest">✓ Saved</p>
+                    <p className="text-xs opacity-30 text-center tracking-widest">{isGuest ? '✓ Saved locally' : '✓ Saved'}</p>
                   )}
                 </>
               )}

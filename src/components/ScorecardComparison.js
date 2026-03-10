@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 import { dataService } from '../dataService';
+import * as guestStorage from '../guestStorage';
 
 // Majority winner for a round: needs 2+ of 3 judges
 function roundMajority(judges) {
@@ -14,7 +15,7 @@ function roundMajority(judges) {
 
 // Three-column comparison: You | Official judges | Community average.
 // hasUserScores is lifted from FightDetailView — gates the reveal.
-const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores }) => {
+const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores, isGuest = false }) => {
   const [userScores, setUserScores] = useState([]);
   const [community, setCommunity] = useState([]);
 
@@ -22,21 +23,28 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores 
   useEffect(() => {
     if (!hasUserScores) return;
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      const [commData, userResult] = await Promise.all([
-        dataService.getCommunityScorecard(fight.id),
-        user
-          ? supabase.from('user_round_scores')
-              .select('round, f1_score, f2_score')
-              .eq('fight_id', fight.id)
-              .eq('user_id', user.id)
-          : Promise.resolve({ data: [] }),
-      ]);
+      const commData = await dataService.getCommunityScorecard(fight.id);
       setCommunity(commData);
+
+      if (isGuest) {
+        const raw = guestStorage.getFightScores(fight.id);
+        setUserScores(Object.entries(raw).map(([round, s]) => ({
+          round: parseInt(round), f1_score: s.f1_score, f2_score: s.f2_score,
+        })));
+        return;
+      }
+
+      const { data: { user } } = await supabase.auth.getUser();
+      const userResult = user
+        ? await supabase.from('user_round_scores')
+            .select('round, f1_score, f2_score')
+            .eq('fight_id', fight.id)
+            .eq('user_id', user.id)
+        : { data: [] };
       setUserScores(userResult.data || []);
     };
     load();
-  }, [fight.id, hasUserScores]);
+  }, [fight.id, hasUserScores, isGuest]);
 
   if (!rounds || rounds.length === 0) return null;
 

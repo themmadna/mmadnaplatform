@@ -3,6 +3,7 @@ import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, Palette, M
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
+import * as guestStorage from './guestStorage';
 import CombatDNAVisual from './CombatDNAVisual';
 import CombatScatterPlot from './components/CombatScatterPlot';
 import FightDetailView from './components/FightDetailView';
@@ -285,6 +286,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 // --- Main App Component ---
 export default function UFCFightRating() {
   const [session, setSession] = useState(null);
+  const [isGuest, setIsGuest] = useState(guestStorage.isGuest());
   const [currentView, setCurrentView] = useState('events');
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [availableYears, setAvailableYears] = useState([]);
@@ -379,12 +381,12 @@ export default function UFCFightRating() {
     prevViewRef.current = currentView;
   }, [currentView]);
 
-  // Fetch judging profile once when user opens the DNA view
+  // Fetch judging profile once when user opens the DNA view (skip for guests)
   useEffect(() => {
-    if (currentView !== 'dna' || judgingProfile) return;
+    if (currentView !== 'dna' || judgingProfile || isGuest) return;
     dataService.getUserJudgingProfile().then(setJudgingProfile);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentView]);
+  }, [currentView, isGuest]);
 
   // Keep ref in sync so the ESPN poll can read latest eventFights without re-triggering the effect
   useEffect(() => { eventFightsRef.current = eventFights; }, [eventFights]);
@@ -508,12 +510,12 @@ export default function UFCFightRating() {
   };
 
   useEffect(() => {
-    if (selectedYear === 'For You' && session) {
+    if (selectedYear === 'For You' && (session || isGuest)) {
         setFetchingEvents(true);
         const loadForYou = async () => {
               const likesCount = userHistory.filter(f => f.userVote === 'like' || f.userVote === 'favorite').length;
               let fights = [];
-              if (likesCount >= 5 && combatDNA) {
+              if (!isGuest && likesCount >= 5 && combatDNA) {
                   fights = await dataService.getRecommendations(session.user.id, combatDNA) || [];
               } else {
                   const favs = await dataService.getCommunityFavorites();
@@ -529,7 +531,7 @@ export default function UFCFightRating() {
         };
         loadForYou();
     }
-  }, [selectedYear, combatDNA, userHistory, session]);
+  }, [selectedYear, combatDNA, userHistory, session, isGuest]);
 
   useEffect(() => {
     if (!selectedYear || selectedYear === 'For You' || searchQuery) return;
@@ -597,17 +599,23 @@ export default function UFCFightRating() {
           return; 
       }
 
-      if (fightMatches && fightMatches.length > 0 && session) {
-         const { data: userVotes } = await supabase.from('user_votes').select('fight_id, vote_type').eq('user_id', session.user.id);
+      if (fightMatches && fightMatches.length > 0) {
+         let userVotes = [];
+         if (session) {
+           const { data } = await supabase.from('user_votes').select('fight_id, vote_type').eq('user_id', session.user.id);
+           userVotes = data || [];
+         }
+         const guestVotes = isGuest ? guestStorage.getVotes() : {};
          const uniqueEvents = [...new Set(fightMatches.map(f => f.event_name))];
          const { data: eventData } = await supabase.from('ufc_events').select('event_name, event_date').in('event_name', uniqueEvents);
 
          let merged = fightMatches.map(f => ({
           ...f,
-          // FIX 1: HANDLE RATINGS ARRAY (Force it to be an object)
           ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
           event_date: eventData?.find(e => e.event_name === f.event_name)?.event_date || '0000-00-00',
-          userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type
+          userVote: session
+            ? userVotes?.find(v => v.fight_id === f.id)?.vote_type
+            : guestVotes[String(f.id)],
         }));
         
         if (query && merged.some(f => f.bout && f.bout.toLowerCase().includes(query))) {
@@ -623,7 +631,7 @@ export default function UFCFightRating() {
       setFetchingEvents(false);
     }, 400);
     return () => clearTimeout(delayDebounce);
-  }, [searchQuery, session, filters, showFilters]);
+  }, [searchQuery, session, isGuest, filters, showFilters]);
 
   const handleEventClick = async (event) => {
     setSelectedEvent(event);
@@ -631,13 +639,20 @@ export default function UFCFightRating() {
     setEventFights([]);
     setLoadingFights(true);
     const { data: bouts } = await supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name).order('id', { ascending: true });
-    if (bouts && session) {
-      const { data: userVotes } = await supabase.from('user_votes').select('*').eq('user_id', session.user.id);
+    if (bouts) {
+      let userVotes = [];
+      if (session) {
+        const { data } = await supabase.from('user_votes').select('*').eq('user_id', session.user.id);
+        userVotes = data || [];
+      }
+      const guestVotes = isGuest ? guestStorage.getVotes() : {};
       const merged = bouts.map(f => ({
         ...f,
         event_date: event.event_date,
         ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings) || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
-        userVote: userVotes?.find(v => v.fight_id === f.id)?.vote_type,
+        userVote: session
+          ? userVotes.find(v => v.fight_id === f.id)?.vote_type
+          : guestVotes[String(f.id)],
       }));
       setEventFights(merged);
     }
@@ -713,9 +728,11 @@ export default function UFCFightRating() {
     setUserHistory(newUserHistory);
     updateDnaAndCharts(newUserHistory, dnaFilter);
 
+    if (isGuest) { guestStorage.setVote(fightId, finalVote); return; }
+
     try {
-      if (oldVote && oldVote !== finalVote) await dataService.castVote(fightId, null); 
-      if (finalVote) await dataService.castVote(fightId, finalVote); 
+      if (oldVote && oldVote !== finalVote) await dataService.castVote(fightId, null);
+      if (finalVote) await dataService.castVote(fightId, finalVote);
     } catch (err) { console.error(err); }
   };
 
@@ -741,8 +758,37 @@ export default function UFCFightRating() {
   }, [dnaFilter]);
 
   const handleSignOut = async () => { await supabase.auth.signOut(); setSession(null); setCurrentView('events'); };
+  const handleGuestSignUp = () => {
+    guestStorage.setGuest(false);
+    setIsGuest(false);
+    setUserHistory([]);
+    setCombatDNA(null);
+    setComparisonData([]);
+  };
 
   const fetchUserHistory = async () => {
+    if (isGuest) {
+      const votes = guestStorage.getVotes();
+      const fightIds = Object.keys(votes).map(Number).filter(Boolean);
+      if (fightIds.length === 0) { setUserHistory([]); return; }
+      const { data: historyFights } = await supabase
+        .from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`)
+        .in('id', fightIds);
+      if (!historyFights) { setUserHistory([]); return; }
+      const uniqueEvents = [...new Set(historyFights.map(f => f.event_name))];
+      const { data: eventData } = await supabase.from('ufc_events')
+        .select('event_name, event_date').in('event_name', uniqueEvents);
+      const merged = historyFights.map(f => ({
+        ...f,
+        ratings: (Array.isArray(f.fight_ratings) ? f.fight_ratings[0] : f.fight_ratings)
+                 || { likes_count: 0, dislikes_count: 0, favorites_count: 0 },
+        userVote: votes[String(f.id)],
+        event_date: eventData?.find(e => e.event_name === f.event_name)?.event_date || null,
+      }));
+      setUserHistory(merged);
+      updateDnaAndCharts(merged, dnaFilter);
+      return;
+    }
     if (!session?.user?.id) return;
     const { data: votes } = await supabase.from('user_votes').select('fight_id, vote_type').eq('user_id', session.user.id);
     if (!votes || votes.length === 0) { setUserHistory([]); return; }
@@ -766,7 +812,7 @@ export default function UFCFightRating() {
   useEffect(() => {
     fetchUserHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [session, isGuest]);
   
   const isUpcoming = (dateString) => {
     if (!dateString) return false;
@@ -784,7 +830,9 @@ export default function UFCFightRating() {
     return now < startTime;
   };
 
-  if (!session) return <LoginPage />;
+  if (!session && !isGuest) return (
+    <LoginPage onGuestContinue={() => { guestStorage.setGuest(true); setIsGuest(true); }} />
+  );
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin opacity-50" /></div>;
 
   return (
@@ -819,6 +867,13 @@ export default function UFCFightRating() {
             </button>
           </div>
         </header>
+
+        {isGuest && (
+          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-4 flex items-center justify-between">
+            <span className="text-yellow-400 text-xs">Guest mode — votes &amp; scores saved on this device only.</span>
+            <button onClick={handleGuestSignUp} className="text-yellow-400 font-bold text-xs underline ml-2">Sign Up</button>
+          </div>
+        )}
 
         {currentView === 'events' && (
           <>
@@ -1064,6 +1119,7 @@ export default function UFCFightRating() {
             fight={selectedFight}
             currentTheme={currentTheme}
             onBack={() => setCurrentView(previousView)}
+            isGuest={isGuest}
           />
         )}
 
@@ -1150,7 +1206,11 @@ export default function UFCFightRating() {
                 <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} onClick={handleFightClick} />
               ))}
             </div>
-            <button onClick={handleSignOut} className="w-full mt-12 py-4 bg-red-600/10 text-red-500 border border-red-500/30 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all">SIGN OUT</button>
+            {isGuest ? (
+              <button onClick={handleGuestSignUp} className="w-full mt-12 py-4 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-xl font-bold hover:bg-yellow-500 hover:text-black transition-all">SIGN UP / LOG IN</button>
+            ) : (
+              <button onClick={handleSignOut} className="w-full mt-12 py-4 bg-red-600/10 text-red-500 border border-red-500/30 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all">SIGN OUT</button>
+            )}
           </div>
         )}
       </div>
