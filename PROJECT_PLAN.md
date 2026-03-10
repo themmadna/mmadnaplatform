@@ -432,3 +432,62 @@ Leaderboard based on accuracy % for v1. Points system (bonus for correct 10-8 ca
 
 ### Build order
 6a → 6b → 6c → 6d → 6e → 6e.2 (Step 1 → Step 2 → Step 3 → Step 4) → 6f (leaderboard deferred)
+
+---
+
+## Phase 7: Guest Mode
+
+Allow users to browse the app and interact fully (vote, score rounds, see DNA) without creating an account. All personal data stored in `localStorage` — no DB writes until the user signs up. A persistent banner informs guests that their data is device-only and won't sync.
+
+**Key constraint:** Zero DB writes for guests. All interactions are intercepted before reaching Supabase.
+
+**No migration on sign-up** — guests are warned upfront that local data doesn't transfer.
+
+### 7a. `src/guestStorage.js` (new utility)
+- [ ] localStorage wrapper for guest votes, round scores, and scorecard state
+- Keys: `ufc_guest_mode`, `ufc_guest_votes`, `ufc_guest_scores`, `ufc_guest_scorecard_state`
+- Functions: `isGuest()`, `setGuest(bool)`, `getVotes()`, `setVote()`, `getFightScores()`, `setScore()`, `getScorecardState()`, `setScorecardState()`
+
+### 7b. `src/Login.js`
+- [ ] Add `onGuestContinue` prop
+- [ ] "Continue as Guest" button below Auth form with warning: "Votes and scores saved on this device only"
+
+### 7c. `src/App.js`
+- [ ] Add `isGuest` state (seeded from `guestStorage.isGuest()`)
+- [ ] Auth wall: `if (!session && !isGuest) return <LoginPage onGuestContinue={...} />;`
+- [ ] `fetchUserHistory`: if `isGuest`, read vote IDs from localStorage then fetch fight objects from Supabase (public read)
+- [ ] `handleVote`: if `isGuest`, write to `guestStorage` and return — skip `dataService.castVote()`
+- [ ] `handleEventClick`: skip DB vote fetch for guests; merge votes from `userHistory` instead
+- [ ] Search results: same pattern — merge `userHistory` votes for guests instead of DB query
+- [ ] For You tab: change `&& session` to allow guests to see community favorites
+- [ ] Judging profile fetch: skip for guests (`isGuest` guard)
+- [ ] Pass `isGuest` to `FightDetailView`
+- [ ] Guest banner: persistent yellow strip below header → "Guest mode — votes & scores saved on this device only. [Sign Up]"
+- [ ] Profile page sign-out button: swap to "SIGN UP / LOG IN" for guests
+
+### 7d. `src/components/FightDetailView.js`
+- [ ] Accept `isGuest` prop; pass to `RoundScoringPanel` + `ScorecardComparison`
+- [ ] `hasUserScores` seeding: if `isGuest`, check `guestStorage.getFightScores(fight.id)` instead of DB count
+
+### 7e. `src/components/RoundScoringPanel.js`
+- [ ] Accept `isGuest` prop
+- [ ] Bypass `if (!user) return null` guard when `isGuest`
+- [ ] Load effect: if `isGuest`, read from `guestStorage` instead of `dataService.getUserScoringData()`
+- [ ] `handleSubmitRound`: if `isGuest`, call `guestStorage.setScore()` instead of `dataService.upsertRoundScore()`
+- [ ] `handleReveal`: if `isGuest`, call `guestStorage.setScorecardState()` instead of `dataService.upsertScorecardState()`
+- [ ] "✓ Saved" → "✓ Saved locally" for guest
+
+### 7f. `src/components/ScorecardComparison.js`
+- [ ] Accept `isGuest` prop
+- [ ] Load user scores from `guestStorage` when `isGuest`; community scorecard still loads (public read)
+
+### Data flow (guest)
+```
+"Continue as Guest" → guestStorage.setGuest(true) → app renders
+Vote → guestStorage.setVote() [no DB write]
+Score round → guestStorage.setScore() [no DB write]
+Reveal judges → guestStorage.setScorecardState() [no DB write]
+Page reload → localStorage vote IDs read → fight objects fetched from Supabase (public) → userHistory restored
+"Sign Up" → guestStorage.setGuest(false) → LoginPage shown
+```
+
