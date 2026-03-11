@@ -1,149 +1,53 @@
 # Lessons Learned
 
----
-
-## ESPN polling — live badges working, round scoring not yet available — 2026-03-07
-
-**Context:** UFC 326 live test. Badges (Live/Completed/Upcoming) now update correctly from ESPN. But round scoring is not available for fights that completed tonight.
-
-**Why:** Fights completed via ESPN polling have `fight_ended_at` set but `status` still `'upcoming'` (scraper hasn't run yet). `FightDetailView` gates the scoring panel on `fight.status === 'upcoming' && isLocked` which is correct — but `meta` (from `fight_meta_details`) is null for these fights because the scraper hasn't run yet to populate it. `RoundScoringPanel` needs `meta` to know fighter names and round count.
-
-**Next session:** Enable scoring for tonight's completed fights. Options:
-1. Run scraper morning after → `status` flips to `completed`, `meta` populates, scoring works
-2. Show a "Scoring available after stats are published" message for isLocked fights with no meta
-3. Defer scoring unlock until scraper has run (gate on `meta !== null` for the locked panel)
-
-**ESPN status codes discovered:**
-- `STATUS_SCHEDULED` — not started
-- `STATUS_FIGHTERS_WALKING` — walkout, treat as upcoming (do NOT trigger live)
-- `STATUS_IN_PROGRESS` — round 1 live
-- `STATUS_IN_PROGRESS_2/3/4/5` — round N live (use `startsWith('STATUS_IN_PROGRESS')`)
-- `STATUS_END_OF_ROUND` — between rounds, treat as live
-- `STATUS_FINAL` — fight over
-
-**Edge Function 401 fix:** `verify_jwt` must be `false` on the Supabase Edge Function. Set via Management API PATCH to `/v1/projects/{ref}/functions/record-fight-status` with `{"verify_jwt": false}`. Default `true` causes Supabase middleware to reject valid user JWTs before function code runs.
-
-**Poll timing bug:** Immediate `poll()` call on effect mount fires before `eventFights` loads from Supabase → `liveFights.length === 0` → silent no-op. Fixed with `setTimeout(poll, 3000)` for the first call.
-
-Focused on reusable engineering patterns — implementation details live in git history.
+Reusable patterns and non-obvious gotchas. Organized by topic — add new entries under the relevant section, not chronologically.
 
 ---
 
-## Live event status badges + scraper auto-delete — 2026-03-07
+## Database & Migrations
 
-**Bugs hit:**
-- `fight.event_date` was never set on event fight objects — `fights` table has no `event_date` column; must be injected from the parent event on load (`handleEventClick`). Simplified by removing date check entirely from badge logic.
-- ESPN-detected FINAL fights set `fight_ended_at` locally but `status` remains `'upcoming'` until scraper runs — badge `isCompleted` must check `|| !!fight.fight_ended_at`, not just `status === 'completed'`.
-- Event-level poll self-stopped when `liveFights.length === 0` — changed to `return` (skip tick) not `stopped = true`.
-- Scraper Phase 2 auto-delete fired mid-event because `datetime.utcnow()` had rolled to the next UTC day while the US event was still live. Fixed by using `date.today().isoformat()` (local time) + `not any_newly_completed` as a dual guard.
-- `any_newly_completed` alone was insufficient: Phase 0.5 re-adds upcoming fights, then Phase 2 sees them as already-completed (status flip happened in a prior run), so `any_newly_completed` stays False and deletion fires. Required the local-date guard as well.
-- Scraper Unicode crash on Windows: `sys.stdout.reconfigure(encoding='utf-8', errors='replace')` must be added to master scraper (was already in `scrape_mmadecisions.py`).
-
-**What to do differently:**
-- For badge conditions that depend on DB fields not reliably present on fight objects, check at the data layer (inject on load) rather than adding conditional logic in the badge render.
-- Auto-delete logic in scrapers is dangerous during live events — always combine a time guard (local date, not UTC) with an activity guard (nothing newly completed this run).
-
-## Phase 6e.2 Steps 1+2 — Judging DNA RPC overhaul + UI redesign — 2026-03-07
-
-**What worked:**
-- Adding `judges_agreeing` as a window function in the `majority` CTE alongside the existing `f1_wins`/`f2_wins` was a clean extension — no extra CTE needed, same partition.
-- For `ten_eight_quality`, joining `complete_judges` back to `round_accuracy` (instead of a correlated subquery or EXISTS) gives a clean flat join and avoids self-referencing CTE issues.
-- `agreement_breakdown` using `COUNT(*) FILTER (WHERE ...)` in a single aggregation over `round_accuracy` is much cleaner than a separate `agreement_cats` CTE — eliminates one CTE entirely.
-
-**Key design choice:**
-- `agreement_breakdown` denominator = all rounds with judge data (includes split-decision rounds where majority_winner IS NULL). `accuracy` denominator = only rounds with a clear majority. These differ intentionally — agreement is per-judge, accuracy is per-majority. If the UI ever surfaces both totals, add a tooltip clarifying the difference.
-
-**What to avoid:**
-- Don't try to use `EXISTS` referencing a CTE name inside another CTE's WHERE clause — SQL sees the CTE name as the table it's being filtered against, creating confusing scope. Use a JOIN instead.
+- **`ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` make migrations idempotent** — safe to re-run without side effects.
+- **Supabase Management API (`/v1/projects/{ref}/database/query`) handles DDL fine** — send each statement separately to isolate errors.
+- **`leaderboard_eligible` as `GENERATED ALWAYS AS ... STORED`** avoids app-layer logic drift — eligibility is always consistent with source booleans.
+- **Don't change a DB schema mid-session without immediately updating both the data layer and the component.** The gap creates silent runtime errors (upsert inserts NULL into NOT NULL columns).
+- **Storing `f1_score`/`f2_score` (both sides explicitly) is cleaner than `fighter_scored_for`/`points`.** Makes community scorecard aggregation trivial (just avg the columns); no need to know fighter names in the query. Convert at DB boundaries only — keep component internal logic in UI terms.
+- **`accuracy_by_class` in RPCs must use a subquery to pre-aggregate before `json_agg`.** Cannot nest `AVG`/`COUNT` inside `json_agg(ORDER BY COUNT(*))` — PostgreSQL error 42803.
 
 ---
 
-## Phase 6c — Schema migration (fighter_scored_for → f1_score/f2_score) — 2026-03-07
-
-**What worked:**
-- Storing `f1_score`/`f2_score` (both sides explicitly) is cleaner than `fighter_scored_for`/`points` — makes community scorecard aggregation trivial (just avg the columns), no need to know fighter names in the query.
-- Converting at DB boundaries only (load → derive `fighterScoredFor`/`points` from f1/f2 scores; save → derive f1/f2 scores from UI state) keeps the component's internal logic untouched.
-- `f1_score >= f2_score ? f1Name : f2Name` on load correctly handles the tie edge case (10-10 draw) by defaulting to f1.
-
-**What to avoid:**
-- Don't mid-session change a DB schema without immediately updating both the data layer and the component — the gap creates a silent runtime error (upsert inserts NULL into NOT NULL columns).
-
----
-
-## Phase 6a — DB Migration — 2026-03-07
-
-**What worked:**
-- `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` make migrations idempotent — safe to re-run.
-- Supabase Management API (`/v1/projects/{ref}/database/query`) handles DDL fine; each statement sent separately to isolate errors.
-- `leaderboard_eligible` as a `GENERATED ALWAYS AS ... STORED` boolean column avoids app-layer logic drift — eligibility is always consistent with the source booleans.
-
-**Nothing to change** — migration was straightforward.
-
----
-
-## Phase 6c — Round Scoring Panel — 2026-03-07
-
-**Key decisions:**
-- `fighter_scored_for` = winner's name; `points` = loser's score (9/8/7). Winner always gets 10. One row per (user_id, fight_id, round).
-- Scoreable rounds: decisions → all `meta.round` rounds; finishes → `meta.round - 1` (partial finishing round excluded from judging). Live fights: use scheduled rounds from `meta.time_format`; finish constraint applied post-scrape when fight is marked completed.
-- Historical fights: `judgesRevealed = true` from the start. Every save marks `modified_after_reveal = true` → leaderboard-ineligible automatically.
-- `readOnly = judgesRevealed && !isHistorical` — live fights lock inputs after reveal; historical always editable.
-- `pending` state initialized from DB scores on mount → existing selections pre-highlighted on re-visit without special logic.
-- `upsertScorecardState` with `onConflict: 'user_id,fight_id'` — only provided columns are written on conflict, so partial updates (e.g. just `modified_after_reveal: true`) don't overwrite other fields.
-
-**What I'd do differently:**
-- Consider computing `scoreable_rounds` server-side to avoid client-side finish/decision branching.
-
----
-
-## Phase 6b — ESPN sync + Edge Function — 2026-03-07
-
-**Bugs / errors encountered:**
-- `esm.sh` imports (`import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'`) cause BOOT_ERROR when deploying Edge Functions via the Management API. The Supabase CLI bundles dependencies before deploy; the Management API does not. Fix: use native `fetch` against the Supabase REST API directly — no imports needed, and `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` are auto-injected env vars in the Edge Function runtime.
-- Management API `verify_jwt: True` means Supabase gateway validates JWT signature only. The anon key is a valid JWT and passes through — the 401 from "no auth header" comes from the gateway, not the function body.
-
-**What I'd do differently:**
-- Always deploy a minimal no-import function first to confirm the runtime is healthy before adding imports.
-- For all future Edge Functions deployed via Management API: use `fetch` + REST API. Only switch to the JS client if the Supabase CLI is available for bundled deployments.
-
-## Phase 6b — gate/lock + ESPN test — 2026-03-07
-
-**Confirmed:**
-- `site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=YYYYMMDD` returns `STATUS_FINAL` for completed historical events — the scoreboard endpoint works for past dates, not just live ones. `comp.status.type.name` is the correct field.
-- Gate/lock logic should be derived booleans (`isLive = !!fightStartedAt && !fightEndedAt`, `isLocked = !!fightEndedAt`) rather than computed inline in JSX — keeps the 3-state branching readable.
-- When a UI section will be replaced by a child component in the next phase, leave explicit `{/* TODO 6c: <ComponentName props /> */}` comments inside the placeholder block — makes the slot unambiguous.
-
----
-
-## Cross-source data joining
-
-- **Never join two different data sources on `event_name` or `bout` strings.** They will differ in formatting, punctuation, and casing. Use a neutral key like `date` or a normalized URL slug.
-- **When broadening a DB-side filter for fuzzy matching, audit all downstream consumers.** A broader result set can introduce new bugs elsewhere (e.g. summary totals picking up rows from other fights on the same date).
-- **Diagnostic "gaps" have three distinct root causes** — distinguish them before fixing: (a) data genuinely missing from the source, (b) wrong join condition (e.g. date offset for international events), (c) text format mismatch across sources. All three look the same until you dig.
-- **±1 day date window** is the correct approach for joining across mmadecisions and UFC Stats. International events (Australia, Singapore, Abu Dhabi) consistently have a +1 day offset in mmadecisions dates.
-- **Always verify dedup/skip logic with a quick debug query before a long scraper run.** A broken dedup that always returns 0 results will re-scrape everything on every run silently.
-
----
-
-## Scraper patterns
+## Scrapers
 
 - **`.limit(N)` on a query that claims to be "incremental" is usually a bug.** The per-record existence check is the deduplication mechanism, not the limit.
 - **`break` on first existing record assumes no gaps ever exist.** A consecutive-skip counter (reset on any new insert) handles gaps without scanning all historical records.
 - **Validate env var names against the actual `.env` file at the start of any scraper review.** Wrong variable names produce silent `None` failures that look like auth errors.
 - **When a secondary scraper derives entity names from URL slugs, those names will never join to primary scraper data.** Always extract from link display text (proper casing, spaces). After fixing name derivation, truncate and re-scrape historical records — upsert conflict keys handle dedup cleanly.
-- **For parallel scraping:** only the innermost tier (individual item pages) benefits from parallelization. Discovery tiers (listing/event pages) must stay sequential. Check thread-safety of the DB client before parallelizing any write loop — `supabase-py` is not concurrency-safe; use `threading.local()` per worker.
+- **For parallel scraping:** only the innermost tier (individual item pages) benefits from parallelization. Discovery tiers must stay sequential. Check thread-safety of the DB client — `supabase-py` is not concurrency-safe; use `threading.local()` per worker.
+- **Always verify dedup/skip logic with a quick debug query before a long scraper run.** A broken dedup that always returns 0 results will re-scrape everything silently.
+- **Phase 2 auto-delete guard requires two conditions:** local-date check (`date.today().isoformat()`, not `datetime.utcnow()`) AND `not any_newly_completed`. Either alone is insufficient — UTC rolls before US events end; `any_newly_completed` is False when Phase 0.5 re-adds already-completed fights from a prior run.
 
 ---
 
-## Windows / Python gotchas
+## Cross-Source Data Joining
 
-- **Never use emoji in `print()` on Windows without explicitly setting `sys.stdout` to UTF-8.** On `cp1252` terminals, emoji in worker threads throw `UnicodeEncodeError` after the DB write has already committed — the operation succeeds but the counter breaks, causing silent early termination.
-- **`echo yes | python script.py` doesn't work in background task mode.** Use an explicit `--yes` argparse flag instead.
-- **Python stdout in background bash tasks won't flush unless launched with `-u` (unbuffered) flag.**
+- **Never join two different data sources on `event_name` or `bout` strings.** They will differ in formatting, punctuation, and casing. Use a neutral key like `date` or a normalized URL slug.
+- **When broadening a DB-side filter for fuzzy matching, audit all downstream consumers.** A broader result set can introduce new bugs elsewhere (e.g. summary totals picking up rows from other fights on the same date).
+- **Diagnostic "gaps" have three distinct root causes** — distinguish them before fixing: (a) data genuinely missing from the source, (b) wrong join condition (e.g. date offset for international events), (c) text format mismatch across sources. All three look the same until you dig.
+- **±1 day date window** is correct for joining mmadecisions to UFC Stats. International events (Australia, Singapore, Abu Dhabi) consistently have a +1 day offset in mmadecisions dates.
+- **Unicode accent normalization:** use `unicodedata.normalize('NFKD', s)` before the regex strip, not after. NFKD decomposes accented chars into base + combining mark, then the strip removes the combining mark. Omitting this causes name match failures (ñ→n, ä→a, ã→a).
 
 ---
 
-## Frontend patterns
+## RPC / SQL Patterns
+
+- **Adding `judges_agreeing` as a window function in the `majority` CTE** alongside existing `f1_wins`/`f2_wins` is a clean extension — same partition, no extra CTE needed.
+- **For `ten_eight_quality`, join `complete_judges` back to `round_accuracy`** (instead of a correlated subquery or EXISTS). Gives a clean flat join and avoids self-referencing CTE issues.
+- **`agreement_breakdown` using `COUNT(*) FILTER (WHERE ...)` in a single aggregation** over `round_accuracy` is cleaner than a separate CTE — eliminates one CTE entirely.
+- **Don't use `EXISTS` referencing a CTE name inside another CTE's WHERE clause.** SQL sees the CTE name as the table it's being filtered against, creating confusing scope. Use a JOIN instead.
+- **`agreement_breakdown` and `accuracy` have different denominators by design:** agreement uses all rounds with judge data (including split-decision rounds where majority_winner IS NULL); accuracy uses only rounds with a clear majority. If the UI surfaces both totals, add a tooltip.
+
+---
+
+## Frontend Patterns
 
 - **Cross-reference field access against the schema before writing any frontend code.** Silent failures (`undefined` rendering as nothing) are common when a field exists in one table but the query hits another. The `fights` vs `fight_meta_details` split is the main source of this.
 - **Any hardcoded string argument where a state variable exists is a suspect.** If a re-fetch function hardcodes `'combined'` but a filter state variable controls the active tab, the tab will desync on re-fetch.
@@ -151,42 +55,67 @@ Focused on reusable engineering patterns — implementation details live in git 
 - **When a `locked` prop defaults to `false`, grep all call sites.** Every context that should lock must explicitly pass the prop — the default silently permits voting where it shouldn't.
 - **When a child component re-fetches data the parent already has, pass it as a prop instead.** Duplicate fetches are a common performance leak in component trees.
 - **When two sequential `await` calls hit the same table with identical filters, merge them into one query and split the result client-side.**
+- **Gate/lock booleans should be derived state, not computed inline in JSX.** `isLive = !!fightStartedAt && !fightEndedAt` — keeps 3-state branching readable.
+- **For badge conditions that depend on DB fields not reliably present on fight objects, inject at the data layer** (e.g. `handleEventClick` spreading `event_date`), not via conditional logic in the badge render.
 
 ---
 
-## ML model — Phase 3c (round scoring)
+## Live Events & ESPN
 
-- **Use differential features (f1_stat - f2_stat), not raw stats, for any symmetric prediction task.** The model should be position-agnostic; raw stats let it learn that one fighter "slot" is better.
-- **Symmetric augmentation is the correct fix for positional bias in differential-feature models.** Mirror every row (negate diffs, flip label) so the training set is exactly 50/50. The LR intercept converges to ≈0 — a reliable sanity check.
-- **`validate_scoring_model.py` was broken** — it joined judge_scores to round_fight_stats on `event_name`, which never matches across sources. The correct join is date ±1 via `ufc_events`, then fuzzy name matching. The existing validator's results were almost entirely from missing matches, not real agreement.
-- **Control time is the most underweighted feature in the rules-based model.** EDA r=0.446 (third after sig_landed and total_landed), but the rules model assigns it weight=0.015. The ML model assigns it the highest coefficient (+1.007). Judges weight sustained control heavily.
-- **Knockdowns are overweighted in the rules model** (weight=5.0). EDA r=0.196 — meaningful but lower than ctrl_sec, head_landed, dist_landed. A 5:1 ratio vs sig_landed is far too aggressive.
-- **LR beats RF and XGBoost on well-engineered differential features.** The decision boundary for round scoring is largely linear — once you compute the right diffs, complex models add noise, not signal.
-- **The 2016 ABC judging criteria shift shows in the data** (takedown advantage and ctrl_sec advantage both narrowed post-2016), but the `post_2016` feature coefficient converges to ≈0 during training. The stats themselves already encode the shift — the era flag is redundant once you have the actual stats.
-- **Unicode accent normalization:** use `unicodedata.normalize('NFKD', s)` before the regex strip, not after. NFKD decomposes accented chars into base + combining mark, then the `[^a-z0-9\s]` strip removes the combining mark. This turns ñ→n, ä→a, ã→a correctly. Omitting this caused 45 name match failures.
-
----
-
-## 10-8 round detection — empirical threshold derivation
-
-- **KD is a poor signal for 10-8 detection.** 82.9% of real judge-scored 10-8 rounds had zero KD differential — the winner didn't land more knockdowns than the loser. The original rule (`winner_kd > 0`) was almost always wrong.
-- **ML confidence is the correct signal.** 83.5% of real 10-8 rounds had model confidence ≥ 0.975, and the median was 0.997. Judges only score 10-8 when one fighter completely dominated the stats.
-- **The threshold matters — start conservative.** 0.975 still produced too many 10-8s in practice. Tightening to 0.99 filtered out rounds that were dominant but not exceptional.
-- **`ml_dataset.csv` already has an `is_10_8` flag** — no DB re-query needed for this kind of analysis. A short pure-Python script loading the CSV + `scoring_model.json` is sufficient.
-- **Always deduplicate by `(fight_url, round)` when reading `ml_dataset.csv`** — it has one row per judge, so the same round appears 3× (once per judge). Use `is_10_8 = True` if ANY judge scored it 10-8.
+- **ESPN scoreboard works for historical dates** — `site.api.espn.com/.../scoreboard?dates=YYYYMMDD` returns `STATUS_FINAL` for past events. `comp.status.type.name` is the correct field.
+- **ESPN scoreboard is ephemeral** — only serves live data during the event window. Always persist to DB immediately on state change; do not rely on ESPN being available after the event.
+- **Poll timing:** immediate `poll()` on effect mount fires before `eventFights` loads from Supabase → `liveFights.length === 0` → silent no-op. Fix with `setTimeout(poll, 3000)` for the first call.
+- **Event-level poll should skip ticks (return), not stop, when `liveFights.length === 0`.** Stopping permanently prevents re-detection if fights load late.
+- **ESPN-detected FINAL fights have `fight_ended_at` set but `status` still `'upcoming'` until the scraper runs.** Badge `isCompleted` must check `|| !!fight.fight_ended_at`, not just `status === 'completed'`.
+- **`verify_jwt` must be `false` on Edge Functions called from the browser.** Default `true` causes Supabase middleware to reject valid user JWTs before function code runs. Set via Management API PATCH.
+- **For all Edge Functions deployed via Management API: use `fetch` + REST API. No esm.sh imports.** Management API deployments are not pre-bundled; `esm.sh` imports cause BOOT_ERROR. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected env vars.
+- **Deploy a minimal no-import function first** to confirm the runtime is healthy before adding logic.
+- **`STATUS_FIGHTERS_WALKING` should NOT trigger live.** Treat as upcoming — do not call the Edge Function.
 
 ---
 
-## UX polish fixes
+## ML Model & Scoring
 
-- **CSS mask-image is the cleanest scroll affordance on mobile.** Apply `maskImage: 'linear-gradient(to right, black 80%, transparent 100%)'` directly to the scrollable container — no background colour knowledge needed, works across all themes.
-- **Scroll restoration needs two refs: a saved position and a previous-view tracker.** Save `window.scrollY` before navigating away, then in a `useEffect` watching `currentView`, restore when transitioning FROM the detail view (not on every render).
-- **Card-level headers inside a page that already has a section header are redundant.** If the page header + context makes the card's purpose obvious, remove the card's own header rather than keeping both.
+- **Use differential features (f1_stat - f2_stat), not raw stats, for any symmetric prediction task.** Raw stats let the model learn that one fighter "slot" is better.
+- **Symmetric augmentation is the correct fix for positional bias.** Mirror every row (negate diffs, flip label) — LR intercept converges to ≈0.
+- **Control time is the most underweighted feature in rules-based models.** EDA r=0.446; rules model assigns weight=0.015; ML assigns highest coefficient (+1.007).
+- **Knockdowns are overweighted in the rules model** (weight=5.0 vs EDA r=0.196). A 5:1 ratio vs sig_landed is too aggressive.
+- **LR beats RF and XGBoost on well-engineered differential features.** The decision boundary for round scoring is largely linear.
+- **The 2016 ABC judging criteria shift shows in data but `post_2016` flag coefficient converges to ≈0.** The stats already encode the shift — era flag is redundant.
+- **`validate_scoring_model.py` was broken** — it joined judge_scores to round_fight_stats on `event_name`. The correct join is date ±1 via `ufc_events`, then fuzzy name matching.
+- **KD is a poor signal for 10-8 detection.** 82.9% of real 10-8 rounds had zero KD differential. ML confidence (≥ 0.99) is the correct signal.
+- **Always deduplicate `ml_dataset.csv` by `(fight_url, round)`** — it has one row per judge, so the same round appears 3×. Use `is_10_8 = True` if ANY judge scored it 10-8.
 
 ---
 
-## Git hygiene
+## Phase 6 Scoring UI
 
-- **Before any cleanup or file deletion work, check for multiple `.git` directories** (`find . -name ".git" -maxdepth 3`). Two repos pointing to the same remote will produce destructive-looking commits from the other repo's perspective.
+- **`fighter_scored_for`/`points` schema was replaced by `f1_score`/`f2_score`.** Convert at DB boundaries only — `f1_score >= f2_score ? f1Name : f2Name` on load handles the tie edge case (10-10) by defaulting to f1.
+- **`upsertScorecardState` with `onConflict`** — only provided columns written on conflict, so partial updates (e.g. just `modified_after_reveal: true`) don't overwrite other fields.
+- **`pending` state initialized from DB scores on mount** → existing selections pre-highlighted on re-visit without special logic.
+- **Auto-reveal only fires when `isLocked || isHistorical`** — prevents premature lockout between live rounds (e.g. between round 1 and round 2 of a live fight).
+- **`RoundScoringPanel` needs `meta` for fighter names and round count.** Fights completed via ESPN polling (status still 'upcoming', meta null) cannot show the scoring panel until the scraper has run.
+
+---
+
+## UX Polish
+
+- **CSS mask-image is the cleanest scroll affordance on mobile.** Apply `maskImage: 'linear-gradient(to right, black 80%, transparent 100%)'` directly to the scrollable container.
+- **Scroll restoration needs two refs: a saved position and a previous-view tracker.** Save `window.scrollY` before navigating away; restore on transition FROM the detail view, not on every render.
+- **Card-level headers inside a page that already has a section header are redundant.** Remove the card's own header if the page context makes its purpose obvious.
+
+---
+
+## Git Hygiene
+
+- **Before any cleanup or file deletion work, check for multiple `.git` directories** (`find . -name ".git" -maxdepth 3`). Two repos pointing to the same remote produce destructive-looking commits.
 - **When two repos share a remote, establish the canonical one and delete the other's `.git` before making any commits.** Never push from both.
 - **Always check `git remote -v` in both repos before any push** to confirm they're not sharing a remote.
+
+---
+
+## Windows / Python
+
+- **Never use emoji in `print()` on Windows without explicitly setting `sys.stdout` to UTF-8.** On `cp1252` terminals, emoji throw `UnicodeEncodeError` after the DB write has already committed — operation succeeds but counter breaks, causing silent early termination. Fix: `sys.stdout.reconfigure(encoding='utf-8', errors='replace')` at the top of the script.
+- **`echo yes | python script.py` doesn't work in background task mode.** Use an explicit `--yes` argparse flag.
+- **Python stdout in background bash tasks won't flush** unless launched with `-u` (unbuffered) flag.
