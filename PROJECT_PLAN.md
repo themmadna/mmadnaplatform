@@ -61,26 +61,17 @@ One analytics page per division. All computable from existing tables. Join key: 
 **Steps 1+2 complete** (RPC overhaul + UI redesign). Current `get_user_judging_profile()` returns:
 `rounds_scored`, `agreement_breakdown`, `outlier_rate`, `ten_eight_quality`, `accuracy_by_class` (with `rounds` + `avg_loser_score`).
 
-**Step 3: RPC extension — round_fight_stats join**
+**Step 3: RPC extension — round_fight_stats join** ✅
 
-Stats 5, 6, 7, 8, 12 require joining `round_fight_stats` per scored round.
+- [x] Add `round_fight_stats` join to RPC for each user-scored round
+- [x] Compute and return `striking_vs_grappling_bias`, `aggressor_bias`, `takedown_quality_bias`, `knockdown_bias`, `bias_by_class` (merged into `accuracy_by_class`)
+- [x] Redeploy via `supabase/deploy_judging_profile.py`
 
-- [ ] Add `round_fight_stats` join to RPC for each user-scored round
-- [ ] Compute and return:
-  - `striking_vs_grappling_bias` — winner's `sig_strikes_landed` diff vs (`takedowns_landed` + `control_time_sec`) diff → `{ striking_pct, grappling_pct }`
-  - `aggressor_bias` — `sig_strikes_attempted` diff (volume) vs user award. Flag rounds where user sided with higher-volume fighter even when accuracy favoured opponent
-  - `takedown_quality_bias` — "active ground" (`sub_attempts > 0` OR `ground_strikes > 3`) vs "passive control" (`ctrl_sec > 30`, low activity). % of passive-control rounds awarded
-  - `knockdown_bias` — on KD rounds (`kd diff ≠ 0`), % of time user awarded the fighter with the KD
-  - `bias_by_class` — striking vs grappling split per weight class (merge into `accuracy_by_class`)
-- [ ] Redeploy via `supabase/deploy_judging_profile.py`
+**Step 4: UI additions for Group B** ✅
 
-**Step 4: UI additions for Group B**
-
-- [ ] Add bias/tendency section to `JudgingDNACard.js`:
-  - Striking vs grappling bias bar (overall + by class toggle)
-  - Aggressor bias indicator
-  - Takedown quality bias
-  - Knockdown bias stat
+- [x] Add "Scoring Tendencies" section to `JudgingDNACard.js`:
+  - Strike vs Grapple Lean: two-tone bar (blue=strike, amber=grapple) + "By Class ▾" toggle
+  - Aggressor Lean, Passive Control, KD Fighter — 3-column stat grid
 
 **Step 5: Scored Fights list**
 

@@ -95,13 +95,22 @@ Sections in redesigned JudgingDNACard:
 4. 10-8 section — rate + call quality together
 5. Weight class breakdown — accuracy + rounds + avg loser score per class
 
-### 6e.2 Steps 3+4 (not yet implemented)
-Requires `round_fight_stats` join in the RPC:
-- `striking_vs_grappling_bias` — winner's sig_strikes_landed diff vs (td_landed + ctrl_sec) diff
-- `aggressor_bias` — sig_strikes_attempted diff (volume) vs user's award
-- `takedown_quality_bias` — active ground (sub_attempts > 0 OR ground_strikes > 3) vs passive control (ctrl_sec > 30)
-- `knockdown_bias` — on KD rounds (kd diff ≠ 0), % awarding fighter with the KD
-- `bias_by_class` — striking vs grappling split per weight class
+### 6e.2 Step 3 — complete ✅
+`round_fight_stats` join added to RPC. New CTEs in `get_user_judging_profile()`:
+- `fight_stats_raw` — joins user_rounds → round_fight_stats via fmd_event_name+fmd_bout+round
+- `fight_stats_pivoted` — one row per (fight_id, round); f1/f2 stats via last-name match
+- `round_winner_stats` — derives winner/loser stats by user score (draws + incomplete rows excluded)
+- `class_bias` — per-class striking/grappling bias (merged into accuracy_by_class)
+
+New fields in RPC response: `striking_vs_grappling_bias`, `aggressor_bias`, `takedown_quality_bias`, `knockdown_bias`. `accuracy_by_class` now includes `striking_pct` and `grappling_pct`.
+
+### 6e.2 Step 4 — complete ✅
+"Scoring Tendencies" section added to `JudgingDNACard.js`:
+- `SplitBar` component — two-tone bar (blue = striking, amber = grappling)
+- "By Class ▾" toggle button switches Strike vs Grapple bar between overall and per-class rows
+- 3-column stat grid: Aggressor Lean / Passive Control / KD Fighter
+- Entire section gated on `hasBiasData` (`striking_vs_grappling_bias.rounds > 0`) — hidden when no `round_fight_stats` coverage
+- `useState` for class toggle (only import added to component)
 
 ### 6e.2 Step 5 (not yet implemented)
 Scored Fights list — all fights user has scored with total scorecard (e.g. 29-28 {f1Last}) + green/red win indicator. `getScoredFights(userId)` in dataService.

@@ -30,6 +30,7 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 ## Cross-Source Data Joining
 
 - **Never join two different data sources on `event_name` or `bout` strings.** They will differ in formatting, punctuation, and casing. Use a neutral key like `date` or a normalized URL slug.
+- **`fight_meta_details.bout` and `round_fight_stats.bout` are often reversed even though both come from ufcstats.** Always match both orderings: `rfs.bout = fmd.bout OR rfs.bout = TRIM(SPLIT_PART(fmd.bout,' vs ',2)) || ' vs ' || TRIM(SPLIT_PART(fmd.bout,' vs ',1))`. Discovered when bias stats showed 0% coverage for 4 of 7 weight classes despite data being present.
 - **When broadening a DB-side filter for fuzzy matching, audit all downstream consumers.** A broader result set can introduce new bugs elsewhere (e.g. summary totals picking up rows from other fights on the same date).
 - **Diagnostic "gaps" have three distinct root causes** — distinguish them before fixing: (a) data genuinely missing from the source, (b) wrong join condition (e.g. date offset for international events), (c) text format mismatch across sources. All three look the same until you dig.
 - **±1 day date window** is correct for joining mmadecisions to UFC Stats. International events (Australia, Singapore, Abu Dhabi) consistently have a +1 day offset in mmadecisions dates.
@@ -39,6 +40,7 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ## RPC / SQL Patterns
 
+- **When two independently-computed percentages don't sum to 100%, normalize for display.** Show `s/(s+g)` and `g/(s+g)` so bar and labels agree. Keep raw values in the RPC; normalize only at the display layer.
 - **Adding `judges_agreeing` as a window function in the `majority` CTE** alongside existing `f1_wins`/`f2_wins` is a clean extension — same partition, no extra CTE needed.
 - **For `ten_eight_quality`, join `complete_judges` back to `round_accuracy`** (instead of a correlated subquery or EXISTS). Gives a clean flat join and avoids self-referencing CTE issues.
 - **`agreement_breakdown` using `COUNT(*) FILTER (WHERE ...)` in a single aggregation** over `round_accuracy` is cleaner than a separate CTE — eliminates one CTE entirely.

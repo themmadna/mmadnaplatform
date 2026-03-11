@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Scale } from 'lucide-react';
 
 const MIN_FIGHTS = 5;
@@ -69,7 +70,33 @@ const AgreementBar = ({ breakdown }) => {
   );
 };
 
+// Two-tone bar: blue for striking, amber for grappling.
+// strikePct / grapplingPct are independent (not complementary) so the bar
+// shows relative lean (normalized), while labels show the raw percentages.
+const SplitBar = ({ strikePct, grapplingPct }) => {
+  if (strikePct == null) return <span className="text-xs opacity-30">—</span>;
+  const s = Math.round((strikePct || 0) * 100);
+  const g = Math.round((grapplingPct || 0) * 100);
+  const total = s + g || 1;
+  const sBar = Math.round((s / total) * 100);
+  const gBar = 100 - sBar;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex h-2 rounded-full overflow-hidden gap-[2px]">
+        {sBar > 0 && <div className="bg-blue-500 transition-all duration-700" style={{ width: `${sBar}%` }} />}
+        {gBar > 0 && <div className="bg-amber-500 transition-all duration-700" style={{ width: `${gBar}%` }} />}
+      </div>
+      <div className="flex justify-between text-[9px] opacity-40">
+        <span>{sBar}% striking</span>
+        <span>{gBar}% grappling</span>
+      </div>
+    </div>
+  );
+};
+
 const JudgingDNACard = ({ profile, currentTheme }) => {
+  const [showBiasByClass, setShowBiasByClass] = useState(false);
+
   if (!profile) return null;
 
   const {
@@ -83,6 +110,10 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
     ten_eight_quality,
     accuracy_by_class,
     judges,
+    striking_vs_grappling_bias,
+    aggressor_bias,
+    takedown_quality_bias,
+    knockdown_bias,
   } = profile;
 
   if ((fights_scored || 0) < MIN_FIGHTS) {
@@ -98,6 +129,7 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
 
   const closestJudge = judges?.[0] || null;
   const topClasses = (accuracy_by_class || []).slice(0, 5);
+  const hasBiasData = striking_vs_grappling_bias?.rounds > 0;
 
   return (
     <div className={`${currentTheme.card} ${currentTheme.rounded} shadow-sm overflow-hidden mb-6`}>
@@ -201,6 +233,72 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
                 <p className="text-[9px] opacity-20">Acc — % of rounds matching the judge majority</p>
                 <p className="text-[9px] opacity-20">Rds — rounds where judge scorecard data was available</p>
                 <p className="text-[9px] opacity-20">Avg loser — your average score for the losing fighter (lower = stricter)</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Scoring Tendencies (bias stats — requires round_fight_stats data) */}
+        {hasBiasData && (
+          <div className="border-t border-white/10 pt-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs opacity-40 uppercase tracking-widest">Scoring Tendencies</p>
+              {topClasses.some(wc => wc.striking_pct != null) && (
+                <button
+                  onClick={() => setShowBiasByClass(v => !v)}
+                  className="text-[10px] opacity-40 hover:opacity-70 uppercase tracking-widest transition-opacity"
+                >
+                  {showBiasByClass ? 'Overall ▴' : 'By Class ▾'}
+                </button>
+              )}
+            </div>
+
+            {/* Strike vs Grapple lean */}
+            <div className="mb-5">
+              <p className="text-[10px] opacity-30 uppercase tracking-widest mb-2">Strike vs Grapple Lean</p>
+              {!showBiasByClass ? (
+                <SplitBar
+                  strikePct={striking_vs_grappling_bias.striking_pct}
+                  grapplingPct={striking_vs_grappling_bias.grappling_pct}
+                />
+              ) : (
+                <div className="space-y-3">
+                  {topClasses.filter(wc => wc.striking_pct != null).map(wc => (
+                    <div key={wc.weight_class_clean} className="flex items-center gap-3">
+                      <span className="text-xs opacity-50 w-20 flex-shrink-0 truncate">
+                        {shortClass(wc.weight_class_clean)}
+                      </span>
+                      <div className="flex-1">
+                        <SplitBar strikePct={wc.striking_pct} grapplingPct={wc.grappling_pct} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[9px] opacity-20 mt-2">
+                Which factor was more dominant in rounds you awarded — striking (sig. strikes) or grappling (takedowns + control)?
+              </p>
+            </div>
+
+            {/* Aggressor / Passive Control / Knockdown — 3 stats */}
+            <div className="grid grid-cols-3 gap-3 border-t border-white/5 pt-4">
+              <div className="text-center">
+                <Pct value={aggressor_bias} big />
+                <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">Aggressor Lean</p>
+                <p className="text-[10px] opacity-20 mt-0.5">sided with higher volume when accuracy favoured opponent</p>
+              </div>
+              <div className="text-center">
+                <Pct value={takedown_quality_bias?.passive_control_pct} big />
+                <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">Passive Control</p>
+                <p className="text-[10px] opacity-20 mt-0.5">of control wins had no subs or ground strikes</p>
+              </div>
+              <div className="text-center">
+                <Pct value={knockdown_bias?.kd_bias_pct} big />
+                <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">KD Fighter</p>
+                <p className="text-[10px] opacity-20 mt-0.5">
+                  sided with knockdown scorer
+                  {knockdown_bias?.kd_rounds > 0 ? ` (${knockdown_bias.kd_rounds} KD rds)` : ''}
+                </p>
               </div>
             </div>
           </div>

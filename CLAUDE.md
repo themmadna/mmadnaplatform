@@ -77,6 +77,7 @@ These are the highest-stakes gotchas. Violating any of these causes silent bugs.
 6. **`fight_dna_metrics` is a VIEW, not a table.** Frontend reads from here, not raw `round_fight_stats`.
 7. **Bout name format:** `Fighter1 vs Fighter2` (no period after "vs"). `clean_bout_name()` in the master scraper standardises this.
 8. **Cross-source name matching:** use `normName()` (lowercase + strip all non-alphanumeric except spaces). Never exact string match across UFC Stats and mmadecisions.
+9. **`fight_meta_details.bout` vs `round_fight_stats.bout` are often reversed** — even though both come from ufcstats. When joining them, always match both orderings: `rfs.bout = fmd.bout OR rfs.bout = TRIM(SPLIT_PART(fmd.bout,' vs ',2)) || ' vs ' || TRIM(SPLIT_PART(fmd.bout,' vs ',1))`.
 
 ---
 

@@ -50,7 +50,9 @@ BEGIN
         fmd.fighter1_name,
         fmd.fighter2_name,
         COALESCE(fmd.weight_class_clean, fmd.weight_class) AS weight_class_clean,
-        fmd.method
+        fmd.method,
+        fmd.event_name AS fmd_event_name,
+        fmd.bout       AS fmd_bout
       FROM user_round_scores urs
       JOIN fights f ON f.id = urs.fight_id
       JOIN ufc_events ue ON ue.event_name = f.event_name
@@ -177,6 +179,96 @@ BEGIN
       FROM complete_judges
       GROUP BY judge
       HAVING COUNT(*) >= 5
+    ),
+
+    -- 8. Round-level fight stats: one row per (fight_id, round, fighter).
+    --    fmd.bout and rfs.bout are often reversed (same ufcstats scraper, different scrape order),
+    --    so match both orderings: "A vs B" and "B vs A".
+    fight_stats_raw AS (
+      SELECT
+        ur.fight_id,
+        ur.round,
+        ur.user_f1,
+        ur.user_f2,
+        ur.weight_class_clean,
+        ur.fighter1_name,
+        ur.fighter2_name,
+        rfs.fighter_name,
+        rfs.sig_strikes_landed,
+        rfs.sig_strikes_attempted,
+        rfs.takedowns_landed,
+        rfs.control_time_sec,
+        rfs.sub_attempts,
+        rfs.sig_strikes_ground_landed AS ground_strikes,
+        rfs.kd
+      FROM user_rounds ur
+      JOIN round_fight_stats rfs
+        ON  rfs.event_name = ur.fmd_event_name
+        AND rfs.round      = ur.round
+        AND (
+          rfs.bout = ur.fmd_bout
+          OR rfs.bout = TRIM(SPLIT_PART(ur.fmd_bout, ' vs ', 2)) || ' vs ' || TRIM(SPLIT_PART(ur.fmd_bout, ' vs ', 1))
+        )
+    ),
+
+    -- 9. Pivot fight stats to one row per (fight_id, round) with f1/f2 columns.
+    --    Uses last-name match (same source so names are consistent).
+    fight_stats_pivoted AS (
+      SELECT
+        fight_id,
+        round,
+        user_f1,
+        user_f2,
+        weight_class_clean,
+        MAX(CASE WHEN lower(split_part(fighter1_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN sig_strikes_landed   END) AS f1_ssl,
+        MAX(CASE WHEN lower(split_part(fighter1_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN sig_strikes_attempted END) AS f1_ssa,
+        MAX(CASE WHEN lower(split_part(fighter1_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN takedowns_landed      END) AS f1_td,
+        MAX(CASE WHEN lower(split_part(fighter1_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN control_time_sec     END) AS f1_ctrl,
+        MAX(CASE WHEN lower(split_part(fighter1_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN sub_attempts         END) AS f1_sub,
+        MAX(CASE WHEN lower(split_part(fighter1_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN ground_strikes       END) AS f1_grd,
+        MAX(CASE WHEN lower(split_part(fighter1_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN kd                  END) AS f1_kd,
+        MAX(CASE WHEN lower(split_part(fighter2_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN sig_strikes_landed   END) AS f2_ssl,
+        MAX(CASE WHEN lower(split_part(fighter2_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN sig_strikes_attempted END) AS f2_ssa,
+        MAX(CASE WHEN lower(split_part(fighter2_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN takedowns_landed      END) AS f2_td,
+        MAX(CASE WHEN lower(split_part(fighter2_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN control_time_sec     END) AS f2_ctrl,
+        MAX(CASE WHEN lower(split_part(fighter2_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN sub_attempts         END) AS f2_sub,
+        MAX(CASE WHEN lower(split_part(fighter2_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN ground_strikes       END) AS f2_grd,
+        MAX(CASE WHEN lower(split_part(fighter2_name,' ',-1)) = lower(split_part(fighter_name,' ',-1)) THEN kd                  END) AS f2_kd
+      FROM fight_stats_raw
+      GROUP BY fight_id, round, user_f1, user_f2, weight_class_clean
+    ),
+
+    -- 10. Derive winner/loser stats per round (user's pick determines winner).
+    --     Only rounds with complete stats and a clear user pick (no draw) are included.
+    round_winner_stats AS (
+      SELECT
+        fight_id,
+        round,
+        weight_class_clean,
+        CASE WHEN user_f1 > user_f2 THEN f1_ssl  ELSE f2_ssl  END AS winner_ssl,
+        CASE WHEN user_f1 > user_f2 THEN f1_ssa  ELSE f2_ssa  END AS winner_ssa,
+        CASE WHEN user_f1 > user_f2 THEN f1_td   ELSE f2_td   END AS winner_td,
+        CASE WHEN user_f1 > user_f2 THEN f1_ctrl ELSE f2_ctrl END AS winner_ctrl,
+        CASE WHEN user_f1 > user_f2 THEN f1_sub  ELSE f2_sub  END AS winner_sub,
+        CASE WHEN user_f1 > user_f2 THEN f1_grd  ELSE f2_grd  END AS winner_grd,
+        CASE WHEN user_f1 > user_f2 THEN f2_ssl  ELSE f1_ssl  END AS loser_ssl,
+        CASE WHEN user_f1 > user_f2 THEN f2_ssa  ELSE f1_ssa  END AS loser_ssa,
+        CASE WHEN user_f1 > user_f2 THEN f2_td   ELSE f1_td   END AS loser_td,
+        CASE WHEN user_f1 > user_f2 THEN f2_ctrl ELSE f1_ctrl END AS loser_ctrl
+      FROM fight_stats_pivoted
+      WHERE user_f1 != user_f2
+        AND f1_ssl IS NOT NULL AND f2_ssl IS NOT NULL
+    ),
+
+    -- 11. Per-class striking vs grappling bias (merged into accuracy_by_class below).
+    class_bias AS (
+      SELECT
+        weight_class_clean,
+        ROUND(AVG(CASE WHEN winner_ssl > loser_ssl THEN 1.0 ELSE 0.0 END)::numeric, 3) AS striking_pct,
+        ROUND(AVG(CASE WHEN COALESCE(winner_td,0) + COALESCE(winner_ctrl,0) > COALESCE(loser_td,0) + COALESCE(loser_ctrl,0) THEN 1.0 ELSE 0.0 END)::numeric, 3) AS grappling_pct
+      FROM round_winner_stats
+      WHERE weight_class_clean IS NOT NULL
+      GROUP BY weight_class_clean
     )
 
     SELECT json_build_object(
@@ -221,13 +313,16 @@ BEGIN
         SELECT json_agg(t ORDER BY t.rounds DESC)
         FROM (
           SELECT
-            weight_class_clean,
-            ROUND(AVG(CASE WHEN user_winner = majority_winner THEN 1.0 ELSE 0.0 END)::numeric, 3) AS accuracy,
+            ra.weight_class_clean,
+            ROUND(AVG(CASE WHEN ra.user_winner = ra.majority_winner THEN 1.0 ELSE 0.0 END)::numeric, 3) AS accuracy,
             COUNT(*) AS rounds,
-            ROUND(AVG(user_loser_score)::numeric, 2) AS avg_loser_score
-          FROM round_accuracy
-          WHERE majority_winner IS NOT NULL AND weight_class_clean IS NOT NULL
-          GROUP BY weight_class_clean
+            ROUND(AVG(ra.user_loser_score)::numeric, 2) AS avg_loser_score,
+            cb.striking_pct,
+            cb.grappling_pct
+          FROM round_accuracy ra
+          LEFT JOIN class_bias cb ON cb.weight_class_clean = ra.weight_class_clean
+          WHERE ra.majority_winner IS NOT NULL AND ra.weight_class_clean IS NOT NULL
+          GROUP BY ra.weight_class_clean, cb.striking_pct, cb.grappling_pct
           HAVING COUNT(*) >= 3
         ) t
       ),
@@ -238,6 +333,61 @@ BEGIN
           'rounds',        rounds
         ) ORDER BY agreed::numeric / rounds DESC)
         FROM judge_agreement
+      ),
+
+      -- Bias metrics (require round_fight_stats join — null when no stats available)
+
+      -- striking_vs_grappling_bias: of rounds user awarded, did their winner have more
+      -- sig strikes landed (striking) or more takedowns+ctrl (grappling)?
+      'striking_vs_grappling_bias', (
+        SELECT json_build_object(
+          'striking_pct',  ROUND(AVG(CASE WHEN winner_ssl > loser_ssl THEN 1.0 ELSE 0.0 END)::numeric, 3),
+          'grappling_pct', ROUND(AVG(CASE WHEN COALESCE(winner_td,0) + COALESCE(winner_ctrl,0) > COALESCE(loser_td,0) + COALESCE(loser_ctrl,0) THEN 1.0 ELSE 0.0 END)::numeric, 3),
+          'rounds',        COUNT(*)
+        )
+        FROM round_winner_stats
+      ),
+
+      -- aggressor_bias: % of rounds where user's winner threw more (volume advantage)
+      -- but landed at a lower accuracy than the opponent.
+      'aggressor_bias', (
+        SELECT ROUND(AVG(CASE
+          WHEN COALESCE(winner_ssa,0) > COALESCE(loser_ssa,0)
+            AND NULLIF(winner_ssa,0) IS NOT NULL AND NULLIF(loser_ssa,0) IS NOT NULL
+            AND winner_ssl::float / winner_ssa < loser_ssl::float / loser_ssa
+          THEN 1.0 ELSE 0.0
+        END)::numeric, 3)
+        FROM round_winner_stats
+        WHERE winner_ssa IS NOT NULL AND loser_ssa IS NOT NULL
+      ),
+
+      -- takedown_quality_bias: of rounds where user's winner had ctrl > 30s,
+      -- % where the control was passive (no subs, <=3 ground strikes).
+      'takedown_quality_bias', (
+        SELECT json_build_object(
+          'passive_control_pct', ROUND(
+            SUM(CASE WHEN COALESCE(winner_ctrl,0) > 30 AND COALESCE(winner_sub,0) = 0 AND COALESCE(winner_grd,0) <= 3 THEN 1 ELSE 0 END)::numeric /
+            NULLIF(SUM(CASE WHEN COALESCE(winner_ctrl,0) > 30 THEN 1 ELSE 0 END), 0),
+          3),
+          'control_rounds', SUM(CASE WHEN COALESCE(winner_ctrl,0) > 30 THEN 1 ELSE 0 END)
+        )
+        FROM round_winner_stats
+      ),
+
+      -- knockdown_bias: on rounds where there was a KD, % of time user sided with
+      -- the fighter who scored the knockdown.
+      'knockdown_bias', (
+        SELECT json_build_object(
+          'kd_bias_pct', ROUND(AVG(CASE
+            WHEN (user_f1 > user_f2 AND COALESCE(f1_kd,0) > COALESCE(f2_kd,0))
+              OR (user_f2 > user_f1 AND COALESCE(f2_kd,0) > COALESCE(f1_kd,0))
+            THEN 1.0 ELSE 0.0
+          END)::numeric, 3),
+          'kd_rounds', COUNT(*)
+        )
+        FROM fight_stats_pivoted
+        WHERE ABS(COALESCE(f1_kd,0) - COALESCE(f2_kd,0)) > 0
+          AND user_f1 != user_f2
       )
     )
   );

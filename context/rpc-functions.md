@@ -74,8 +74,18 @@ Returns: json {
     total,
     all3_pct, two_of_three_pct, one_of_three_pct, lone_dissenter_pct
   },
-  accuracy_by_class: [{ weight_class_clean, accuracy, rounds, avg_loser_score }],
-  judges: [{ name, agreement_pct, rounds }]  -- closest judge matches (≥5 shared rounds)
+  accuracy_by_class: [{ weight_class_clean, accuracy, rounds, avg_loser_score, striking_pct, grappling_pct }],
+  judges: [{ name, agreement_pct, rounds }],  -- closest judge matches (≥5 shared rounds)
+
+  -- Bias metrics (null when no round_fight_stats available for the user's fights)
+  striking_vs_grappling_bias: { striking_pct, grappling_pct, rounds },
+    -- striking_pct: % rounds where user's winner had more sig_strikes_landed
+    -- grappling_pct: % rounds where user's winner had more (takedowns_landed + control_time_sec)
+  aggressor_bias,     -- % rounds where user's winner threw more but landed at lower accuracy
+  takedown_quality_bias: { passive_control_pct, control_rounds },
+    -- passive: ctrl_sec > 30, sub_attempts = 0, ground_strikes <= 3
+  knockdown_bias: { kd_bias_pct, kd_rounds }
+    -- on KD rounds, % of time user awarded the fighter who scored the knockdown
 }
 ```
 
@@ -83,8 +93,13 @@ Returns: json {
 - `agreement_breakdown` denominator = all rounds with judge data (includes split-decision rounds where majority_winner IS NULL)
 - `accuracy` denominator = only rounds with a clear majority — these differ intentionally
 - `accuracy_by_class` must use a subquery to pre-aggregate before `json_agg` — cannot nest `AVG`/`COUNT` inside `json_agg(ORDER BY COUNT(*))` (PostgreSQL error 42803)
+- `accuracy_by_class` now includes `striking_pct` and `grappling_pct` via LEFT JOIN to `class_bias` CTE
 - `judges_agreeing` computed as a window function in the `majority` CTE alongside `f1_wins`/`f2_wins` — same partition, no extra CTE needed
 - Don't use `EXISTS` referencing a CTE name inside another CTE's WHERE clause — use a JOIN instead
+- `round_fight_stats` join: `user_rounds` carries `fmd_event_name` + `fmd_bout` (from fight_meta_details); joined via event_name+round + **both bout orderings** (`rfs.bout = fmd.bout OR rfs.bout = reversed(fmd.bout)`) — fmd.bout and rfs.bout are often reversed even though both come from ufcstats
+- Fighter assignment in `fight_stats_pivoted` uses last-name match (same as judge_scores pivot)
+- `round_winner_stats` only includes rounds with complete stats (f1_ssl IS NOT NULL) and no draws (user_f1 != user_f2)
+- `aggressor_bias`: guards against division by zero with NULLIF; requires both winner_ssa and loser_ssa NOT NULL
 
 ### Overload (deprecated)
 ```
