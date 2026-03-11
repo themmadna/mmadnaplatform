@@ -757,6 +757,19 @@ export default function UFCFightRating() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dnaFilter]);
 
+  // Warn guests before closing/navigating away if they have unsaved activity.
+  // Note: browsers enforce their own generic message — custom text is ignored.
+  useEffect(() => {
+    if (!isGuest) return;
+    const hasActivity = userHistory.length > 0 ||
+      Object.keys(guestStorage.getVotes()).length > 0 ||
+      sessionStorage.getItem('ufc_guest_scores') !== null;
+    if (!hasActivity) return;
+    const handler = (e) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isGuest, userHistory]);
+
   const handleSignOut = async () => { await supabase.auth.signOut(); setSession(null); setCurrentView('events'); };
   const handleGuestSignUp = () => {
     guestStorage.setGuest(false);
