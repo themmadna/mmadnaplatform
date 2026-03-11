@@ -61,7 +61,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
   );
 
   return (
-    <div className={`${currentTheme.card} rounded-xl border mb-6 shadow-lg overflow-hidden`}>
+    <div className={`${currentTheme.card} ${currentTheme.rounded} mb-6 shadow-sm overflow-hidden`}>
       {/* Header */}
       <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10">
         <p className="text-xs font-black uppercase tracking-widest opacity-60">Scorecard Comparison</p>

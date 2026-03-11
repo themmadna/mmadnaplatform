@@ -441,7 +441,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
         {/* ERROR */}
         {!loading && error && (
-          <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
+          <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
             <p className="text-sm uppercase tracking-widest">{error}</p>
           </div>
         )}
@@ -450,7 +450,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
         {!loading && !error && (
           <>
             {/* FIGHT HEADER — works with or without meta */}
-            <div className={`${currentTheme.card} p-6 rounded-xl border mb-6 shadow-lg text-center`}>
+            <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} mb-6 shadow-lg text-center`}>
               <div className="flex items-center justify-center gap-4 mb-3 flex-wrap">
                 <h1 className="text-lg sm:text-2xl font-black">
                   {meta ? meta.fighter1_name : fight.bout?.split(' vs ')[0]?.trim()}
@@ -460,7 +460,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
                   {meta ? meta.fighter2_name : fight.bout?.split(' vs ')[1]?.trim()}
                 </h1>
               </div>
-              <p className="text-xs opacity-50 uppercase tracking-widest">
+              <p className={`text-xs uppercase tracking-widest ${currentTheme.secondaryText}`}>
                 {meta?.weight_class_clean || meta?.weight_class || fight.weight_class || ''}
                 {meta?.method ? ` · ${meta.method}` : ''}
                 {meta?.round ? ` · R${meta.round}` : ''}
@@ -468,7 +468,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
                 {meta?.referee ? ` · Ref: ${meta.referee}` : ''}
               </p>
               {meta?.winner && fight.status === 'completed' && (
-                <div className={`mt-3 inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full ${currentTheme.primary} text-white`}>
+                <div className={`mt-3 inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 ${currentTheme.rounded} ${currentTheme.primary} text-white`}>
                   W: {meta.winner}
                 </div>
               )}
@@ -476,7 +476,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
             {/* UPCOMING — not started */}
             {fight.status === 'upcoming' && !isLive && !isLocked && (
-              <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
+              <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
                 <p className="text-sm uppercase tracking-widest">
                   Fight has not yet started. Scoring opens when the fight begins.
                 </p>
@@ -485,7 +485,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
             {/* UPCOMING — live (scoring open, rounds unlock progressively) */}
             {fight.status === 'upcoming' && isLive && (
-              <div className={`${currentTheme.card} p-4 rounded-xl border mb-4 text-center`}>
+              <div className={`${currentTheme.card} p-4 ${currentTheme.rounded} mb-4 text-center`}>
                 <p className="text-xs font-black uppercase tracking-widest opacity-60">🔴 Fight In Progress</p>
               </div>
             )}
@@ -495,7 +495,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
             {/* UPCOMING — ended, stats incoming */}
             {fight.status === 'upcoming' && isLocked && (
-              <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60 mb-4`}>
+              <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60 mb-4`}>
                 <p className="text-sm uppercase tracking-widest">
                   Fight finished. Official stats will be available shortly.
                 </p>
@@ -507,7 +507,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
             {/* COMPLETED — stats pending (meta not available yet) */}
             {fight.status === 'completed' && !meta && (
-              <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
+              <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
                 <p className="text-sm uppercase tracking-widest">Round stats not yet available for this fight.</p>
               </div>
             )}
@@ -521,14 +521,14 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
               <>
                 {/* NO STATS YET */}
                 {rounds.length === 0 && (
-                  <div className={`${currentTheme.card} p-6 rounded-xl border text-center opacity-60`}>
+                  <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
                     <p className="text-sm uppercase tracking-widest">Round stats not yet available for this fight.</p>
                   </div>
                 )}
 
                 {/* ROUND BREAKDOWN */}
                 {rounds.map(rd => (
-                  <div key={rd.round} className={`${currentTheme.card} rounded-xl border mb-4 shadow-lg overflow-hidden`}>
+                  <div key={rd.round} className={`${currentTheme.card} ${currentTheme.rounded} mb-4 shadow-sm overflow-hidden`}>
                     <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10">
                       <p className="text-xs font-black uppercase tracking-widest opacity-60">Round {rd.round}</p>
                     </div>

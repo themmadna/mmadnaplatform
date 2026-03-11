@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, Palette, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
@@ -42,7 +42,7 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
   const intensityLabel = getIntensityLabel(intensityScore);
 
   return (
-    <div className={`${currentTheme.card} p-6 rounded-2xl border mb-8 shadow-xl animate-in fade-in slide-in-from-bottom-4 duration-700`}>
+    <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} mb-8 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-700`}>
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
           <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Strike Pace</p>
@@ -177,7 +177,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 
   return (
     <div
-      className={`${currentTheme.card} rounded-xl overflow-hidden border mb-6 shadow-lg transition-all relative group${onClick ? ' cursor-pointer hover:scale-[1.01]' : ''}`}
+      className={`${currentTheme.card} ${currentTheme.rounded} overflow-hidden mb-6 shadow-sm transition-all relative group${onClick ? ' cursor-pointer hover:scale-[1.01]' : ''}`}
       onClick={onClick ? () => onClick(fight) : undefined}
     >
       
@@ -190,32 +190,32 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
           const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at;
           if (isLiveFight) return (
             <div className="flex justify-center mb-2">
-              <span className="flex items-center gap-1.5 bg-red-600/20 text-red-400 text-[10px] px-2.5 py-1 rounded-full border border-red-500/40 uppercase tracking-widest font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              <span className="flex items-center gap-1.5 bg-red-600/20 text-red-400 text-[10px] px-2.5 py-1 border border-red-500/40 uppercase tracking-widest font-bold">
+                <span className="w-1.5 h-1.5 bg-red-500 animate-pulse" />
                 Live
               </span>
             </div>
           );
           if (isCompleted) return (
             <div className="flex justify-center mb-2">
-              <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border border-white/10 text-white/30 uppercase tracking-widest font-bold">
-                ✓ Completed
+              <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 border border-white/10 text-white/30 uppercase tracking-widest font-bold">
+                ✓ Final
               </span>
             </div>
           );
           if (isUpcomingFight) return (
             <div className="flex justify-center mb-2">
-              <span className="text-[10px] px-2 py-0.5 rounded-full border border-yellow-500/30 text-yellow-500/60 uppercase tracking-widest font-bold">
+              <span className="text-[10px] px-2 py-0.5 border border-[#D4AF37]/30 text-[#D4AF37]/60 uppercase tracking-widest font-bold">
                 Upcoming
               </span>
             </div>
           );
           return null;
         })()}
-        <h2 className={`text-base sm:text-xl font-bold ${currentTheme.text}`}>
-          {fighters[0]} <span className={currentTheme.accent}>VS</span> {fighters[1]}
+        <h2 className="text-base sm:text-xl font-bold uppercase tracking-wide text-white">
+          {fighters[0]} <span className="text-[#D4AF37]">VS</span> {fighters[1]}
         </h2>
-        <p className="text-xs opacity-50 uppercase tracking-widest mt-1">
+        <p className={`text-xs uppercase tracking-widest mt-1 ${currentTheme.secondaryText}`}>
           {showEvent ? (
             <span>{fight.event_name} {fight.event_date ? `• ${fight.event_date}` : ''}</span>
           ) : (
@@ -238,7 +238,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
           <button 
             disabled={locked}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'favorite'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all border border-transparent
+            className={`flex-1 flex items-center justify-center gap-2 py-3 ${currentTheme.rounded} transition-all border border-transparent
                 ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
                   (isFav ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/5 hover:bg-yellow-500/20 hover:text-yellow-400')}`}
           >
@@ -247,10 +247,10 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
           </button>
 
           {/* 2. LIKE */}
-          <button 
+          <button
             disabled={locked}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'like'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all border border-transparent
+            className={`flex-1 flex items-center justify-center gap-2 py-3 ${currentTheme.rounded} transition-all border border-transparent
                 ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
                   (isLike ? 'bg-blue-600 text-white' : 'bg-white/5 hover:bg-white/10')}`}
           >
@@ -259,10 +259,10 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
           </button>
 
           {/* 3. DISLIKE */}
-          <button 
+          <button
             disabled={locked}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'dislike'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all border border-transparent
+            className={`flex-1 flex items-center justify-center gap-2 py-3 ${currentTheme.rounded} transition-all border border-transparent
                 ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
                   (isDislike ? 'bg-red-900/50 border-red-600 text-red-500' : 'bg-white/5 hover:bg-white/10')}`}
           >
@@ -320,9 +320,6 @@ export default function UFCFightRating() {
   const [activeProfileTab, setActiveProfileTab] = useState('favorite');
   const [dnaTab, setDnaTab] = useState('combat');
   const [judgingProfile, setJudgingProfile] = useState(null);
-  const [theme, setTheme] = useState(() => localStorage.getItem('ufc_app_theme') || 'modern');
-  const [showThemeSelector, setShowThemeSelector] = useState(false);
-  const themeSelectorRef = useRef(null);
   const savedScrollRef = useRef(0);
   const prevViewRef = useRef(null);
   const eventFightsRef = useRef([]);
@@ -332,18 +329,23 @@ export default function UFCFightRating() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
 
-  const themes = {
-    modern: { name: 'Modern Dark', bg: 'bg-gray-900', card: 'bg-gray-800 border-gray-700', primary: 'bg-red-600', text: 'text-white', accent: 'text-red-400' },
-    neon: { name: 'Neon Cyber', bg: 'bg-black', card: 'bg-black border-cyan-500', primary: 'bg-cyan-500', text: 'text-cyan-100', accent: 'text-pink-400' },
-    ocean: { name: 'Ocean Blue', bg: 'bg-blue-950', card: 'bg-blue-900 border-teal-600', primary: 'bg-teal-600', text: 'text-cyan-50', accent: 'text-teal-300' },
-    crimson: { 
-        name: 'Crimson', 
-        bg: 'bg-red-950', card: 'bg-red-900 border-red-500', primary: 'bg-red-600', text: 'text-white', accent: 'text-red-200'           
-    }
+  const currentTheme = {
+    bg: 'bg-[#0A0A0A]',
+    card: 'bg-[#141414] border-l-4 border-[#D4AF37]',
+    primary: 'bg-[#D4AF37]',
+    text: 'text-white',
+    accent: 'text-[#D4AF37]',
+    font: 'font-oswald',
+    rounded: 'rounded-none',
+    headerBg: 'bg-black border-b-2 border-[#D4AF37]',
+    statColor: 'text-[#D4AF37]',
+    secondaryText: 'text-white/50',
+    inputBg: 'bg-[#141414] border border-white/10 text-white placeholder-white/30',
+    tabBg: 'bg-white/10',
+    tabActive: 'bg-[#D4AF37] text-black',
+    badge: 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30',
+    borderAccent: 'border-[#D4AF37]',
   };
-  const currentTheme = themes[theme] || themes.modern;
-
-  useEffect(() => { localStorage.setItem('ufc_app_theme', theme); }, [theme]);
 
   // --- HELPER: Reset Filters to DNA Defaults ---
   const DEFAULT_FILTERS = {
@@ -472,16 +474,6 @@ export default function UFCFightRating() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, selectedEvent?.event_name]);
 
-  useEffect(() => {
-    if (!showThemeSelector) return;
-    const handleClickOutside = (e) => {
-      if (themeSelectorRef.current && !themeSelectorRef.current.contains(e.target)) {
-        setShowThemeSelector(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showThemeSelector]);
 
   // --- INITIAL LOAD ONLY ---
   // Filters will now ONLY reset if you click the button or refresh the page.
@@ -849,40 +841,35 @@ export default function UFCFightRating() {
   if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin opacity-50" /></div>;
 
   return (
-    <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} p-4 pb-20 transition-all duration-500`}>
-      <div className="max-w-2xl mx-auto">
-        <header className="flex justify-between items-center mb-8 pt-4 relative">
-          <div ref={themeSelectorRef} className="relative">
-            <button onClick={() => setShowThemeSelector(!showThemeSelector)} className={`p-2 rounded-full border border-white/10 ${currentTheme.card}`}>
-              <Palette size={24} className={currentTheme.accent} />
-            </button>
-            {showThemeSelector && (
-              <div className={`absolute top-12 left-0 ${currentTheme.card} border rounded-lg p-2 z-50 shadow-2xl`}>
-                {Object.keys(themes).map(t => (
-                  <button key={t} onClick={() => { setTheme(t); setShowThemeSelector(false); }} className="block w-full text-left px-4 py-2 hover:bg-white/10 rounded capitalize text-sm">
-                    {themes[t].name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Reset Filters on Navigation */}
-          <h1 className="text-2xl md:text-3xl font-black italic tracking-tighter cursor-pointer" onClick={() => {setCurrentView('events'); setSearchQuery(''); setShowFilters(false);}}>MMA DNA</h1>
-          
+    <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} ${currentTheme.font} pb-20 transition-all duration-500`}>
+      <header className={`sticky top-0 z-40 ${currentTheme.headerBg}`}>
+        <div className="max-w-2xl mx-auto px-4 py-3 flex justify-between items-center">
+          <h1
+            className="text-2xl md:text-3xl font-bold uppercase tracking-widest cursor-pointer text-[#D4AF37]"
+            onClick={() => { setCurrentView('events'); setSearchQuery(''); setShowFilters(false); }}
+          >
+            MMA DNA
+          </h1>
           <div className="flex gap-2">
-            <button onClick={() => { setCurrentView('dna'); setSearchQuery(''); setShowFilters(false); }} className={`p-2 rounded-full border ${currentTheme.card} ${currentView === 'dna' ? 'border-white' : 'border-white/10'}`}>
-                <Dna size={24} className={currentTheme.accent} />
+            <button
+              onClick={() => { setCurrentView('dna'); setSearchQuery(''); setShowFilters(false); }}
+              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${currentView === 'dna' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
+            >
+              DNA
             </button>
-
-            <button onClick={() => { setCurrentView('profile'); setSearchQuery(''); setShowFilters(false); }} className={`p-2 rounded-full border ${currentTheme.card} ${currentView === 'profile' ? 'border-white' : 'border-white/10'}`}>
-                <User size={24} className={currentTheme.accent} />
+            <button
+              onClick={() => { setCurrentView('profile'); setSearchQuery(''); setShowFilters(false); }}
+              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${currentView === 'profile' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
+            >
+              <User size={14} />
             </button>
           </div>
-        </header>
+        </div>
+      </header>
+      <div className="max-w-2xl mx-auto px-4 pt-6">
 
         {isGuest && (
-          <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 mb-4 flex items-center justify-between">
+          <div className={`bg-yellow-500/10 border border-yellow-500/30 ${currentTheme.rounded} p-3 mb-4 flex items-center justify-between`}>
             <span className="text-yellow-400 text-xs">Guest mode — votes &amp; scores saved on this device only.</span>
             <button onClick={handleGuestSignUp} className="text-yellow-400 font-bold text-xs underline ml-2">Sign Up</button>
           </div>
@@ -897,7 +884,7 @@ export default function UFCFightRating() {
                   placeholder="Search fighters or filters..." 
                   value={searchQuery} 
                   onChange={(e) => setSearchQuery(e.target.value)} 
-                  className={`w-full py-4 pl-12 pr-12 rounded-2xl border ${currentTheme.card} focus:outline-none focus:ring-2 focus:ring-red-600/50 transition-all shadow-md`} 
+                  className={`w-full py-4 pl-12 pr-12 ${currentTheme.rounded} ${currentTheme.inputBg} focus:outline-none focus:ring-2 focus:ring-current/20 transition-all shadow-sm`}
               />
               
               {searchQuery && (
@@ -916,7 +903,7 @@ export default function UFCFightRating() {
 
             {/* --- ADVANCED FILTERS PANEL --- */}
             {showFilters && (
-                <div className={`p-4 rounded-xl border mb-6 animate-in slide-in-from-top-2 ${currentTheme.card}`}>
+                <div className={`p-4 ${currentTheme.rounded} mb-6 animate-in slide-in-from-top-2 ${currentTheme.card}`}>
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2">
                             <Settings2 size={14} className={currentTheme.accent} />
@@ -1016,7 +1003,7 @@ export default function UFCFightRating() {
                 {!fetchingEvents && searchResults.length > displayLimit && (
                     <button 
                         onClick={() => setDisplayLimit(prev => prev + 10)}
-                        className={`w-full py-4 rounded-xl border border-dashed border-white/20 hover:bg-white/5 hover:border-white/40 transition-all text-xs font-bold uppercase tracking-widest opacity-60 hover:opacity-100 flex items-center justify-center gap-2`}
+                        className={`w-full py-4 ${currentTheme.rounded} border border-dashed border-current/20 hover:bg-current/5 hover:border-current/40 transition-all text-xs font-bold uppercase tracking-widest opacity-60 hover:opacity-100 flex items-center justify-center gap-2`}
                     >
                         Show More Results ({searchResults.length - displayLimit} remaining)
                     </button>
@@ -1033,18 +1020,18 @@ export default function UFCFightRating() {
                 <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide items-center" style={{ maskImage: 'linear-gradient(to right, black 80%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 80%, transparent 100%)' }}>
                   <button 
                     onClick={() => setSelectedYear('For You')} 
-                    className={`px-6 py-2 rounded-full font-bold border transition-all flex items-center gap-2 whitespace-nowrap
-                        ${selectedYear === 'For You' 
-                            ? 'bg-gradient-to-r from-yellow-600 to-yellow-800 border-transparent text-white shadow-lg shadow-yellow-900/50' 
-                            : 'border-yellow-500/30 text-yellow-500/80 hover:bg-yellow-500/10'
+                    className={`px-5 py-2 font-bold uppercase tracking-widest text-sm border transition-all flex items-center gap-2 whitespace-nowrap
+                        ${selectedYear === 'For You'
+                            ? 'bg-[#D4AF37] border-[#D4AF37] text-black'
+                            : 'border-[#D4AF37]/30 text-[#D4AF37]/70 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'
                         }`}
                   >
-                    <Sparkles size={16} className={selectedYear === 'For You' ? 'text-white' : 'text-yellow-500'} />
+                    <Sparkles size={14} />
                     For You
                   </button>
-                  
+
                   {availableYears.map(y => (
-                    <button key={y} onClick={() => setSelectedYear(y)} className={`px-6 py-2 rounded-full font-bold border transition-all ${selectedYear === y ? `${currentTheme.primary} border-transparent text-white` : 'border-white/20 opacity-50'}`}>{y}</button>
+                    <button key={y} onClick={() => setSelectedYear(y)} className={`px-5 py-2 font-bold uppercase tracking-widest text-sm border transition-all whitespace-nowrap ${selectedYear === y ? 'bg-white text-black border-white' : 'border-white/20 text-white/50 hover:border-white/40 hover:text-white/80'}`}>{y}</button>
                   ))}
                 </div>
 
@@ -1074,18 +1061,18 @@ export default function UFCFightRating() {
                 ) : (
                     <div className="grid gap-4">
                       {fetchingEvents ? (<p className="text-center opacity-40 py-10 italic">Loading...</p>) : events.map(event => (
-                        <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-6 rounded-xl border text-left hover:scale-[1.01] transition-transform`}>
-                          <h3 className="text-xl font-bold flex items-center gap-3">
+                        <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-5 ${currentTheme.rounded} text-left hover:brightness-110 transition-all w-full`}>
+                          <h3 className="text-lg font-bold uppercase tracking-wide flex items-center gap-3">
                             {event.event_name}
                             {isUpcoming(event.event_date) && (
-                                <span className="bg-red-600/20 text-red-500 text-xs px-2 py-1 rounded-md border border-red-600/30 uppercase tracking-widest">
+                                <span className="text-[10px] px-2 py-0.5 border border-[#D4AF37]/40 text-[#D4AF37] uppercase tracking-widest font-bold">
                                     Upcoming
                                 </span>
                             )}
                           </h3>
-                          <div className="flex flex-col gap-1 mt-1 opacity-50 text-sm">
+                          <div className={`flex flex-col gap-0.5 mt-1.5 text-xs ${currentTheme.secondaryText} uppercase tracking-wider`}>
                             <p>{event.event_date}</p>
-                            {event.event_location && <p className="flex items-center gap-1 italic"><MapPin size={12} /> {event.event_location}</p>}
+                            {event.event_location && <p className="flex items-center gap-1"><MapPin size={10} /> {event.event_location}</p>}
                           </div>
                         </button>
                       ))}
@@ -1099,9 +1086,9 @@ export default function UFCFightRating() {
         {/* --- 2. FIGHTS VIEW --- */}
         {currentView === 'fights' && !searchQuery && (
           <div className="animate-in fade-in">
-            <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 font-bold opacity-60"><ChevronLeft size={20} /> BACK TO EVENTS</button>
-            <h2 className="text-2xl font-black mb-1 uppercase border-l-4 border-red-600 pl-4">{selectedEvent?.event_name}</h2>
-            <p className="text-sm opacity-50 mb-8 pl-5 italic">{selectedEvent?.event_date} {selectedEvent?.event_location ? `• ${selectedEvent.event_location}` : ''}</p>
+            <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-[#D4AF37] transition-colors"><ChevronLeft size={16} /> Events</button>
+            <h2 className="text-2xl font-bold mb-1 uppercase tracking-wide border-l-4 border-[#D4AF37] pl-4">{selectedEvent?.event_name}</h2>
+            <p className="text-xs text-white/40 mb-8 pl-5 uppercase tracking-widest">{selectedEvent?.event_date}{selectedEvent?.event_location ? ` · ${selectedEvent.event_location}` : ''}</p>
             
             {loadingFights ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -1145,13 +1132,13 @@ export default function UFCFightRating() {
                </div>
 
                {/* Top-level tab: Combat DNA / Judging DNA */}
-               <div className="flex bg-white/10 p-1 rounded-xl mb-6">
+               <div className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-6`}>
                  {[['combat', 'Combat DNA'], ['judging', 'Judging DNA']].map(([key, label]) => (
                    <button
                      key={key}
                      onClick={() => setDnaTab(key)}
-                     className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
-                       ${dnaTab === key ? 'bg-white text-black' : 'text-white/50 hover:text-white'}`}
+                     className={`flex-1 py-2.5 ${currentTheme.rounded} text-xs font-bold uppercase tracking-wider transition-all
+                       ${dnaTab === key ? currentTheme.tabActive : 'opacity-50 hover:opacity-80'}`}
                    >
                      {label}
                    </button>
@@ -1161,15 +1148,15 @@ export default function UFCFightRating() {
                {dnaTab === 'combat' && (
                  <>
                    <div className="flex justify-center mb-6">
-                     <div className="bg-white/10 p-1 rounded-xl flex gap-1">
+                     <div className={`${currentTheme.tabBg} p-1 ${currentTheme.rounded} flex gap-1`}>
                        {['combined', 'likes', 'favorites'].map((type) => (
                          <button
                            key={type}
                            onClick={() => setDnaFilter(type)}
-                           className={`px-3 sm:px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all
+                           className={`px-3 sm:px-4 py-2 ${currentTheme.rounded} text-xs font-bold uppercase tracking-wider transition-all
                              ${dnaFilter === type
-                               ? (type === 'favorites' ? 'bg-yellow-500 text-black' : 'bg-white text-black')
-                               : 'text-white/50 hover:text-white'}`}
+                               ? (type === 'favorites' ? 'bg-yellow-500 text-black' : currentTheme.tabActive)
+                               : 'opacity-50 hover:opacity-80'}`}
                          >
                            {type === 'combined' ? 'All Data' : type}
                          </button>
@@ -1196,14 +1183,14 @@ export default function UFCFightRating() {
                  <span className="font-bold">VOTING HISTORY</span>
              </div>
 
-            <div className="flex bg-gray-800/50 p-1 rounded-xl mb-8">
+            <div className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-8`}>
               {['favorite', 'like', 'dislike'].map(tab => (
-                <button 
-                  key={tab} 
-                  onClick={() => setActiveProfileTab(tab)} 
-                  className={`flex-1 py-3 rounded-lg font-bold text-xs sm:text-sm uppercase transition-all 
-                    ${activeProfileTab === tab 
-                        ? (tab === 'like' ? 'bg-blue-600 text-white' : tab === 'favorite' ? 'bg-yellow-500 text-black' : 'bg-red-600 text-white') 
+                <button
+                  key={tab}
+                  onClick={() => setActiveProfileTab(tab)}
+                  className={`flex-1 py-3 ${currentTheme.rounded} font-bold text-xs sm:text-sm uppercase transition-all
+                    ${activeProfileTab === tab
+                        ? (tab === 'like' ? 'bg-blue-600 text-white' : tab === 'favorite' ? 'bg-yellow-500 text-black' : 'bg-red-600 text-white')
                         : 'opacity-40'}`}
                 >
                   {tab === 'favorite' ? <Star size={10} className="inline mr-1 mb-1"/> : null}

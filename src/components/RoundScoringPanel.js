@@ -147,7 +147,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   })();
 
   return (
-    <div className={`${currentTheme.card} rounded-xl border shadow-lg overflow-hidden mb-6`}>
+    <div className={`${currentTheme.card} ${currentTheme.rounded} shadow-sm overflow-hidden mb-6`}>
       {/* Header */}
       <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10 flex items-center justify-between">
         <p className="text-xs font-black uppercase tracking-widest opacity-60">Your Scorecard</p>
@@ -208,7 +208,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                           ...prev,
                           [round]: { fighterScoredFor: name, points: prev[round]?.points ?? 9 },
                         }))}
-                        className={`py-2 px-3 rounded-lg text-xs font-bold border transition-all ${
+                        className={`py-2 px-3 ${currentTheme.rounded} text-xs font-bold border transition-all ${
                           p.fighterScoredFor === name
                             ? `${currentTheme.primary} border-transparent text-white`
                             : 'border-white/20 opacity-50 hover:opacity-80'
@@ -246,7 +246,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                     <button
                       onClick={() => handleSubmitRound(round)}
                       disabled={isSaving}
-                      className={`w-full py-2 rounded-lg text-xs font-black uppercase tracking-wider ${currentTheme.primary} text-white opacity-90 hover:opacity-100 transition-opacity disabled:opacity-40`}
+                      className={`w-full py-2 ${currentTheme.rounded} text-xs font-black uppercase tracking-wider ${currentTheme.primary} text-white opacity-90 hover:opacity-100 transition-opacity disabled:opacity-40`}
                     >
                       {isSaving ? 'Saving…' : saved ? 'Update' : 'Submit'}
                     </button>

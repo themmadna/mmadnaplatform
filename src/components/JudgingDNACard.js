@@ -87,7 +87,7 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
 
   if ((fights_scored || 0) < MIN_FIGHTS) {
     return (
-      <div className={`p-6 rounded-xl border border-dashed ${currentTheme.card} opacity-50 text-center mb-6`}>
+      <div className={`p-6 ${currentTheme.rounded} border border-dashed ${currentTheme.card} opacity-50 text-center mb-6`}>
         <Scale className="mx-auto mb-2 opacity-50" />
         <p className="text-sm">
           Score {MIN_FIGHTS - (fights_scored || 0)} more fight{fights_scored === MIN_FIGHTS - 1 ? '' : 's'} to unlock your Judging DNA
@@ -100,7 +100,7 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
   const topClasses = (accuracy_by_class || []).slice(0, 5);
 
   return (
-    <div className={`${currentTheme.card} rounded-xl border shadow-lg overflow-hidden mb-6`}>
+    <div className={`${currentTheme.card} ${currentTheme.rounded} shadow-sm overflow-hidden mb-6`}>
       {/* Header */}
       <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
