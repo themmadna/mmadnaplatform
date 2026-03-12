@@ -193,6 +193,77 @@ export const dataService = {
     return data || [];
   },
 
+  // --- SCORED FIGHTS LIST ---
+  async getScoredFights() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: roundScores, error: rsErr } = await supabase
+      .from('user_round_scores')
+      .select('fight_id, f1_score, f2_score')
+      .eq('user_id', user.id);
+
+    if (rsErr) { console.error('getScoredFights roundScores error:', rsErr); return []; }
+    if (!roundScores?.length) return [];
+
+    // Aggregate totals per fight
+    const totals = {};
+    for (const row of roundScores) {
+      if (!totals[row.fight_id]) totals[row.fight_id] = { f1: 0, f2: 0, rounds: 0 };
+      totals[row.fight_id].f1 += row.f1_score;
+      totals[row.fight_id].f2 += row.f2_score;
+      totals[row.fight_id].rounds += 1;
+    }
+    const fightIds = Object.keys(totals).map(Number);
+
+    const { data: fights, error: fErr } = await supabase
+      .from('fights')
+      .select('id, bout, event_name, weight_class, fight_url, winner, status')
+      .in('id', fightIds);
+
+    if (fErr) { console.error('getScoredFights fights error:', fErr); return []; }
+    if (!fights?.length) return [];
+
+    const fightUrls = fights.map(f => f.fight_url).filter(Boolean);
+    const eventNames = [...new Set(fights.map(f => f.event_name).filter(Boolean))];
+
+    const [{ data: metas }, { data: events }] = await Promise.all([
+      fightUrls.length
+        ? supabase.from('fight_meta_details').select('fight_url, fighter1_name, fighter2_name, weight_class_clean').in('fight_url', fightUrls)
+        : Promise.resolve({ data: [] }),
+      eventNames.length
+        ? supabase.from('ufc_events').select('event_name, event_date').in('event_name', eventNames)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const metaByUrl = Object.fromEntries((metas || []).map(m => [m.fight_url, m]));
+    const dateByEvent = Object.fromEntries((events || []).map(e => [e.event_name, e.event_date]));
+
+    return fights.map(f => {
+      const meta = metaByUrl[f.fight_url] || null;
+      const t = totals[f.id] || { f1: 0, f2: 0, rounds: 0 };
+      return {
+        id: f.id,
+        bout: f.bout,
+        event_name: f.event_name,
+        weight_class: f.weight_class,
+        fight_url: f.fight_url,
+        winner: f.winner,
+        status: f.status,
+        event_date: dateByEvent[f.event_name] || null,
+        fighter1_name: meta?.fighter1_name || null,
+        fighter2_name: meta?.fighter2_name || null,
+        weight_class_clean: meta?.weight_class_clean || null,
+        f1_total: t.f1,
+        f2_total: t.f2,
+        rounds_scored: t.rounds,
+      };
+    }).sort((a, b) => {
+      if (a.event_date && b.event_date) return b.event_date.localeCompare(a.event_date);
+      return b.id - a.id;
+    });
+  },
+
   // --- JUDGING DNA PROFILE ---
   async getUserJudgingProfile() {
     const { data: { user } } = await supabase.auth.getUser();

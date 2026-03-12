@@ -73,14 +73,14 @@ One analytics page per division. All computable from existing tables. Join key: 
   - Strike vs Grapple Lean: two-tone bar (blue=strike, amber=grapple) + "By Class ▾" toggle
   - Aggressor Lean, Passive Control, KD Fighter — 3-column stat grid
 
-**Step 5: Scored Fights list**
+**Step 5: Scored Fights list** ✅
 
-- [ ] `getScoredFights(userId)` in `dataService.js` — fights user has scored with f1/f2 totals attached
-- [ ] Tab or collapsible section at bottom of Judging DNA view
-  - Fight card layout matching existing style (fighter names, event, weight class)
-  - Replace like/dislike/fav with user's total scorecard (e.g. "29–28 {f1Last}")
-  - Green/red dot indicating correct winner pick
-  - Click navigates to fight detail
+- [x] `getScoredFights()` in `dataService.js` — fights user has scored with f1/f2 totals attached
+- [x] Collapsible section at bottom of Judging DNA view
+  - Last-name vs last-name rows with event + weight class subline
+  - User's total scorecard (e.g. "29–28 Poirier") using fight_meta_details for f1/f2 names
+  - Green/red dot indicating correct winner pick (normN comparison vs fights.winner)
+  - Click navigates to fight detail via onFightClick prop
 
 ### 6f. Leaderboard — deferred
 

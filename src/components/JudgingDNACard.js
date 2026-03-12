@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Scale } from 'lucide-react';
+import { Scale, ChevronRight } from 'lucide-react';
 
 const MIN_FIGHTS = 5;
 
 // weight_class_clean is already stripped — just return as-is
 const shortClass = (wc) => wc || '—';
+
+const lastName = (name) => name ? name.split(' ').pop() : '?';
+const normN = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const Stat = ({ label, value, sub, big = false }) => (
   <div className="text-center">
@@ -94,8 +97,9 @@ const SplitBar = ({ strikePct, grapplingPct }) => {
   );
 };
 
-const JudgingDNACard = ({ profile, currentTheme }) => {
+const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick = null }) => {
   const [showBiasByClass, setShowBiasByClass] = useState(false);
+  const [showScoredFights, setShowScoredFights] = useState(false);
 
   if (!profile) return null;
 
@@ -301,6 +305,72 @@ const JudgingDNACard = ({ profile, currentTheme }) => {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* Scored Fights collapsible */}
+        {scoredFights?.length > 0 && (
+          <div className="border-t border-white/10 pt-5">
+            <button
+              onClick={() => setShowScoredFights(v => !v)}
+              className="flex items-center justify-between w-full text-left"
+            >
+              <p className="text-xs opacity-40 uppercase tracking-widest">Scored Fights</p>
+              <span className="text-xs opacity-40 flex items-center gap-1">
+                {scoredFights.length}
+                <ChevronRight size={12} className={`transition-transform duration-200 ${showScoredFights ? 'rotate-90' : ''}`} />
+              </span>
+            </button>
+
+            {showScoredFights && (
+              <div className="mt-3 space-y-0.5">
+                {scoredFights.map(sf => {
+                  const f1Name = sf.fighter1_name || (sf.bout?.split(/ vs /i)?.[0]?.trim() || '?');
+                  const f2Name = sf.fighter2_name || (sf.bout?.split(/ vs /i)?.[1]?.trim() || '?');
+
+                  let userPick = null;
+                  let scoreDisplay = '—';
+                  if (sf.f1_total > sf.f2_total) {
+                    userPick = f1Name;
+                    scoreDisplay = `${sf.f1_total}–${sf.f2_total} ${lastName(f1Name)}`;
+                  } else if (sf.f2_total > sf.f1_total) {
+                    userPick = f2Name;
+                    scoreDisplay = `${sf.f2_total}–${sf.f1_total} ${lastName(f2Name)}`;
+                  } else if (sf.rounds_scored > 0) {
+                    scoreDisplay = `${sf.f1_total}–${sf.f2_total} Draw`;
+                  }
+
+                  let dotColor = null;
+                  if (userPick && sf.winner) {
+                    dotColor = normN(userPick) === normN(sf.winner) ? 'bg-green-500' : 'bg-red-500';
+                  }
+
+                  return (
+                    <div
+                      key={sf.id}
+                      onClick={() => onFightClick?.(sf)}
+                      className={`flex items-center justify-between py-2.5 px-3 rounded-lg transition-colors ${onFightClick ? 'cursor-pointer hover:bg-white/5' : ''}`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          {dotColor && <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${dotColor}`} />}
+                          <p className="text-sm font-bold truncate">
+                            {lastName(f1Name)} <span className="opacity-30 font-normal text-xs">vs</span> {lastName(f2Name)}
+                          </p>
+                        </div>
+                        <p className="text-[10px] opacity-30 uppercase tracking-widest truncate">
+                          {sf.weight_class_clean || sf.weight_class || ''}{sf.event_name ? ` • ${sf.event_name}` : ''}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 ml-3 flex-shrink-0">
+                        <span className="text-xs font-mono opacity-60">{scoreDisplay}</span>
+                        {onFightClick && <ChevronRight size={12} className="opacity-20" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

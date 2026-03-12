@@ -97,6 +97,9 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **`pending` state initialized from DB scores on mount** → existing selections pre-highlighted on re-visit without special logic.
 - **Auto-reveal only fires when `isLocked || isHistorical`** — prevents premature lockout between live rounds (e.g. between round 1 and round 2 of a live fight).
 - **`RoundScoringPanel` needs `meta` for fighter names and round count.** Fights completed via ESPN polling (status still 'upcoming', meta null) cannot show the scoring panel until the scraper has run.
+- **For a "scored fights" list, source fighter names from `fight_meta_details` (via `fight_url`), not `fights.bout`.** `fights.bout` is often reversed vs the f1/f2 ordering used in `user_round_scores`. Using `fighter1_name`/`fighter2_name` from meta is the only reliable way to map f1_total → correct fighter name.
+- **When aggregating `user_round_scores` client-side, a 3-step query is sufficient:** (1) round scores → fight_id totals, (2) `fights` by IDs, (3) parallel `fight_meta_details` + `ufc_events`. No RPC needed. Sort by `event_date` desc (localeCompare on ISO string is safe).
+- **Winner comparison in the scored fights list uses `normN` (lowercase + strip non-alphanumeric)** — `fights.winner` and `fight_meta_details.fighter1_name` both come from UFC Stats so they usually match exactly, but normN handles edge cases (punctuation, accents).
 
 ---
 

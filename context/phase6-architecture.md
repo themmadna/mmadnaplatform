@@ -112,8 +112,21 @@ New fields in RPC response: `striking_vs_grappling_bias`, `aggressor_bias`, `tak
 - Entire section gated on `hasBiasData` (`striking_vs_grappling_bias.rounds > 0`) — hidden when no `round_fight_stats` coverage
 - `useState` for class toggle (only import added to component)
 
-### 6e.2 Step 5 (not yet implemented)
-Scored Fights list — all fights user has scored with total scorecard (e.g. 29-28 {f1Last}) + green/red win indicator. `getScoredFights(userId)` in dataService.
+### 6e.2 Step 5 — complete ✅
+Scored Fights collapsible section at the bottom of `JudgingDNACard.js`.
+
+**Data:** `dataService.getScoredFights()` — 3-step client-side query:
+1. `user_round_scores` for user → aggregate f1/f2 totals per fight_id
+2. `fights` by fight_ids → event_name, bout, weight_class, fight_url, winner, status
+3. Parallel: `fight_meta_details` by fight_url (fighter1_name, fighter2_name, weight_class_clean) + `ufc_events` by event_name (event_date)
+Returns sorted by event_date desc. Passed as `scoredFights` prop; `onFightClick` passed from App.js.
+
+**UI:** Collapsed by default. Header shows "Scored Fights N ▸". Each row:
+- Green/red dot (normN comparison of user's pick vs fights.winner)
+- Last-name vs last-name (from fighter1_name/fighter2_name, not fights.bout)
+- Weight class + event name subline
+- Scorecard total (e.g. "29–28 Poirier")
+- Chevron; click calls onFightClick(sf) to navigate to fight detail
 
 ---
 
