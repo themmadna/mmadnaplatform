@@ -8,6 +8,7 @@ import CombatDNAVisual from './CombatDNAVisual';
 import CombatScatterPlot from './components/CombatScatterPlot';
 import FightDetailView from './components/FightDetailView';
 import JudgingDNACard from './components/JudgingDNACard';
+import JudgeDirectory from './components/JudgeDirectory';
 
 // --- CombatDNA Card (The 5 Metrics + Intensity) ---
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
@@ -296,6 +297,7 @@ export default function UFCFightRating() {
   const [loadingFights, setLoadingFights] = useState(false);
   const [selectedFight, setSelectedFight] = useState(null);
   const [previousView, setPreviousView] = useState('events');
+  const [selectedJudge, setSelectedJudge] = useState(null);
   const [userHistory, setUserHistory] = useState([]);
   const [combatDNA, setCombatDNA] = useState(null);
   const [dnaFilter, setDnaFilter] = useState('combined'); 
@@ -866,6 +868,12 @@ export default function UFCFightRating() {
               DNA
             </button>
             <button
+              onClick={() => { setCurrentView('judges'); setSearchQuery(''); setShowFilters(false); }}
+              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${currentView === 'judges' || currentView === 'judgeProfile' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
+            >
+              Judges
+            </button>
+            <button
               onClick={() => { setCurrentView('profile'); setSearchQuery(''); setShowFilters(false); }}
               className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${currentView === 'profile' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
             >
@@ -1183,7 +1191,17 @@ export default function UFCFightRating() {
             </div>
         )}
 
-        {/* --- 4. PROFILE PAGE (Reordered) --- */}
+        {/* --- 4. JUDGES DIRECTORY --- */}
+        {(currentView === 'judges' || currentView === 'judgeProfile') && (
+          <div className="pb-20">
+            <JudgeDirectory
+              currentTheme={currentTheme}
+              onSelectJudge={(name) => { setSelectedJudge(name); setCurrentView('judgeProfile'); }}
+            />
+          </div>
+        )}
+
+        {/* --- 5. PROFILE PAGE (Reordered) --- */}
         {currentView === 'profile' && (
           <div className="animate-in slide-in-from-right pb-20">
             <div className="flex items-center gap-2 mb-6 opacity-60">

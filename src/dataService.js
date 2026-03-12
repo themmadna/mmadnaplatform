@@ -273,6 +273,12 @@ export const dataService = {
     return data;
   },
 
+  async getJudgeDirectory() {
+    const { data, error } = await supabase.rpc('get_judge_directory');
+    if (error) { console.error('getJudgeDirectory error:', error); return []; }
+    return data || [];
+  },
+
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
   // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {
