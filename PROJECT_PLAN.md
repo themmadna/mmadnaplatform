@@ -22,13 +22,13 @@ One page per judge. Min threshold: 50+ rounds judged. Data: `judge_scores` joine
 
 **Cross-source join strategy:** Use pair-matching — extract unique fighter pairs per event from `judge_scores`, score each pair against the target fight's fighters as a unit (`max(sim(a,f1)+sim(b,f2), sim(a,f2)+sim(b,f1))`). More robust than per-name matching; avoids cross-fight collisions.
 
-- [ ] **4a. Style Preference** — correlate round winner (per judge) with stat differentials. Radar vs league average.
-- [ ] **4b. Consensus & Controversy** — outlier rate, most controversial decision, judge rankings by outlier rate
-- [ ] **4c. 10-8 Round Tendency** — count 10-8 rounds as % of total, by weight class
-- [ ] **4d. Weight Class Breakdown** — outlier rate and style preference by division
-- [ ] **4e. Era / Trend Analysis** — outlier rate and style preference by year
+- [x] **4a. Style Preference** — striking/grappling/aggressor/KD bias in `get_judge_profile()` RPC + UI
+- [x] **4b. Consensus & Controversy** — agreement breakdown + controversial fights in profile RPC + UI
+- [x] **4c. 10-8 Round Tendency** — 10-8 rate overall + by division in profile RPC + UI
+- [x] **4d. Weight Class Breakdown** — by_class in profile RPC + UI
+- [x] **4e. Era / Trend Analysis** — by_year in profile RPC + UI
 - [ ] **4f. Head-to-Head Judge Comparison** — overlaid radar, outlier rate, disagreements
-- [ ] **4g. Judge Leaderboard / Directory** — sortable table, click through to individual profile
+- [x] **4g. Judge Leaderboard / Directory** — sortable table, click through to individual profile
 
 ---
 

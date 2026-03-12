@@ -9,6 +9,7 @@ import CombatScatterPlot from './components/CombatScatterPlot';
 import FightDetailView from './components/FightDetailView';
 import JudgingDNACard from './components/JudgingDNACard';
 import JudgeDirectory from './components/JudgeDirectory';
+import JudgeProfileView from './components/JudgeProfileView';
 
 // --- CombatDNA Card (The 5 Metrics + Intensity) ---
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
@@ -1191,14 +1192,21 @@ export default function UFCFightRating() {
             </div>
         )}
 
-        {/* --- 4. JUDGES DIRECTORY --- */}
-        {(currentView === 'judges' || currentView === 'judgeProfile') && (
+        {/* --- 4. JUDGES DIRECTORY / PROFILE --- */}
+        {currentView === 'judges' && (
           <div className="pb-20">
             <JudgeDirectory
               currentTheme={currentTheme}
               onSelectJudge={(name) => { setSelectedJudge(name); setCurrentView('judgeProfile'); }}
             />
           </div>
+        )}
+        {currentView === 'judgeProfile' && selectedJudge && (
+          <JudgeProfileView
+            judgeName={selectedJudge}
+            currentTheme={currentTheme}
+            onBack={() => setCurrentView('judges')}
+          />
         )}
 
         {/* --- 5. PROFILE PAGE (Reordered) --- */}
