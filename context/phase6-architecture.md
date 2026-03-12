@@ -130,6 +130,38 @@ Returns sorted by event_date desc. Passed as `scoredFights` prop; `onFightClick`
 
 ---
 
+## User vs Judge Comparison (`src/components/UserJudgeComparison.js`)
+
+### Entry points
+- `JudgingDNACard` "Judge Match" section — top-3 judge rows clickable; tapping one calls `onCompareWithJudge(name)` with judge pre-selected
+- "Compare vs any judge ›" button calls `onCompareWithJudge(null)` → opens picker
+
+### Props
+- `currentTheme`, `onBack` → back to `dna` view
+- `onViewJudge(name)` → navigates to judge profile (`judgeProfile` view)
+- `onFightClick(fight)` → navigates to fight detail; fight object carries `fight_url`, `bout`, `event_date`
+- `userProfile` — the already-loaded `judgingProfile` from App.js state (avoids re-fetch)
+- `initialJudge` — pre-selected judge name; skips picker when set (null = show picker)
+
+### Data fetch
+- `getJudgeDirectory()` — always fetched for the picker (cheap, 74 rows)
+- `getJudgeProfile(name)` + `getUserJudgeComparison(name)` — fetched in parallel when judge is selected
+
+### Layout
+1. Agreement Rate — hero stat (green ≥75%, yellow ≥60%, red below)
+2. Side-by-side stats: rounds, outlier rate, 10-8 rate (You | Metric | Judge)
+3. Scoring Tendencies DualBar (user `striking_vs_grappling_bias` + `aggressor_bias` + `knockdown_bias` vs judge `style_preference`)
+4. Agreement by Division — bar chart per weight class from `comparison.by_class`
+5. Top Disagreements — fight rows with `fight_url` for navigation; only rendered when `comparison.top_disagreements` non-empty
+6. Zero-state card when `shared_rounds === 0`
+
+### App.js wiring
+- `currentView === 'userJudgeComparison'` — rendered after `judgeComparison` block
+- DNA nav button active check includes `'userJudgeComparison'`
+- `JudgingDNACard` receives `onCompareWithJudge={(name) => { setSelectedJudge(name); setCurrentView('userJudgeComparison'); }}`
+
+---
+
 ## FightDetailView Data Flow
 
 - 2-trip fetch on load: meta first, then `round_fight_stats` + `judge_scores` in parallel

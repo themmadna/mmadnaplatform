@@ -7,6 +7,29 @@ Deploy script for judging profile: `supabase/deploy_judging_profile.py`
 Deploy script for judge directory: `supabase/deploy_judge_directory.py`
 Deploy script for judge profile: `supabase/deploy_judge_profile.py`
 Deploy script for judge comparison: `supabase/deploy_judge_comparison.py`
+Deploy script for user vs judge comparison: `supabase/deploy_user_judge_comparison.py`
+
+---
+
+## `get_user_judge_comparison(p_judge text)`
+
+Compares the current user's scoring (`auth.uid()`) against a named judge on rounds both have covered. Uses same `user_rounds` CTE as `get_user_judging_profile()`, then restricts `judge_scores` to the specified judge.
+
+```
+Returns: json {
+  shared_rounds,      -- scoreable rounds (no draws from either side)
+  shared_fights,      -- distinct fights
+  agreement_rate,     -- % of shared rounds where user and judge picked same winner
+  by_class: [{ weight_class_clean, rounds, agreement_pct }],  -- ≥3 rounds
+  top_disagreements: [{ fight_id, bout, fight_url, fight_date, disagreement_rounds, scored_rounds }]  -- top 5
+}
+```
+
+**Implementation notes:**
+- SECURITY DEFINER, no params (uses `auth.uid()` directly)
+- Same date ±1 day + last-name pivot join as `get_user_judging_profile()`
+- `fight_url` included in `top_disagreements` for frontend navigation to fight detail
+- GRANT to `authenticated` only (no anon access)
 
 ---
 

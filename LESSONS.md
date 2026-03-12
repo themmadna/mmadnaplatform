@@ -46,6 +46,9 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **`agreement_type` as a single derived column (`'unanimous'/'majority'/'lone_dissenter'/'draw'`)** is cleaner than separate boolean flags — single CASE expression, easy to filter in all aggregations downstream.
 - **For head-to-head judge comparison, keep the RPC lightweight (pure judge_scores) and derive by-division overlay client-side** by merging the two already-fetched `by_class` arrays. Avoids an expensive third fmd join.
 - **When a comparison component needs a list for a picker, fetch the directory list inside the component.** It's 74 rows of JSON — cheap, keeps App.js state minimal.
+- **User vs judge comparison reuses the `user_rounds` CTE from `get_user_judging_profile` verbatim**, then restricts `judge_scores` to `WHERE judge = p_judge`. No new join strategy needed — the ±1 day + last-name pattern covers both cases.
+- **Scoring Tendencies DualBar maps cleanly across user and judge:** user `striking_vs_grappling_bias.striking_pct` ↔ judge `style_preference.striking_pct`; user `aggressor_bias` ↔ judge `aggressor_pct`; user `knockdown_bias.kd_bias_pct` ↔ judge `kd_pct`. Same definitions, different sources.
+- **Pass `initialJudge` to skip the picker when navigating from a pre-selected context** (e.g. clicking a judge row in Judging DNA). Component falls back to the picker when `initialJudge = null`.
 
 ---
 

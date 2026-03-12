@@ -89,6 +89,16 @@ One analytics page per division. All computable from existing tables. Join key: 
 
 ---
 
+### User vs Judge Comparison — complete ✅
+
+- [x] `get_user_judge_comparison(p_judge text)` RPC — user rounds joined to a specific judge via date ±1 day + last-name match; returns `shared_rounds`, `shared_fights`, `agreement_rate`, `by_class`, `top_disagreements`
+- [x] `getUserJudgeComparison(judgeName)` in dataService.js
+- [x] `UserJudgeComparison.js` — picker + comparison view (agreement rate hero, side-by-side stats, DualBar tendencies, by-division, top disagreements with fight navigation)
+- [x] `JudgingDNACard.js` — "Judge Match" section shows top-3 clickable judge rows + "Compare vs any judge ›" button
+- [x] App.js — `userJudgeComparison` view wired; DNA nav button stays highlighted in new view
+
+---
+
 ## Build Order
 
-6e.2 Step 3 → Step 4 → Step 5 → 6f (deferred) → Phase 4 → Phase 5
+6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5

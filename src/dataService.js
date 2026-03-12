@@ -291,6 +291,12 @@ export const dataService = {
     return data;
   },
 
+  async getUserJudgeComparison(judgeName) {
+    const { data, error } = await supabase.rpc('get_user_judge_comparison', { p_judge: judgeName });
+    if (error) { console.error('getUserJudgeComparison error:', error); return null; }
+    return data;
+  },
+
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
   // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {

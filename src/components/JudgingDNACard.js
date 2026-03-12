@@ -97,7 +97,7 @@ const SplitBar = ({ strikePct, grapplingPct }) => {
   );
 };
 
-const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick = null }) => {
+const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick = null, onCompareWithJudge = null }) => {
   const [showBiasByClass, setShowBiasByClass] = useState(false);
   const [showScoredFights, setShowScoredFights] = useState(false);
 
@@ -185,18 +185,44 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           </div>
         </div>
 
-        {/* Closest judge */}
-        {closestJudge && (
-          <div className="border-t border-white/10 pt-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs opacity-40 uppercase tracking-widest mb-1">Closest Judge</p>
-              <p className="text-sm font-bold">{closestJudge.name}</p>
-              <p className="text-xs opacity-30">{closestJudge.rounds} rounds shared</p>
+        {/* Judge matches */}
+        {judges && judges.length > 0 && (
+          <div className="border-t border-white/10 pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs opacity-40 uppercase tracking-widest">Judge Match</p>
+              {onCompareWithJudge && (
+                <span className="text-[10px] opacity-30 uppercase tracking-widest">tap to compare</span>
+              )}
             </div>
-            <div className="text-right">
-              <Pct value={closestJudge.agreement_pct} big />
-              <p className="text-[10px] opacity-30 mt-1">agreement</p>
+            <div className="space-y-1">
+              {judges.slice(0, 3).map(j => (
+                <div
+                  key={j.name}
+                  onClick={() => onCompareWithJudge?.(j.name)}
+                  className={`flex items-center justify-between py-2 px-3 rounded-lg transition-colors ${onCompareWithJudge ? 'cursor-pointer hover:bg-white/5' : ''}`}
+                >
+                  <div>
+                    <p className="text-sm font-bold">{j.name}</p>
+                    <p className="text-xs opacity-30">{j.rounds} rounds shared</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <Pct value={j.agreement_pct} />
+                      <p className="text-[10px] opacity-30 mt-0.5">agreement</p>
+                    </div>
+                    {onCompareWithJudge && <ChevronRight size={14} className="opacity-20 flex-shrink-0" />}
+                  </div>
+                </div>
+              ))}
             </div>
+            {onCompareWithJudge && (
+              <button
+                onClick={() => onCompareWithJudge(null)}
+                className="mt-3 w-full text-center text-[10px] opacity-30 hover:opacity-60 uppercase tracking-widest transition-opacity"
+              >
+                Compare vs any judge ›
+              </button>
+            )}
           </div>
         )}
 
