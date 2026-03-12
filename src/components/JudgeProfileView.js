@@ -32,7 +32,7 @@ const BiasBar = ({ label, pctVal, color = 'bg-[#D4AF37]' }) => (
   </div>
 );
 
-export default function JudgeProfileView({ judgeName, currentTheme, onBack }) {
+export default function JudgeProfileView({ judgeName, currentTheme, onBack, onCompare }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -75,10 +75,15 @@ export default function JudgeProfileView({ judgeName, currentTheme, onBack }) {
 
   return (
     <div className="pb-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Back */}
-      <button onClick={onBack} className="flex items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-[#D4AF37] transition-colors">
-        <ChevronLeft size={16} /> Judges
-      </button>
+      {/* Back + Compare */}
+      <div className="flex items-center justify-between mb-6">
+        <button onClick={onBack} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-[#D4AF37] transition-colors">
+          <ChevronLeft size={16} /> Judges
+        </button>
+        <button onClick={onCompare} className="text-xs font-bold uppercase tracking-widest border border-white/20 text-white/50 hover:border-[#D4AF37]/60 hover:text-[#D4AF37] px-3 py-1.5 transition-all">
+          Compare
+        </button>
+      </div>
 
       {/* Header */}
       <div className="flex items-start gap-3 mb-6">

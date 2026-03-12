@@ -27,7 +27,7 @@ One page per judge. Min threshold: 50+ rounds judged. Data: `judge_scores` joine
 - [x] **4c. 10-8 Round Tendency** — 10-8 rate overall + by division in profile RPC + UI
 - [x] **4d. Weight Class Breakdown** — by_class in profile RPC + UI
 - [x] **4e. Era / Trend Analysis** — by_year in profile RPC + UI
-- [ ] **4f. Head-to-Head Judge Comparison** — overlaid radar, outlier rate, disagreements
+- [x] **4f. Head-to-Head Judge Comparison** — disagreement rate, overlaid style bars, by-division, top disagreement fights
 - [x] **4g. Judge Leaderboard / Directory** — sortable table, click through to individual profile
 
 ---

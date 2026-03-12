@@ -10,6 +10,7 @@ import FightDetailView from './components/FightDetailView';
 import JudgingDNACard from './components/JudgingDNACard';
 import JudgeDirectory from './components/JudgeDirectory';
 import JudgeProfileView from './components/JudgeProfileView';
+import JudgeComparison from './components/JudgeComparison';
 
 // --- CombatDNA Card (The 5 Metrics + Intensity) ---
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
@@ -299,6 +300,7 @@ export default function UFCFightRating() {
   const [selectedFight, setSelectedFight] = useState(null);
   const [previousView, setPreviousView] = useState('events');
   const [selectedJudge, setSelectedJudge] = useState(null);
+  const [comparedJudge, setComparedJudge] = useState(null);
   const [userHistory, setUserHistory] = useState([]);
   const [combatDNA, setCombatDNA] = useState(null);
   const [dnaFilter, setDnaFilter] = useState('combined'); 
@@ -870,7 +872,7 @@ export default function UFCFightRating() {
             </button>
             <button
               onClick={() => { setCurrentView('judges'); setSearchQuery(''); setShowFilters(false); }}
-              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${currentView === 'judges' || currentView === 'judgeProfile' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
+              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${['judges','judgeProfile','judgeComparison'].includes(currentView) ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
             >
               Judges
             </button>
@@ -1206,6 +1208,15 @@ export default function UFCFightRating() {
             judgeName={selectedJudge}
             currentTheme={currentTheme}
             onBack={() => setCurrentView('judges')}
+            onCompare={() => { setComparedJudge(null); setCurrentView('judgeComparison'); }}
+          />
+        )}
+        {currentView === 'judgeComparison' && selectedJudge && (
+          <JudgeComparison
+            judge1Name={selectedJudge}
+            currentTheme={currentTheme}
+            onBack={() => setCurrentView('judgeProfile')}
+            onViewProfile={(name) => { setSelectedJudge(name); setCurrentView('judgeProfile'); }}
           />
         )}
 

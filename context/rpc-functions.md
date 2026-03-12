@@ -6,6 +6,27 @@ Update this file whenever an RPC is added, modified, or redeployed.
 Deploy script for judging profile: `supabase/deploy_judging_profile.py`
 Deploy script for judge directory: `supabase/deploy_judge_directory.py`
 Deploy script for judge profile: `supabase/deploy_judge_profile.py`
+Deploy script for judge comparison: `supabase/deploy_judge_comparison.py`
+
+---
+
+## `get_judge_comparison(p_judge1 text, p_judge2 text)`
+
+Compares two judges on rounds they both scored. Pure `judge_scores` — no fight_meta_details join.
+
+```
+Returns: json {
+  shared_rounds,      -- rounds both judged (excluding 10-10s)
+  shared_fights,      -- distinct fights both judged
+  disagreement_rate,  -- % of shared rounds where they picked different fighters
+  top_disagreements: [{ bout, fight_date, disagreement_rounds, scored_rounds }]  -- top 5
+}
+```
+
+**Implementation notes:**
+- Same pivot approach as `get_judge_directory`: exact name match against `SPLIT_PART(bout, ' vs ', 1/2)`
+- `scoreable` CTE filters out rounds where either judge scored 10-10
+- By-division disagreement not in RPC — derived client-side by overlaying both profiles' `by_class` arrays
 
 ---
 
