@@ -38,6 +38,17 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Judge Analytics (Phase 4)
+
+- **Within a single data source, exact name matching against a split bout string works.** `judge_scores.fighter` and `judge_scores.bout` both come from mmadecisions, so `LOWER(TRIM(fighter)) = LOWER(TRIM(SPLIT_PART(bout, ' vs ', 1)))` is reliable without fuzzy matching.
+- **Cross-source judge↔fight join path:** `judge_scores.date ±1 day → ufc_events.event_date → fight_meta_details.event_name`. Never join on event_name directly — it never matches across mmadecisions and ufcstats.
+- **For judge profile outlier detection, filter out 10-10 drawn rounds from all pct denominators.** A draw round has no winner, so calling it "unanimous" or "majority" is meaningless.
+- **`agreement_type` as a single derived column (`'unanimous'/'majority'/'lone_dissenter'/'draw'`)** is cleaner than separate boolean flags — single CASE expression, easy to filter in all aggregations downstream.
+- **For head-to-head judge comparison, keep the RPC lightweight (pure judge_scores) and derive by-division overlay client-side** by merging the two already-fetched `by_class` arrays. Avoids an expensive third fmd join.
+- **When a comparison component needs a list for a picker, fetch the directory list inside the component.** It's 74 rows of JSON — cheap, keeps App.js state minimal.
+
+---
+
 ## RPC / SQL Patterns
 
 - **When two independently-computed percentages don't sum to 100%, normalize for display.** Show `s/(s+g)` and `g/(s+g)` so bar and labels agree. Keep raw values in the RPC; normalize only at the display layer.
