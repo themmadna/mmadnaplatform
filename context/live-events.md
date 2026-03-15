@@ -120,9 +120,11 @@ Deploy via: `python supabase/deploy_poll_live_fights.py`
 Called by pg_cron every minute. No JWT required (`verify_jwt: false`).
 
 **Guards (in order):**
-1. Exit if no `ufc_events` row with `event_date = UTC today`
+1. Exit if no `ufc_events` row with `event_date` in the last 2 days (yesterday–today UTC). UFC events start late US time and can still be running after UTC midnight, so `event_date` may be "yesterday" in UTC. Uses `event_date.desc limit 1` to get the most recent.
 2. Exit if `ufc_events.start_time` (ISO 8601 string from ESPN) is in the future
 3. Exit if all `status = 'upcoming'` fights for the event already have `fight_ended_at IS NOT NULL`
+
+**Key:** ESPN is fetched using `event.event_date` (not UTC today) so the correct date is always used even past midnight UTC.
 
 **Poll logic (mirrors FightDetailView client-side polling):**
 - Fetches `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=YYYYMMDD`

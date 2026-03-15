@@ -62,11 +62,15 @@ Deno.serve(async (_req) => {
       'Authorization': `Bearer ${SERVICE_KEY}`,
     }
 
-    const todayUTC = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
+    const nowMs    = Date.now()
+    const todayUTC = new Date(nowMs).toISOString().slice(0, 10)          // YYYY-MM-DD
+    const ydayUTC  = new Date(nowMs - 86400000).toISOString().slice(0, 10) // yesterday
 
-    // Guard 1: Any UFC events today?
+    // Guard 1: Any UFC events in the last 24 hours?
+    // Use a 2-day window (yesterday → today) because UFC events start late US time
+    // and can still be ongoing after UTC midnight rolls to the next day.
     const eventsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/ufc_events?event_date=eq.${todayUTC}&select=event_name,start_time`,
+      `${SUPABASE_URL}/rest/v1/ufc_events?event_date=gte.${ydayUTC}&event_date=lte.${todayUTC}&select=event_name,event_date,start_time&order=event_date.desc&limit=1`,
       { headers: dbHeaders }
     )
     const events = await eventsRes.json()
@@ -98,8 +102,9 @@ Deno.serve(async (_req) => {
       return json({ ok: true, skipped: 'all_fights_ended' })
     }
 
-    // Fetch ESPN scoreboard for today
-    const espnDate = todayUTC.replace(/-/g, '') // YYYYMMDD
+    // Fetch ESPN scoreboard using the event's stored date (not UTC today —
+    // the event may span midnight UTC so event_date is the local US start date)
+    const espnDate = event.event_date.replace(/-/g, '') // YYYYMMDD
     const espnRes = await fetch(
       `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${espnDate}`
     )
