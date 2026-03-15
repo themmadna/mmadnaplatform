@@ -301,7 +301,7 @@ export default function UFCFightRating() {
   const [selectedFight, setSelectedFight] = useState(null);
   const [previousView, setPreviousView] = useState('events');
   const [selectedJudge, setSelectedJudge] = useState(null);
-  const [comparedJudge, setComparedJudge] = useState(null);
+  const [, setComparedJudge] = useState(null);
   const [userHistory, setUserHistory] = useState([]);
   const [combatDNA, setCombatDNA] = useState(null);
   const [dnaFilter, setDnaFilter] = useState('combined'); 

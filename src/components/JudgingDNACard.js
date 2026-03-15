@@ -131,7 +131,6 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
     );
   }
 
-  const closestJudge = judges?.[0] || null;
   const topClasses = (accuracy_by_class || []).slice(0, 5);
   const hasBiasData = striking_vs_grappling_bias?.rounds > 0;
 
