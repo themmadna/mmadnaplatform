@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Scale, ChevronRight } from 'lucide-react';
 
-const MIN_FIGHTS = 5;
+const MIN_ROUNDS = 5;
 
 // weight_class_clean is already stripped — just return as-is
 const shortClass = (wc) => wc || '—';
@@ -120,12 +120,12 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
     knockdown_bias,
   } = profile;
 
-  if ((fights_scored || 0) < MIN_FIGHTS) {
+  if ((rounds_scored || 0) < MIN_ROUNDS) {
     return (
       <div className={`p-6 ${currentTheme.rounded} border border-dashed ${currentTheme.card} opacity-50 text-center mb-6`}>
         <Scale className="mx-auto mb-2 opacity-50" />
         <p className="text-sm">
-          Score {MIN_FIGHTS - (fights_scored || 0)} more fight{fights_scored === MIN_FIGHTS - 1 ? '' : 's'} to unlock your Judging DNA
+          Score {MIN_ROUNDS - (rounds_scored || 0)} more round{MIN_ROUNDS - (rounds_scored || 0) === 1 ? '' : 's'} to unlock your Judging DNA
         </p>
       </div>
     );
