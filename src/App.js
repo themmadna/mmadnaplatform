@@ -1216,6 +1216,7 @@ export default function UFCFightRating() {
             currentTheme={currentTheme}
             onBack={() => setCurrentView('judges')}
             onCompare={() => { setComparedJudge(null); setCurrentView('judgeComparison'); }}
+            onFightClick={handleFightClick}
           />
         )}
         {currentView === 'judgeComparison' && selectedJudge && (

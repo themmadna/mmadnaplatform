@@ -32,7 +32,7 @@ const BiasBar = ({ label, pctVal, color = 'bg-[#D4AF37]' }) => (
   </div>
 );
 
-export default function JudgeProfileView({ judgeName, currentTheme, onBack, onCompare }) {
+export default function JudgeProfileView({ judgeName, currentTheme, onBack, onCompare, onFightClick = null }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -214,20 +214,27 @@ export default function JudgeProfileView({ judgeName, currentTheme, onBack, onCo
             <h3 className="text-xs font-bold uppercase tracking-widest text-white/50">Most Controversial Decisions</h3>
           </div>
           <div className="space-y-3">
-            {profile.controversial_fights.map((fight, i) => (
-              <div key={i} className="flex items-center justify-between py-1 border-b border-white/5 last:border-0">
-                <div>
-                  <p className="text-sm font-semibold text-white/90">{fight.bout}</p>
-                  <p className="text-xs text-white/30">
-                    {new Date(fight.fight_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </p>
+            {profile.controversial_fights.map((fight, i) => {
+              const clickable = onFightClick && fight.fight_url;
+              return (
+                <div
+                  key={i}
+                  onClick={clickable ? () => onFightClick({ fight_url: fight.fight_url, event_name: fight.event_name, event_date: fight.fight_date, status: 'completed' }) : undefined}
+                  className={`flex items-center justify-between py-1 border-b border-white/5 last:border-0 ${clickable ? 'cursor-pointer hover:bg-white/5 rounded px-1 -mx-1 transition-colors' : ''}`}
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white/90">{fight.bout}</p>
+                    <p className="text-xs text-white/30">
+                      {new Date(fight.fight_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0 ml-3">
+                    <p className="text-red-400 font-bold text-sm">{fight.outlier_rounds} / {fight.total_rounds}</p>
+                    <p className="text-white/30 text-xs">rounds as lone dissenter</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0 ml-3">
-                  <p className="text-red-400 font-bold text-sm">{fight.outlier_rounds} / {fight.total_rounds}</p>
-                  <p className="text-white/30 text-xs">rounds as lone dissenter</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

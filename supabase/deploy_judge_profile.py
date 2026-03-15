@@ -155,6 +155,7 @@ BEGIN
         ub.date  AS js_date,
         fmd.event_name AS fmd_event_name,
         fmd.bout       AS fmd_bout,
+        fmd.fight_url,
         fmd.fighter1_name,
         fmd.fighter2_name,
         COALESCE(fmd.weight_class_clean, fmd.weight_class) AS weight_class_clean
@@ -179,6 +180,7 @@ BEGIN
         jd.*,
         bf.fmd_event_name,
         bf.fmd_bout,
+        bf.fight_url,
         bf.fighter1_name,
         bf.fighter2_name,
         bf.weight_class_clean
@@ -343,14 +345,16 @@ BEGIN
         SELECT json_agg(t ORDER BY t.outlier_rounds DESC, t.fight_date DESC)
         FROM (
           SELECT
-            jd.bout,
-            jd.date AS fight_date,
-            COUNT(*) FILTER (WHERE jd.agreement_type = 'lone_dissenter') AS outlier_rounds,
-            COUNT(*) FILTER (WHERE jd.agreement_type != 'draw')          AS total_rounds
-          FROM judge_decisions jd
-          GROUP BY jd.bout, jd.date
-          HAVING COUNT(*) FILTER (WHERE jd.agreement_type = 'lone_dissenter') > 0
-          ORDER BY outlier_rounds DESC, jd.date DESC
+            dm.bout,
+            dm.date AS fight_date,
+            MAX(dm.fight_url)      AS fight_url,
+            MAX(dm.fmd_event_name) AS event_name,
+            COUNT(*) FILTER (WHERE dm.agreement_type = 'lone_dissenter') AS outlier_rounds,
+            COUNT(*) FILTER (WHERE dm.agreement_type != 'draw')          AS total_rounds
+          FROM decisions_with_meta dm
+          GROUP BY dm.bout, dm.date
+          HAVING COUNT(*) FILTER (WHERE dm.agreement_type = 'lone_dissenter') > 0
+          ORDER BY outlier_rounds DESC, dm.date DESC
           LIMIT 5
         ) t
       )
