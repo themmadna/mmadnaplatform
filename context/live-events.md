@@ -71,17 +71,19 @@ The Edge Function is the only path — it runs with service role and validates t
 ### State seeding on mount
 - `fightStartedAt` / `fightEndedAt` seeded from `fight.fight_started_at` / `fight.fight_ended_at`
 - `scheduledRounds` seeded from `fight.scheduled_rounds`
-- `scorableRounds` computed from `fight.rounds_fought + fight.ended_by_decision` for completed fights
+- `scorableRounds` initializer priority: `rounds_fought` (if > 0) → `scheduled_rounds` → `3` (if `fight_ended_at` set)
+- `scorableRounds` also synced via `useEffect` on `fight` prop fields — handles async/late-loading fight data
 
 ### Poll timing
-- Polls every 60s when fight is upcoming
-- First poll fires after 3s delay (prevents race where `eventFights` hasn't loaded yet from Supabase)
-- Event-level poll: opening the fight list is sufficient — no need to click individual fights
+- Polls every 60s when `fight.status === 'upcoming'` and `fightEndedAt` is null
+- Polling stops immediately if `fightEndedAt` is already set on mount (fight already ended)
 
 ### Progressive round unlock
 - `STATUS_END_OF_ROUND` → `scorableRounds = period` (round just finished — unlock it)
 - `STATUS_IN_PROGRESS` → `scorableRounds = period - 1` (round in progress — don't unlock yet)
-- On FINAL: check `comp.details` for type id `'22'` → set `ended_by_decision`; persist `rounds_fought + ended_by_decision` to DB
+- On FINAL: guard against `period = 0` — fall back to last known `scorableRounds`, then `scheduledRounds`, then 3
+- On FINAL: persist `rounds_fought = finalPeriod` (never 0) + `ended_by_decision` to DB via Edge Function
+- On FINAL: re-fetch fight row from DB after write to sync `scorableRounds` with persisted value
 
 ### `fights` table query
 `select('*')` everywhere in App.js — new columns auto-included in the `fight` prop without explicit listing.
@@ -91,7 +93,7 @@ The Edge Function is the only path — it runs with service role and validates t
 ## Live Scoring Render Logic (`FightDetailView`)
 
 - Render no longer gated on `meta !== null` — header falls back to `fight.bout` string; upcoming panels always show
-- Completed fight with null meta: shows "stats pending" + scoring panel if `scorableRounds > 0` (ESPN data was persisted)
+- Completed fight with null meta: shows "stats pending" + scoring panel if `scorableRounds > 0`
 - Completed fight with meta: full breakdown + scoring + comparison
 
 ### Derived booleans
@@ -103,6 +105,9 @@ Use derived booleans, not inline JSX conditions — keeps 3-state branching read
 
 ### Gate/lock logic
 - Scoring UI gated on `fight_started_at IS NOT NULL` (fight has started)
-- Submissions locked on `fight_ended_at IS NOT NULL` (fight is over)
+- `isLocked={false}` passed to RoundScoringPanel for `upcoming && isLocked` fights — keeps panel editable after fight ends
 - `readOnly` in RoundScoringPanel: `judgesRevealed && !isHistorical && isLocked` — stays editable mid-fight for new rounds
 - Auto-reveal only fires when `isLocked || isHistorical` — prevents premature lockout between rounds
+
+### Known reliability gap (next session)
+Client-side polling only runs when a user has the fight detail page open. If no user is watching, `rounds_fought` / `fight_ended_at` may not get written. **Next session:** build `poll-live-fights` Edge Function + pg_cron (every minute, guarded by `ufc_events.start_time` + all-fights-ended check).

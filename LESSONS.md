@@ -87,6 +87,11 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **For all Edge Functions deployed via Management API: use `fetch` + REST API. No esm.sh imports.** Management API deployments are not pre-bundled; `esm.sh` imports cause BOOT_ERROR. `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are auto-injected env vars.
 - **Deploy a minimal no-import function first** to confirm the runtime is healthy before adding logic.
 - **`STATUS_FIGHTERS_WALKING` should NOT trigger live.** Treat as upcoming — do not call the Edge Function.
+- **`isLocked={false}` should be passed to RoundScoringPanel even after fight ends** (`upcoming && isLocked`). Passing `true` sets `canSubmit = false` and `readOnly = true`, blocking users from scoring remaining rounds. Leaderboard ineligibility is tracked separately via `modified_after_reveal`.
+- **ESPN occasionally returns `period = 0` at STATUS_FINAL.** Guard: use `period > 0 ? period : (scorableRounds || scheduledRounds || 3)` before writing `rounds_fought` to DB. Writing 0 causes `scorableRounds = 0` and the scoring panel disappears.
+- **`useState` initializer only runs once on mount.** If fight prop data arrives late (async), `scorableRounds` stays at 0. Fix with a `useEffect` that syncs from fight prop fields when `scorableRounds === 0`.
+- **`rounds_fought` fallback chain for `scorableRounds`:** `fight.rounds_fought` (if > 0) → `fight.scheduled_rounds` → `3`. Always show panel for ended fights even when ESPN data is missing.
+- **Client-side polling is unreliable** — if no user has the fight detail page open, `fight_ended_at` / `rounds_fought` never get written. Future fix: `poll-live-fights` Edge Function + pg_cron (guarded by `ufc_events.start_time` + all-fights-ended check).
 
 ---
 
