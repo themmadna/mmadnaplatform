@@ -229,8 +229,9 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
   // scorableRounds: rounds that are fully complete and can be scored.
   const [scheduledRounds, setScheduledRounds] = useState(fight.scheduled_rounds || null);
   const [scorableRounds, setScorableRounds]   = useState(() => {
-    // For completed fights where ESPN data was persisted, compute scorable rounds upfront
-    if (fight.status === 'completed' && fight.rounds_fought != null) {
+    // Seed from DB whenever rounds_fought is known (covers completed fights and
+    // upcoming fights where the Edge Function wrote rounds_fought on STATUS_FINAL)
+    if (fight.rounds_fought != null) {
       return fight.ended_by_decision
         ? fight.rounds_fought
         : Math.max(0, fight.rounds_fought - 1);
