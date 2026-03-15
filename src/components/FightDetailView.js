@@ -235,13 +235,27 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
         ? fight.rounds_fought
         : Math.max(0, fight.rounds_fought - 1);
     }
-    // rounds_fought missing or 0 (ESPN period=0 edge case) — fall back to scheduled_rounds
-    // if the fight has already ended. Shows all scheduled rounds so scoring panel renders.
-    if (fight.fight_ended_at && fight.scheduled_rounds) {
-      return fight.scheduled_rounds;
+    // rounds_fought missing or 0 — fall back to scheduled_rounds (or 3) if fight has ended.
+    if (fight.fight_ended_at) {
+      return fight.scheduled_rounds || 3;
     }
     return 0;
   });
+
+  // Sync scorableRounds when the fight prop updates after initial mount.
+  // Handles the case where fight data loads asynchronously (fight_ended_at / rounds_fought
+  // arrive after the component has already mounted with incomplete data).
+  useEffect(() => {
+    if (scorableRounds > 0) return; // already set, don't override
+    if (fight.rounds_fought != null && fight.rounds_fought > 0) {
+      const val = fight.ended_by_decision
+        ? fight.rounds_fought
+        : Math.max(0, fight.rounds_fought - 1);
+      setScorableRounds(val);
+    } else if (fight.fight_ended_at) {
+      setScorableRounds(fight.scheduled_rounds || 3);
+    }
+  }, [fight.rounds_fought, fight.ended_by_decision, fight.fight_ended_at, fight.scheduled_rounds, scorableRounds]);
 
   // Poll ESPN every 60s for upcoming fights with a known ESPN competition ID.
   // First client to detect a status change calls the Edge Function, which writes
