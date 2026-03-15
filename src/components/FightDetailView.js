@@ -229,12 +229,16 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
   // scorableRounds: rounds that are fully complete and can be scored.
   const [scheduledRounds, setScheduledRounds] = useState(fight.scheduled_rounds || null);
   const [scorableRounds, setScorableRounds]   = useState(() => {
-    // Seed from DB whenever rounds_fought is known (covers completed fights and
-    // upcoming fights where the Edge Function wrote rounds_fought on STATUS_FINAL)
-    if (fight.rounds_fought != null) {
+    // Seed from DB whenever rounds_fought is known and valid (> 0)
+    if (fight.rounds_fought != null && fight.rounds_fought > 0) {
       return fight.ended_by_decision
         ? fight.rounds_fought
         : Math.max(0, fight.rounds_fought - 1);
+    }
+    // rounds_fought missing or 0 (ESPN period=0 edge case) — fall back to scheduled_rounds
+    // if the fight has already ended. Shows all scheduled rounds so scoring panel renders.
+    if (fight.fight_ended_at && fight.scheduled_rounds) {
+      return fight.scheduled_rounds;
     }
     return 0;
   });
@@ -301,16 +305,36 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
           } else if (statusName === 'STATUS_FINAL') {
             const now = new Date().toISOString();
             const isDecision = (comp.details || []).some(d => d.type?.id === '22');
-            const finalScorable = isDecision ? period : Math.max(0, period - 1);
+            // Guard: ESPN occasionally returns period=0 on STATUS_FINAL.
+            // Fall back to last known scorable round count, then scheduledRounds, then 3.
+            const finalPeriod = period > 0 ? period : (scorableRounds > 0 ? scorableRounds : (scheduledRounds || 3));
+            const finalScorable = isDecision ? finalPeriod : Math.max(0, finalPeriod - 1);
             setScorableRounds(finalScorable);
             setFightStartedAt(s => s || now);
             setFightEndedAt(now);
             stopped = true;
             await callEdgeFn('final', {
               ...(espnScheduled ? { scheduled_rounds: espnScheduled } : {}),
-              rounds_fought: period,
+              rounds_fought: finalPeriod,
               ended_by_decision: isDecision,
             });
+            // Re-sync from DB after write — ensures scorableRounds reflects what was persisted,
+            // so any client that refreshes after this will see the correct panel.
+            try {
+              const { data: freshFight } = await supabase
+                .from('fights')
+                .select('rounds_fought, ended_by_decision, scheduled_rounds')
+                .eq('id', fight.id)
+                .single();
+              if (freshFight?.rounds_fought > 0) {
+                const synced = freshFight.ended_by_decision
+                  ? freshFight.rounds_fought
+                  : Math.max(0, freshFight.rounds_fought - 1);
+                setScorableRounds(prev => Math.max(prev, synced));
+              }
+            } catch (e) {
+              console.warn('[FightPoll] DB re-sync after FINAL failed:', e);
+            }
           }
           break;
         }
