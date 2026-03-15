@@ -95,6 +95,7 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **Supabase Management API ZIP upload for Edge Functions returns 500.** Use `npx supabase functions deploy --project-ref <ref> --no-verify-jwt` with `SUPABASE_ACCESS_TOKEN` env var instead. CLI handles bundling correctly; Management API requires an eszip bundle which Python can't easily produce.
 - **`pg_cron` and `pg_net` are not enabled by default on new Supabase projects.** Enable via `CREATE EXTENSION IF NOT EXISTS pg_cron; CREATE EXTENSION IF NOT EXISTS pg_net;` through the Management API database/query endpoint (requires service role). After that, `cron.schedule()` and `net.http_post()` are available.
 - **pg_cron + pg_net pattern for calling an Edge Function every minute:** `SELECT cron.schedule('job-name', '* * * * *', $$ SELECT net.http_post(url := '...', headers := '{"Content-Type":"application/json"}'::jsonb, body := '{}'::jsonb) $$)`. `net.http_post` is async — returns request_id immediately, fires in background. No auth header needed if `verify_jwt = false`.
+- **UTC midnight date bug for live event polling:** UFC events start late US time and are still ongoing after UTC midnight. Never use `new Date().toISOString().slice(0,10)` alone to match `event_date` — use a 2-day window (`event_date >= yesterday AND event_date <= today`). Also always use `event.event_date` (not UTC today) as the ESPN scoreboard `dates=` param.
 
 ---
 
