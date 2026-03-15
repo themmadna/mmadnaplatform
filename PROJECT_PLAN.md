@@ -48,19 +48,15 @@ One analytics page per division. All computable from existing tables. Join key: 
 ### 6a. DB Migration — complete ✅
 ### 6b. Live Event Sync — complete ✅ _(deferred: schedule master scraper to auto-run on event day)_
 
-### 6b.2 Server-Side Live Polling — [ ] not started
+### 6b.2 Server-Side Live Polling — [x] complete
 
 **Problem:** Client-side polling in `FightDetailView` only runs when a user has the fight detail page open. If no user is watching, `fight_ended_at` / `rounds_fought` never get written to the DB.
 
 **Solution:** `poll-live-fights` Edge Function + Supabase pg_cron.
 
-- [ ] Write `supabase/functions/poll-live-fights/index.ts`:
-  - Guard 1: query `ufc_events` + `fights` for `event_date = today` — exit if none
-  - Guard 2: parse `ufc_events.start_time` — exit if current time is before event start
-  - Guard 3: check if all `upcoming` fights for today have `fight_ended_at IS NOT NULL` — exit if so
-  - Otherwise: fetch ESPN scoreboard for today's date, loop fights, update `fight_started_at` / `fight_ended_at` / `rounds_fought` / `ended_by_decision` / `scheduled_rounds` directly via service role REST API (same logic as `record-fight-status` but server-side, no JWT needed)
-- [ ] Deploy via Management API (same pattern as `record-fight-status` — no esm.sh imports, native fetch only)
-- [ ] Schedule with pg_cron: `cron.schedule('poll-live-fights', '* * * * *', ...)` — calls the Edge Function every minute
+- [x] Write `supabase/functions/poll-live-fights/index.ts` — 3 guards + ESPN polling + DB writes
+- [x] Deploy script: `supabase/deploy_poll_live_fights.py` — Supabase CLI + pg_cron + pg_net setup
+- [x] Deployed via CLI (`npx supabase functions deploy`) + pg_cron job active (`* * * * *`)
 - [ ] Test: verify `rounds_fought` is written correctly after a fight ends with no browser open
 ### 6c. Scoring UI in FightDetailView — complete ✅
 

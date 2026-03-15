@@ -109,5 +109,43 @@ Use derived booleans, not inline JSX conditions — keeps 3-state branching read
 - `readOnly` in RoundScoringPanel: `judgesRevealed && !isHistorical && isLocked` — stays editable mid-fight for new rounds
 - Auto-reveal only fires when `isLocked || isHistorical` — prevents premature lockout between rounds
 
-### Known reliability gap (next session)
-Client-side polling only runs when a user has the fight detail page open. If no user is watching, `rounds_fought` / `fight_ended_at` may not get written. **Next session:** build `poll-live-fights` Edge Function + pg_cron (every minute, guarded by `ufc_events.start_time` + all-fights-ended check).
+---
+
+## Edge Function — `poll-live-fights`
+
+Server-side ESPN polling so fight status is tracked without a user having the page open.
+Deploy via: `python supabase/deploy_poll_live_fights.py`
+
+### Behaviour
+Called by pg_cron every minute. No JWT required (`verify_jwt: false`).
+
+**Guards (in order):**
+1. Exit if no `ufc_events` row with `event_date = UTC today`
+2. Exit if `ufc_events.start_time` (ISO 8601 string from ESPN) is in the future
+3. Exit if all `status = 'upcoming'` fights for the event already have `fight_ended_at IS NOT NULL`
+
+**Poll logic (mirrors FightDetailView client-side polling):**
+- Fetches `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=YYYYMMDD`
+- For each upcoming fight without `fight_ended_at`: find matching ESPN competition (by `espn_competition_id` first, then `boutMatchesComp` name fallback)
+- Updates `fight_started_at` / `fight_ended_at` / `rounds_fought` / `ended_by_decision` / `scheduled_rounds` via service role REST PATCH (same null-safe logic as `record-fight-status`)
+- `period=0` guard on STATUS_FINAL: falls back to last known `rounds_fought`, then `scheduled_rounds`, then 3
+
+### pg_cron setup
+```sql
+-- Scheduled by deploy_poll_live_fights.py
+SELECT cron.schedule('poll-live-fights', '* * * * *',
+  $$ SELECT net.http_post(url := '{supabase_url}/functions/v1/poll-live-fights', ...) $$
+);
+
+-- Check recent runs
+SELECT * FROM cron.job_run_details
+WHERE jobid IN (SELECT jobid FROM cron.job WHERE jobname = 'poll-live-fights')
+ORDER BY start_time DESC LIMIT 10;
+
+-- Remove job
+SELECT cron.unschedule('poll-live-fights');
+```
+
+### Files
+- `supabase/functions/poll-live-fights/index.ts` — Edge Function source
+- `supabase/deploy_poll_live_fights.py` — deploy + pg_cron setup script
