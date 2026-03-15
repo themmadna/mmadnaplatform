@@ -502,7 +502,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
               </div>
             )}
             {fight.status === 'upcoming' && isLocked && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={true} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
+              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
             )}
 
             {/* COMPLETED — stats pending (meta not available yet) */}
