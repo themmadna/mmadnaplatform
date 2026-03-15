@@ -91,7 +91,10 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **ESPN occasionally returns `period = 0` at STATUS_FINAL.** Guard: use `period > 0 ? period : (scorableRounds || scheduledRounds || 3)` before writing `rounds_fought` to DB. Writing 0 causes `scorableRounds = 0` and the scoring panel disappears.
 - **`useState` initializer only runs once on mount.** If fight prop data arrives late (async), `scorableRounds` stays at 0. Fix with a `useEffect` that syncs from fight prop fields when `scorableRounds === 0`.
 - **`rounds_fought` fallback chain for `scorableRounds`:** `fight.rounds_fought` (if > 0) → `fight.scheduled_rounds` → `3`. Always show panel for ended fights even when ESPN data is missing.
-- **Client-side polling is unreliable** — if no user has the fight detail page open, `fight_ended_at` / `rounds_fought` never get written. Future fix: `poll-live-fights` Edge Function + pg_cron (guarded by `ufc_events.start_time` + all-fights-ended check).
+- **Client-side polling is unreliable** — if no user has the fight detail page open, `fight_ended_at` / `rounds_fought` never get written. Fix: `poll-live-fights` Edge Function + pg_cron every minute (guarded by `ufc_events.start_time` + all-fights-ended check).
+- **Supabase Management API ZIP upload for Edge Functions returns 500.** Use `npx supabase functions deploy --project-ref <ref> --no-verify-jwt` with `SUPABASE_ACCESS_TOKEN` env var instead. CLI handles bundling correctly; Management API requires an eszip bundle which Python can't easily produce.
+- **`pg_cron` and `pg_net` are not enabled by default on new Supabase projects.** Enable via `CREATE EXTENSION IF NOT EXISTS pg_cron; CREATE EXTENSION IF NOT EXISTS pg_net;` through the Management API database/query endpoint (requires service role). After that, `cron.schedule()` and `net.http_post()` are available.
+- **pg_cron + pg_net pattern for calling an Edge Function every minute:** `SELECT cron.schedule('job-name', '* * * * *', $$ SELECT net.http_post(url := '...', headers := '{"Content-Type":"application/json"}'::jsonb, body := '{}'::jsonb) $$)`. `net.http_post` is async — returns request_id immediately, fires in background. No auth header needed if `verify_jwt = false`.
 
 ---
 
