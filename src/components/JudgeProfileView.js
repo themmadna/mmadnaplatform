@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { ChevronLeft, Scale, AlertTriangle } from 'lucide-react';
 import { dataService } from '../dataService';
 
@@ -31,6 +31,50 @@ const BiasBar = ({ label, pctVal, color = 'bg-[#D4AF37]' }) => (
     </div>
   </div>
 );
+
+const GenderComparisonCard = ({ genderSplit, currentTheme }) => {
+  const m = genderSplit?.mens;
+  const w = genderSplit?.womens;
+  if (!m || !w || m.rounds < 10 || w.rounds < 10) return null;
+
+  const rows = [
+    { label: 'Rounds',           mv: m.rounds,         wv: w.rounds,         fmt: v => v?.toLocaleString() ?? '—' },
+    { label: 'Outlier Rate',     mv: m.outlier_rate,    wv: w.outlier_rate,   fmt: pct, highlightHigher: 'red' },
+    { label: '10-8 Rate',        mv: m.ten_eight_rate,  wv: w.ten_eight_rate, fmt: pct },
+    { label: 'Unanimous %',      mv: m.unanimous_pct,   wv: w.unanimous_pct,  fmt: pct, highlightHigher: 'green' },
+    { label: 'Lone Dissenter %', mv: m.lone_pct,        wv: w.lone_pct,       fmt: pct, highlightHigher: 'red' },
+  ];
+
+  const colorFor = (isHigher, highlightHigher) => {
+    if (!isHigher || !highlightHigher) return 'text-white/80';
+    return highlightHigher === 'red' ? 'text-red-400' : 'text-green-400';
+  };
+
+  return (
+    <div className={`${currentTheme.card} p-5 rounded-xl mb-4`}>
+      <h3 className="text-xs font-bold uppercase tracking-widest text-white/50 mb-4">Men's vs Women's</h3>
+      <div className="grid grid-cols-[1fr_auto_1fr] gap-y-3 items-center">
+        <span className="text-xs font-bold text-white/40 text-center uppercase tracking-widest">Men's</span>
+        <span />
+        <span className="text-xs font-bold text-white/40 text-center uppercase tracking-widest">Women's</span>
+        {rows.map(row => {
+          const mHigher = row.mv != null && row.wv != null && row.mv > row.wv;
+          const wHigher = row.mv != null && row.wv != null && row.wv > row.mv;
+          return (
+            <Fragment key={row.label}>
+              <span className={`text-sm font-bold text-center ${colorFor(mHigher, row.highlightHigher)}`}>{row.fmt(row.mv)}</span>
+              <span className="text-xs text-white/40 text-center px-4 whitespace-nowrap">{row.label}</span>
+              <span className={`text-sm font-bold text-center ${colorFor(wHigher, row.highlightHigher)}`}>{row.fmt(row.wv)}</span>
+            </Fragment>
+          );
+        })}
+      </div>
+      <p className="text-xs text-white/20 mt-3 text-center">
+        {m.fights?.toLocaleString()} men's fights · {w.fights?.toLocaleString()} women's fights
+      </p>
+    </div>
+  );
+};
 
 export default function JudgeProfileView({ judgeName, currentTheme, onBack, onCompare, onFightClick = null }) {
   const [profile, setProfile] = useState(null);
@@ -140,6 +184,9 @@ export default function JudgeProfileView({ judgeName, currentTheme, onBack, onCo
         </div>
         <p className="text-xs text-white/30 mt-3">{(ab.total || 0).toLocaleString()} scored rounds (excludes 10-10s)</p>
       </div>
+
+      {/* Men's vs Women's Comparison */}
+      <GenderComparisonCard genderSplit={profile.gender_split} currentTheme={currentTheme} />
 
       {/* Style Preference */}
       {sp.rounds > 0 && (

@@ -26,10 +26,15 @@ MGMT_QUERY_URL = f"https://api.supabase.com/v1/projects/{project_ref}/database/q
 HEADERS = {"Authorization": f"Bearer {mgmt_key}", "Content-Type": "application/json"}
 
 SQL = """
+-- Drop old overloads so the new single-arg version becomes the only one.
+DROP FUNCTION IF EXISTS get_judge_profile(text, text);
+DROP FUNCTION IF EXISTS get_judge_profile(text);
+
 CREATE OR REPLACE FUNCTION get_judge_profile(p_judge text)
 RETURNS json
 LANGUAGE plpgsql
 STABLE
+SET statement_timeout = '8s'
 AS $$
 BEGIN
   RETURN (
@@ -55,7 +60,6 @@ BEGIN
     ),
 
     -- 4. Pivot this judge's scores: (bout, date, round) → f1_score / f2_score.
-    --    Fighter assignment: exact name match against the bout string (same mmadecisions source).
     judge_pivoted AS (
       SELECT
         bout, date, round,
@@ -98,11 +102,6 @@ BEGIN
     ),
 
     -- 7. This judge's per-round decision + agreement type.
-    --    agreement_type:
-    --      'unanimous'      — all judges agreed
-    --      'majority'       — this judge was with the majority (2-1, this judge on the winning side)
-    --      'lone_dissenter' — this judge was the only one who picked their fighter
-    --      'draw'           — this judge scored 10-10
     judge_decisions AS (
       SELECT
         cj.bout,
@@ -137,9 +136,6 @@ BEGIN
     ),
 
     -- 8. Match each (bout, date) to fight_meta_details for weight class + fighter names.
-    --    Join path: judge_scores.date ±1 day → ufc_events.event_date
-    --               ufc_events.event_name    → fight_meta_details.event_name
-    --    Fighter matching: last-name pair match (both orderings) — cross-source name variance.
     unique_bouts AS (
       SELECT DISTINCT
         bout,
@@ -174,7 +170,7 @@ BEGIN
       ORDER BY ub.bout, ub.date
     ),
 
-    -- 9. Join decisions to fight meta (LEFT: rounds without meta are still included in basic stats).
+    -- 9. Join decisions to fight meta (LEFT: rounds without meta still included in basic stats).
     decisions_with_meta AS (
       SELECT
         jd.*,
@@ -189,8 +185,6 @@ BEGIN
     ),
 
     -- 10. Join to round_fight_stats (INNER: only rounds with stat data).
-    --     fmd.bout and rfs.bout are often reversed (ufcstats scraper order varies) —
-    --     always match both orderings.
     fight_stats_raw AS (
       SELECT
         dm.bout, dm.date, dm.round, dm.judge_winner,
@@ -213,7 +207,7 @@ BEGIN
         AND dm.judge_winner IN ('f1', 'f2')
     ),
 
-    -- 11. Pivot round_fight_stats to f1/f2 columns. Last-name match (same ufcstats source).
+    -- 11. Pivot round_fight_stats to f1/f2 columns.
     fight_stats_pivoted AS (
       SELECT
         bout, date, round, judge_winner,
@@ -231,8 +225,7 @@ BEGIN
       GROUP BY bout, date, round, judge_winner, fighter1_name, fighter2_name
     ),
 
-    -- 12. Winner/loser stats per round (judge's pick determines winner).
-    --     Only rounds with complete stats on both sides included.
+    -- 12. Winner/loser stats per round.
     round_winner_stats AS (
       SELECT
         bout, date, round,
@@ -266,7 +259,7 @@ BEGIN
       ),
       'last_active',    (SELECT MAX(date) FROM judge_decisions),
 
-      -- Agreement breakdown: unanimous / majority / lone dissenter counts + pcts
+      -- Agreement breakdown
       'agreement_breakdown', (
         SELECT json_build_object(
           'unanimous',      COUNT(*) FILTER (WHERE agreement_type = 'unanimous'),
@@ -298,7 +291,7 @@ BEGIN
         ) t
       ),
 
-      -- Per-division breakdown (rounds with matched weight_class_clean only)
+      -- Per-division breakdown
       'by_class', (
         SELECT json_agg(t ORDER BY t.rounds DESC)
         FROM (
@@ -317,11 +310,7 @@ BEGIN
         ) t
       ),
 
-      -- Style preference: what stats does this judge reward?
-      --   striking_pct  — % rounds where judge's winner threw more sig strikes landed
-      --   grappling_pct — % rounds where judge's winner had more TD + ctrl time
-      --   aggressor_pct — % rounds where judge's winner threw more volume but lower accuracy
-      --   kd_pct        — % of KD rounds where judge sided with the fighter who scored the KD
+      -- Style preference
       'style_preference', (
         SELECT json_build_object(
           'striking_pct',  ROUND(AVG(CASE WHEN winner_ssl > loser_ssl THEN 1.0 ELSE 0.0 END)::numeric, 3),
@@ -340,7 +329,7 @@ BEGIN
         FROM round_winner_stats
       ),
 
-      -- Most controversial fights: bouts where this judge was a lone dissenter most often
+      -- Most controversial fights
       'controversial_fights', (
         SELECT json_agg(t ORDER BY t.outlier_rounds DESC, t.fight_date DESC)
         FROM (
@@ -357,6 +346,50 @@ BEGIN
           ORDER BY outlier_rounds DESC, dm.date DESC
           LIMIT 5
         ) t
+      ),
+
+      -- Men's vs Women's gender split (from decisions_with_meta which has weight_class_clean)
+      'gender_split', json_build_object(
+        'mens', json_build_object(
+          'rounds',        (SELECT COUNT(*) FROM decisions_with_meta
+                            WHERE weight_class_clean IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%%'),
+          'fights',        (SELECT COUNT(DISTINCT (bout, date)) FROM decisions_with_meta
+                            WHERE weight_class_clean IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%%'),
+          'outlier_rate',  (SELECT ROUND(AVG(CASE WHEN agreement_type = 'lone_dissenter' THEN 1.0 ELSE 0.0 END)::numeric, 3)
+                            FROM decisions_with_meta
+                            WHERE agreement_type != 'draw' AND weight_class_clean IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%%'),
+          'ten_eight_rate',(SELECT ROUND(AVG(CASE WHEN LEAST(f1_score, f2_score) <= 8 AND f1_score != f2_score THEN 1.0 ELSE 0.0 END)::numeric, 3)
+                            FROM decisions_with_meta
+                            WHERE weight_class_clean IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%%'),
+          'unanimous_pct', (SELECT ROUND(COUNT(*) FILTER (WHERE agreement_type = 'unanimous')::numeric
+                              / NULLIF(COUNT(*) FILTER (WHERE agreement_type != 'draw'), 0), 3)
+                            FROM decisions_with_meta
+                            WHERE weight_class_clean IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%%'),
+          'lone_pct',      (SELECT ROUND(COUNT(*) FILTER (WHERE agreement_type = 'lone_dissenter')::numeric
+                              / NULLIF(COUNT(*) FILTER (WHERE agreement_type != 'draw'), 0), 3)
+                            FROM decisions_with_meta
+                            WHERE weight_class_clean IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%%')
+        ),
+        'womens', json_build_object(
+          'rounds',        (SELECT COUNT(*) FROM decisions_with_meta
+                            WHERE weight_class_clean ILIKE 'Women%%'),
+          'fights',        (SELECT COUNT(DISTINCT (bout, date)) FROM decisions_with_meta
+                            WHERE weight_class_clean ILIKE 'Women%%'),
+          'outlier_rate',  (SELECT ROUND(AVG(CASE WHEN agreement_type = 'lone_dissenter' THEN 1.0 ELSE 0.0 END)::numeric, 3)
+                            FROM decisions_with_meta
+                            WHERE agreement_type != 'draw' AND weight_class_clean ILIKE 'Women%%'),
+          'ten_eight_rate',(SELECT ROUND(AVG(CASE WHEN LEAST(f1_score, f2_score) <= 8 AND f1_score != f2_score THEN 1.0 ELSE 0.0 END)::numeric, 3)
+                            FROM decisions_with_meta
+                            WHERE weight_class_clean ILIKE 'Women%%'),
+          'unanimous_pct', (SELECT ROUND(COUNT(*) FILTER (WHERE agreement_type = 'unanimous')::numeric
+                              / NULLIF(COUNT(*) FILTER (WHERE agreement_type != 'draw'), 0), 3)
+                            FROM decisions_with_meta
+                            WHERE weight_class_clean ILIKE 'Women%%'),
+          'lone_pct',      (SELECT ROUND(COUNT(*) FILTER (WHERE agreement_type = 'lone_dissenter')::numeric
+                              / NULLIF(COUNT(*) FILTER (WHERE agreement_type != 'draw'), 0), 3)
+                            FROM decisions_with_meta
+                            WHERE weight_class_clean ILIKE 'Women%%')
+        )
       )
 
     )
