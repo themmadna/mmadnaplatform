@@ -136,6 +136,14 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## UI/UX Redesign
+
+- **Build full-app mockups (all 14 pages) before committing to a design direction.** Single-page concept mockups are not enough to evaluate — patterns only emerge across the full page set. B and D got full mockups; E was started but 3 pages in was enough to confirm D was the winner.
+- **Concepts must be truly distinct, not color swaps.** First round of alternatives were rejected because they were just palette variations. Second round (D/E/F/G) each had fundamentally different navigation paradigms and layout systems.
+- **Chosen design: Concept D (Pulse).** Barlow Condensed + Inter, red/blue fighter colors, charcoal (#0e0e12), Instagram Stories-style swipe nav, bottom sheet details. Mockups in `mockups/concept-D-pulse/`.
+
+---
+
 ## UX Polish
 
 - **CSS mask-image is the cleanest scroll affordance on mobile.** Apply `maskImage: 'linear-gradient(to right, black 80%, transparent 100%)'` directly to the scrollable container.

@@ -118,6 +118,25 @@ One analytics page per division. All computable from existing tables. Join key: 
 
 ---
 
+---
+
+## Phase 8: UI/UX Overhaul — Concept D (Pulse)
+
+Redesign the entire frontend from the current gold/black Oswald theme to Concept D (Pulse). Mobile-first (90% of users on mobile/tablet).
+
+**Design language:** Instagram Stories-style swipe navigation, full-viewport fight cards, bottom sheet details. Barlow Condensed + Inter, red/blue fighter colors, charcoal (#0e0e12).
+
+**Reference mockups:** `mockups/concept-D-pulse/` (14 pages, 01-login through 14-profile)
+
+- [ ] **8a. Design tokens & Tailwind config** — color palette, typography, spacing, breakpoints
+- [ ] **8b. Layout shell** — bottom nav, top bar, content wrapper, responsive behavior
+- [ ] **8c. Fight card redesign** — full-viewport cards, swipe interaction, story progress bar
+- [ ] **8d. Fight detail view** — stat bars, round breakdown, judge scores in Pulse style
+- [ ] **8e. Scoring & DNA panels** — RoundScoringPanel, ScorecardComparison, CombatDNA, JudgingDNA
+- [ ] **8f. Polish** — animations, loading states, mobile audit, accessibility
+
+---
+
 ## Build Order
 
-6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5
+6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5 → **Phase 8**
