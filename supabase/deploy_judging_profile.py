@@ -418,6 +418,31 @@ BEGIN
         )
         FROM round_winner_stats
         WHERE winner_ssl IS NOT NULL
+      ),
+
+      -- gender_split: key stats broken down by men's vs women's fights.
+      -- Women's fights identified by weight_class_clean ILIKE 'Women%'.
+      'gender_split', json_build_object(
+        'mens', json_build_object(
+          'rounds_scored',  (SELECT COUNT(*) FROM user_rounds WHERE weight_class_clean NOT ILIKE 'Women%' AND weight_class_clean IS NOT NULL),
+          'rounds_matched', (SELECT COUNT(*) FROM round_accuracy WHERE majority_winner IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%'),
+          'accuracy',       (SELECT ROUND(AVG(CASE WHEN user_winner = majority_winner THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_accuracy WHERE majority_winner IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%'),
+          'outlier_rate',   (SELECT ROUND(AVG(CASE WHEN judges_agreeing = 0 THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_accuracy WHERE weight_class_clean NOT ILIKE 'Women%'),
+          'ten_eight_rate', (SELECT ROUND(AVG(CASE WHEN user_loser_score <= 8 THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_accuracy WHERE majority_winner IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%'),
+          'striking_pct',   (SELECT ROUND(AVG(CASE WHEN winner_ssl > loser_ssl THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_winner_stats WHERE weight_class_clean NOT ILIKE 'Women%'),
+          'grappling_pct',  (SELECT ROUND(AVG(CASE WHEN COALESCE(winner_td,0)+COALESCE(winner_ctrl,0) > COALESCE(loser_td,0)+COALESCE(loser_ctrl,0) THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_winner_stats WHERE weight_class_clean NOT ILIKE 'Women%'),
+          'aggressor_bias', (SELECT ROUND(AVG(CASE WHEN COALESCE(winner_ssa,0) > COALESCE(loser_ssa,0) AND NULLIF(winner_ssa,0) IS NOT NULL AND NULLIF(loser_ssa,0) IS NOT NULL AND winner_ssl::float/winner_ssa < loser_ssl::float/loser_ssa THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_winner_stats WHERE winner_ssa IS NOT NULL AND loser_ssa IS NOT NULL AND weight_class_clean NOT ILIKE 'Women%')
+        ),
+        'womens', json_build_object(
+          'rounds_scored',  (SELECT COUNT(*) FROM user_rounds WHERE weight_class_clean ILIKE 'Women%'),
+          'rounds_matched', (SELECT COUNT(*) FROM round_accuracy WHERE majority_winner IS NOT NULL AND weight_class_clean ILIKE 'Women%'),
+          'accuracy',       (SELECT ROUND(AVG(CASE WHEN user_winner = majority_winner THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_accuracy WHERE majority_winner IS NOT NULL AND weight_class_clean ILIKE 'Women%'),
+          'outlier_rate',   (SELECT ROUND(AVG(CASE WHEN judges_agreeing = 0 THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_accuracy WHERE weight_class_clean ILIKE 'Women%'),
+          'ten_eight_rate', (SELECT ROUND(AVG(CASE WHEN user_loser_score <= 8 THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_accuracy WHERE majority_winner IS NOT NULL AND weight_class_clean ILIKE 'Women%'),
+          'striking_pct',   (SELECT ROUND(AVG(CASE WHEN winner_ssl > loser_ssl THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_winner_stats WHERE weight_class_clean ILIKE 'Women%'),
+          'grappling_pct',  (SELECT ROUND(AVG(CASE WHEN COALESCE(winner_td,0)+COALESCE(winner_ctrl,0) > COALESCE(loser_td,0)+COALESCE(loser_ctrl,0) THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_winner_stats WHERE weight_class_clean ILIKE 'Women%'),
+          'aggressor_bias', (SELECT ROUND(AVG(CASE WHEN COALESCE(winner_ssa,0) > COALESCE(loser_ssa,0) AND NULLIF(winner_ssa,0) IS NOT NULL AND NULLIF(loser_ssa,0) IS NOT NULL AND winner_ssl::float/winner_ssa < loser_ssl::float/loser_ssa THEN 1.0 ELSE 0.0 END)::numeric, 3) FROM round_winner_stats WHERE winner_ssa IS NOT NULL AND loser_ssa IS NOT NULL AND weight_class_clean ILIKE 'Women%')
+        )
       )
     )
   );

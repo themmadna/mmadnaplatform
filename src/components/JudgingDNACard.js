@@ -100,6 +100,7 @@ const SplitBar = ({ strikePct, grapplingPct }) => {
 const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick = null, onCompareWithJudge = null }) => {
   const [showBiasByClass, setShowBiasByClass] = useState(false);
   const [showScoredFights, setShowScoredFights] = useState(false);
+  const [genderFilter, setGenderFilter] = useState('all');
 
   if (!profile) return null;
 
@@ -120,6 +121,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
     knockdown_bias,
     scoring_differentials,
     takedown_lean,
+    gender_split,
   } = profile;
 
   if ((rounds_scored || 0) < MIN_ROUNDS) {
@@ -133,8 +135,25 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
     );
   }
 
-  const topClasses = (accuracy_by_class || []).slice(0, 5);
-  const hasBiasData = striking_vs_grappling_bias?.rounds > 0;
+  const showGenderToggle = (gender_split?.womens?.rounds_scored || 0) > 0;
+  const activeG = genderFilter !== 'all' ? gender_split?.[genderFilter] : null;
+
+  const activeAccuracy       = activeG?.accuracy       ?? accuracy;
+  const activeOutlierRate    = activeG?.outlier_rate    ?? outlier_rate;
+  const activeRoundsMatched  = activeG?.rounds_matched  ?? rounds_matched;
+  const activeTenEightRate   = activeG?.ten_eight_rate  ?? ten_eight_rate;
+  const activeAggressorBias  = activeG?.aggressor_bias  ?? aggressor_bias;
+  const activeStrikingBias   = activeG
+    ? { striking_pct: activeG.striking_pct, grappling_pct: activeG.grappling_pct, rounds: activeG.rounds_matched || 0 }
+    : striking_vs_grappling_bias;
+
+  const filteredClasses = (accuracy_by_class || []).filter(wc => {
+    if (genderFilter === 'womens') return wc.weight_class_clean?.includes('Women');
+    if (genderFilter === 'mens')   return !wc.weight_class_clean?.includes('Women');
+    return true;
+  });
+  const topClasses = filteredClasses.slice(0, 5);
+  const hasBiasData = activeStrikingBias?.rounds > 0;
 
   return (
     <div className={`${currentTheme.card} ${currentTheme.rounded} shadow-sm overflow-hidden mb-6`}>
@@ -144,18 +163,33 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           <Scale size={14} className="opacity-50" />
           <p className="text-xs font-black uppercase tracking-widest opacity-60">Judging DNA</p>
         </div>
-        <span className="text-xs opacity-30 uppercase tracking-widest">
-          {rounds_scored} rounds scored
-        </span>
+        <div className="flex items-center gap-3">
+          {showGenderToggle && (
+            <div className="flex items-center gap-0.5 bg-black/30 rounded-full p-0.5">
+              {['all', 'mens', 'womens'].map(f => (
+                <button
+                  key={f}
+                  onClick={() => setGenderFilter(f)}
+                  className={`text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full transition-colors ${genderFilter === f ? 'bg-white/20 opacity-100' : 'opacity-30 hover:opacity-60'}`}
+                >
+                  {f === 'all' ? 'All' : f === 'mens' ? "Men's" : "Women's"}
+                </button>
+              ))}
+            </div>
+          )}
+          <span className="text-xs opacity-30 uppercase tracking-widest">
+            {rounds_scored} rounds scored
+          </span>
+        </div>
       </div>
 
       <div className="p-4 sm:p-6 space-y-6">
 
         {/* Overview strip — 4 key stats */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <Stat label="Accuracy" value={<Pct value={accuracy} />} sub="vs judge majority" big />
-          <Stat label="Outlier Rate" value={<Pct value={outlier_rate} />} sub="lone dissenter rounds" />
-          <Stat label="Rounds Matched" value={rounds_matched} sub="with judge data" />
+          <Stat label="Accuracy" value={<Pct value={activeAccuracy} />} sub="vs judge majority" big />
+          <Stat label="Outlier Rate" value={<Pct value={activeOutlierRate} />} sub="lone dissenter rounds" />
+          <Stat label="Rounds Matched" value={activeRoundsMatched} sub="with judge data" />
           <Stat label="Fights Scored" value={fights_scored} />
         </div>
 
@@ -173,7 +207,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           <p className="text-xs opacity-40 uppercase tracking-widest mb-3">10-8 Rounds</p>
           <div className="flex items-center justify-around">
             <div className="text-center">
-              <Pct value={ten_eight_rate} big />
+              <Pct value={activeTenEightRate} big />
               <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">Your Rate</p>
               <p className="text-[10px] opacity-25">how often you give 10-8s</p>
             </div>
@@ -274,7 +308,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           <div className="border-t border-white/10 pt-5">
             <div className="flex items-center justify-between mb-4">
               <p className="text-xs opacity-40 uppercase tracking-widest">Scoring Tendencies</p>
-              {topClasses.some(wc => wc.striking_pct != null) && (
+              {genderFilter === 'all' && topClasses.some(wc => wc.striking_pct != null) && (
                 <button
                   onClick={() => setShowBiasByClass(v => !v)}
                   className="text-[10px] opacity-40 hover:opacity-70 uppercase tracking-widest transition-opacity"
@@ -289,8 +323,8 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
               <p className="text-[10px] opacity-30 uppercase tracking-widest mb-2">Strike vs Grapple Lean</p>
               {!showBiasByClass ? (
                 <SplitBar
-                  strikePct={striking_vs_grappling_bias.striking_pct}
-                  grapplingPct={striking_vs_grappling_bias.grappling_pct}
+                  strikePct={activeStrikingBias?.striking_pct}
+                  grapplingPct={activeStrikingBias?.grappling_pct}
                 />
               ) : (
                 <div className="space-y-3">
@@ -331,9 +365,12 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
             </div>
 
             {/* Aggressor / Passive Control / Knockdown / Takedown — 2x2 grid */}
+            {genderFilter !== 'all' && (
+              <p className="text-[9px] opacity-20 mb-2">Passive Control, KD Fighter, and TD Fighter shown overall only</p>
+            )}
             <div className="grid grid-cols-2 gap-3 border-t border-white/5 pt-4">
               <div className="text-center">
-                <Pct value={aggressor_bias} big />
+                <Pct value={activeAggressorBias} big />
                 <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">Aggressor Lean</p>
                 <p className="text-[10px] opacity-20 mt-0.5">sided with higher volume when accuracy favoured opponent</p>
               </div>
