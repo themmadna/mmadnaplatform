@@ -178,7 +178,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
             <div className="w-px h-12 bg-white/10" />
             <div className="text-center">
               <Pct value={ten_eight_quality} big />
-              <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">Judge Confirmed</p>
+              <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">10-8 Accuracy</p>
               <p className="text-[10px] opacity-25">judges also scored dominant</p>
             </div>
           </div>
