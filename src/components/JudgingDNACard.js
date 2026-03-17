@@ -118,6 +118,8 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
     aggressor_bias,
     takedown_quality_bias,
     knockdown_bias,
+    scoring_differentials,
+    takedown_lean,
   } = profile;
 
   if ((rounds_scored || 0) < MIN_ROUNDS) {
@@ -307,10 +309,29 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
               <p className="text-[9px] opacity-20 mt-2">
                 Which factor was more dominant in rounds you awarded — striking (sig. strikes) or grappling (takedowns + control)?
               </p>
+              {scoring_differentials?.rounds > 0 && (
+                <div className="mt-4 pt-3 border-t border-white/5">
+                  <p className="text-[10px] opacity-30 uppercase tracking-widest mb-2">Avg margin when awarding a round</p>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-black leading-none">+{scoring_differentials.avg_strike_diff ?? '—'}</p>
+                      <p className="text-[9px] uppercase tracking-widest opacity-40 mt-1">Sig Strikes</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-black leading-none">+{scoring_differentials.avg_ctrl_diff ?? '—'}s</p>
+                      <p className="text-[9px] uppercase tracking-widest opacity-40 mt-1">Control</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-black leading-none">+{scoring_differentials.avg_grd_diff ?? '—'}</p>
+                      <p className="text-[9px] uppercase tracking-widest opacity-40 mt-1">Grd Strikes</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {/* Aggressor / Passive Control / Knockdown — 3 stats */}
-            <div className="grid grid-cols-3 gap-3 border-t border-white/5 pt-4">
+            {/* Aggressor / Passive Control / Knockdown / Takedown — 2x2 grid */}
+            <div className="grid grid-cols-2 gap-3 border-t border-white/5 pt-4">
               <div className="text-center">
                 <Pct value={aggressor_bias} big />
                 <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">Aggressor Lean</p>
@@ -327,6 +348,14 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
                 <p className="text-[10px] opacity-20 mt-0.5">
                   sided with knockdown scorer
                   {knockdown_bias?.kd_rounds > 0 ? ` (${knockdown_bias.kd_rounds} KD rds)` : ''}
+                </p>
+              </div>
+              <div className="text-center">
+                <Pct value={takedown_lean?.pct} big />
+                <p className="text-[10px] uppercase tracking-widest opacity-40 mt-1">TD Fighter</p>
+                <p className="text-[10px] opacity-20 mt-0.5">
+                  sided with more takedowns
+                  {takedown_lean?.rounds > 0 ? ` (${takedown_lean.rounds} rds)` : ''}
                 </p>
               </div>
             </div>

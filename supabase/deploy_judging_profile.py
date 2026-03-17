@@ -254,7 +254,8 @@ BEGIN
         CASE WHEN user_f1 > user_f2 THEN f2_ssl  ELSE f1_ssl  END AS loser_ssl,
         CASE WHEN user_f1 > user_f2 THEN f2_ssa  ELSE f1_ssa  END AS loser_ssa,
         CASE WHEN user_f1 > user_f2 THEN f2_td   ELSE f1_td   END AS loser_td,
-        CASE WHEN user_f1 > user_f2 THEN f2_ctrl ELSE f1_ctrl END AS loser_ctrl
+        CASE WHEN user_f1 > user_f2 THEN f2_ctrl ELSE f1_ctrl END AS loser_ctrl,
+        CASE WHEN user_f1 > user_f2 THEN f2_grd  ELSE f1_grd  END AS loser_grd
       FROM fight_stats_pivoted
       WHERE user_f1 != user_f2
         AND f1_ssl IS NOT NULL AND f2_ssl IS NOT NULL
@@ -388,6 +389,35 @@ BEGIN
         FROM fight_stats_pivoted
         WHERE ABS(COALESCE(f1_kd,0) - COALESCE(f2_kd,0)) > 0
           AND user_f1 != user_f2
+      ),
+
+      -- takedown_lean: of rounds where one fighter had more takedowns,
+      -- % of time user sided with the fighter who landed more TDs.
+      'takedown_lean', (
+        SELECT json_build_object(
+          'pct',    ROUND(AVG(CASE
+            WHEN (user_f1 > user_f2 AND COALESCE(f1_td,0) > COALESCE(f2_td,0))
+              OR (user_f2 > user_f1 AND COALESCE(f2_td,0) > COALESCE(f1_td,0))
+            THEN 1.0 ELSE 0.0
+          END)::numeric, 3),
+          'rounds', COUNT(*)
+        )
+        FROM fight_stats_pivoted
+        WHERE ABS(COALESCE(f1_td,0) - COALESCE(f2_td,0)) > 0
+          AND user_f1 != user_f2
+      ),
+
+      -- scoring_differentials: average gap between winner and loser in the rounds
+      -- the user awarded. Shows how big a margin they typically need to give a round.
+      'scoring_differentials', (
+        SELECT json_build_object(
+          'avg_strike_diff', ROUND(AVG(COALESCE(winner_ssl,0) - COALESCE(loser_ssl,0))::numeric, 1),
+          'avg_ctrl_diff',   ROUND(AVG(COALESCE(winner_ctrl,0) - COALESCE(loser_ctrl,0))::numeric, 0),
+          'avg_grd_diff',    ROUND(AVG(COALESCE(winner_grd,0) - COALESCE(loser_grd,0))::numeric, 1),
+          'rounds',          COUNT(*)
+        )
+        FROM round_winner_stats
+        WHERE winner_ssl IS NOT NULL
       )
     )
   );
