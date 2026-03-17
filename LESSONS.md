@@ -113,6 +113,16 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Judging DNA Analytics
+
+- **`loser_grd` was missing from `round_winner_stats` CTE** — `winner_grd` was present but the loser-side column was omitted. Always add both winner and loser columns together when extending the CTE.
+- **Gender split via `weight_class_clean ILIKE 'Women%'` is sufficient** — all women's divisions contain "Women" in the clean name. No separate gender column needed.
+- **For a gender toggle that affects pre-aggregated RPC scalars, return a `gender_split` object with both sub-objects** rather than making two separate RPC calls. Client picks the right sub-object by key. `accuracy_by_class` can be filtered client-side since the raw array is already returned.
+- **Hide secondary toggles (e.g. "By Class") when a primary filter is active** — showing per-class breakdown inside an already-filtered gender view is redundant and confusing.
+- **For "overall-only" stats in a filtered view, show a short inline note** rather than hiding the stats entirely — users should know the numbers are still overall, not gender-filtered.
+
+---
+
 ## Phase 6 Scoring UI
 
 - **`fighter_scored_for`/`points` schema was replaced by `f1_score`/`f2_score`.** Convert at DB boundaries only — `f1_score >= f2_score ? f1Name : f2Name` on load handles the tie edge case (10-10) by defaulting to f1.

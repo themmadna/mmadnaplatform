@@ -84,6 +84,14 @@ One analytics page per division. All computable from existing tables. Join key: 
   - Strike vs Grapple Lean: two-tone bar (blue=strike, amber=grapple) + "By Class ▾" toggle
   - Aggressor Lean, Passive Control, KD Fighter — 3-column stat grid
 
+**Step 6: Judging DNA additional metrics** ✅
+
+- [x] Rename "Judge Confirmed" → "10-8 Accuracy" label
+- [x] `scoring_differentials` RPC field + UI: avg sig strike / control time / ground strike margin when awarding a round
+- [x] `takedown_lean` RPC field + UI: % of TD-differential rounds sided with the higher-TD fighter; bias grid expanded to 2×2
+- [x] `gender_split` RPC field: per-gender accuracy, outlier rate, 10-8 rate, strike/grapple lean, aggressor bias
+- [x] Men's / Women's toggle pill in card header (hidden unless user has scored women's fights); filters overview stats, 10-8 rate, strike/grapple lean, aggressor lean, and weight class breakdown
+
 **Step 5: Scored Fights list** ✅
 
 - [x] `getScoredFights()` in `dataService.js` — fights user has scored with f1/f2 totals attached

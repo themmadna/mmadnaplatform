@@ -107,10 +107,16 @@ New fields in RPC response: `striking_vs_grappling_bias`, `aggressor_bias`, `tak
 ### 6e.2 Step 4 — complete ✅
 "Scoring Tendencies" section added to `JudgingDNACard.js`:
 - `SplitBar` component — two-tone bar (blue = striking, amber = grappling)
-- "By Class ▾" toggle button switches Strike vs Grapple bar between overall and per-class rows
-- 3-column stat grid: Aggressor Lean / Passive Control / KD Fighter
-- Entire section gated on `hasBiasData` (`striking_vs_grappling_bias.rounds > 0`) — hidden when no `round_fight_stats` coverage
-- `useState` for class toggle (only import added to component)
+- "By Class ▾" toggle button switches Strike vs Grapple bar between overall and per-class rows (hidden when gender filter active)
+- 2×2 stat grid: Aggressor Lean / Passive Control / KD Fighter / TD Fighter
+- Entire section gated on `hasBiasData` (`activeStrikingBias.rounds > 0`)
+
+### 6e.2 Step 6 — complete ✅
+Additional metrics added to `JudgingDNACard.js` and `get_user_judging_profile()`:
+- **10-8 Accuracy** label (renamed from "Judge Confirmed")
+- **Scoring Differentials** — "Avg margin when awarding a round" row (sig strikes, control time, ground strikes); `loser_grd` added to `round_winner_stats` CTE
+- **TD Fighter** stat in 2×2 grid — % of TD-differential rounds sided with higher-TD fighter
+- **Men's / Women's toggle** — pill in card header (only shown when `gender_split.womens.rounds_scored > 0`); `genderFilter` state ('all'|'mens'|'womens'); active values (accuracy, outlier rate, rounds matched, 10-8 rate, strike/grapple lean, aggressor lean) swap based on filter; `accuracy_by_class` filtered client-side on `weight_class_clean.includes('Women')`; Passive Control / KD / TD Fighter / differentials remain overall-only
 
 ### 6e.2 Step 5 — complete ✅
 Scored Fights collapsible section at the bottom of `JudgingDNACard.js`.

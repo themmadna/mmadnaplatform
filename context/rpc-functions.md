@@ -182,8 +182,19 @@ Returns: json {
   aggressor_bias,     -- % rounds where user's winner threw more but landed at lower accuracy
   takedown_quality_bias: { passive_control_pct, control_rounds },
     -- passive: ctrl_sec > 30, sub_attempts = 0, ground_strikes <= 3
-  knockdown_bias: { kd_bias_pct, kd_rounds }
+  knockdown_bias: { kd_bias_pct, kd_rounds },
     -- on KD rounds, % of time user awarded the fighter who scored the knockdown
+  takedown_lean: { pct, rounds },
+    -- of rounds where one fighter had more TDs, % sided with the higher-TD fighter
+  scoring_differentials: { avg_strike_diff, avg_ctrl_diff, avg_grd_diff, rounds },
+    -- avg gap (winner - loser) in sig strikes landed, control time (sec), ground strikes when awarding a round
+    -- loser_grd added to round_winner_stats CTE to support this
+  gender_split: {
+    mens:   { rounds_scored, rounds_matched, accuracy, outlier_rate, ten_eight_rate, striking_pct, grappling_pct, aggressor_bias },
+    womens: { rounds_scored, rounds_matched, accuracy, outlier_rate, ten_eight_rate, striking_pct, grappling_pct, aggressor_bias }
+  }
+    -- women's identified by weight_class_clean ILIKE 'Women%'
+    -- toggle shown in UI only when gender_split.womens.rounds_scored > 0
 }
 ```
 
