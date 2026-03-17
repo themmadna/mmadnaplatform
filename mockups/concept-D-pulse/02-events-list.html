@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MMA DNA — Pulse — Events</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --nav-h: 64px;
+  }
+
+  html {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    padding-bottom: calc(var(--nav-h) + 16px);
+    min-height: 100dvh;
+  }
+
+  /* Concept label */
+  .concept-label {
+    position: fixed;
+    top: 12px;
+    right: 14px;
+    font-size: 10px;
+    color: var(--text-3);
+    z-index: 200;
+    letter-spacing: .3px;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* ---- Story progress bar ---- */
+  .story-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    gap: 4px;
+    padding: 8px 14px;
+    z-index: 150;
+    background: linear-gradient(180deg, rgba(14,14,18,.95) 60%, transparent);
+  }
+  .story-seg {
+    flex: 1;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--surface-2);
+    overflow: hidden;
+  }
+  .story-seg.done { background: var(--red); }
+  .story-seg.active {
+    background: var(--surface-2);
+    position: relative;
+  }
+  .story-seg.active::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 40%;
+    background: var(--red);
+    border-radius: 2px;
+    animation: seg-fill 6s linear forwards;
+  }
+  @keyframes seg-fill { to { width: 100%; } }
+
+  /* ---- Top bar ---- */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 140;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 26px 16px 12px;
+    background: linear-gradient(180deg, var(--bg) 70%, transparent);
+  }
+  .top-logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .top-logo span { color: var(--red); }
+  .avatar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--surface-2);
+    border: 2px solid var(--text-3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text-2);
+    font-weight: 600;
+  }
+
+  /* ---- Hero ---- */
+  .hero {
+    padding: 4px 16px 14px;
+  }
+  .hero h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 32px;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    line-height: 1.1;
+  }
+  .hero p {
+    margin-top: 4px;
+    font-size: 13px;
+    color: var(--text-2);
+  }
+
+  /* ---- Year tabs ---- */
+  .year-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .year-tabs::-webkit-scrollbar { display: none; }
+  .year-tab {
+    flex-shrink: 0;
+    padding: 7px 16px;
+    border-radius: 20px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+    border: 1.5px solid var(--surface-2);
+    background: transparent;
+    color: var(--text-2);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all .15s;
+  }
+  .year-tab.active { background: var(--surface-2); color: var(--text); border-color: var(--text-3); }
+  .year-tab.for-you { background: var(--red); border-color: var(--red); color: #fff; }
+
+  /* ---- For You horizontal ---- */
+  .foryou-section {
+    padding: 0 0 20px;
+  }
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-2);
+    padding: 0 16px 10px;
+  }
+  .foryou-scroll {
+    display: flex;
+    gap: 12px;
+    padding: 0 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .foryou-scroll::-webkit-scrollbar { display: none; }
+
+  .foryou-card {
+    flex-shrink: 0;
+    width: 260px;
+    background: var(--surface);
+    border-radius: 14px;
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--surface-2);
+  }
+  .foryou-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--red), #f97316);
+  }
+  .foryou-tag {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 10px;
+    background: rgba(239,68,68,.15);
+    color: var(--red);
+  }
+  .foryou-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    text-transform: uppercase;
+    line-height: 1.15;
+    margin-bottom: 4px;
+  }
+  .foryou-meta {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+  .foryou-fights {
+    margin-top: 10px;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .foryou-fight {
+    font-size: 11px;
+    color: var(--text-2);
+    background: var(--surface-2);
+    padding: 3px 8px;
+    border-radius: 6px;
+  }
+
+  /* ---- Section dividers ---- */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 16px 12px;
+  }
+  .section-divider h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: var(--text-2);
+  }
+  .section-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--surface-2);
+  }
+
+  /* ---- Event cards ---- */
+  .event-list {
+    padding: 0 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .event-card {
+    background: var(--surface);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    border: 1px solid var(--surface-2);
+    cursor: pointer;
+    transition: background .12s;
+    position: relative;
+  }
+  .event-card:hover { background: var(--surface-2); }
+  .event-card.numbered { border-left: 3px solid var(--red); }
+
+  .event-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--red);
+    min-width: 38px;
+    text-align: center;
+    line-height: 1;
+  }
+  .event-num .hash { font-size: 14px; font-weight: 600; color: var(--text-3); }
+
+  .event-info { flex: 1; min-width: 0; }
+  .event-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .event-sub {
+    font-size: 12px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+  .event-sub span { color: var(--text-2); }
+
+  .event-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  .badge-green { background: rgba(34,197,94,.12); color: var(--green); }
+  .badge-red { background: rgba(239,68,68,.12); color: var(--red); }
+  .badge-amber { background: rgba(245,158,11,.12); color: var(--amber); }
+
+  .fight-count {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  /* Non-numbered */
+  .event-card:not(.numbered) .event-num { display: none; }
+
+  /* ---- Load more ---- */
+  .load-more {
+    margin: 18px 16px 24px;
+    padding: 14px;
+    background: transparent;
+    border: 1.5px dashed var(--surface-2);
+    border-radius: 10px;
+    color: var(--text-3);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    width: calc(100% - 32px);
+    transition: border-color .15s, color .15s;
+    text-align: center;
+  }
+  .load-more:hover { border-color: var(--text-3); color: var(--text-2); }
+
+  /* ---- Swipe hint ---- */
+  .swipe-hint {
+    position: fixed;
+    bottom: calc(var(--nav-h) + 18px);
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--text-3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    opacity: .7;
+    animation: hint-bounce 2s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes hint-bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-4px); }
+  }
+  .swipe-hint svg { width: 14px; height: 14px; }
+
+  /* ---- Bottom nav ---- */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: var(--nav-h);
+    background: rgba(14,14,18,.92);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid var(--surface-2);
+    display: flex;
+    z-index: 200;
+  }
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    color: var(--text-3);
+    text-decoration: none;
+    transition: color .15s;
+    position: relative;
+  }
+  .nav-item.active { color: var(--red); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 24px;
+    height: 2px;
+    border-radius: 0 0 2px 2px;
+    background: var(--red);
+  }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-item span {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D &mdash; Pulse</strong> &middot; Events</div>
+
+<!-- Story progress bar -->
+<div class="story-bar">
+  <div class="story-seg done"></div>
+  <div class="story-seg active"></div>
+  <div class="story-seg"></div>
+  <div class="story-seg"></div>
+  <div class="story-seg"></div>
+  <div class="story-seg"></div>
+</div>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <div class="top-logo">MMA <span>DNA</span></div>
+  <div class="avatar-btn">SZ</div>
+</div>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>Upcoming Events</h1>
+  <p>Swipe through fight cards &middot; score live</p>
+</div>
+
+<!-- Year tabs -->
+<div class="year-tabs">
+  <button class="year-tab for-you">For You</button>
+  <button class="year-tab active">2026</button>
+  <button class="year-tab">2025</button>
+  <button class="year-tab">2024</button>
+  <button class="year-tab">2023</button>
+  <button class="year-tab">2022</button>
+</div>
+
+<!-- For You horizontal -->
+<div class="foryou-section">
+  <div class="section-title">Recommended For You</div>
+  <div class="foryou-scroll">
+    <div class="foryou-card">
+      <div class="foryou-tag">Main Event</div>
+      <div class="foryou-name">UFC 313: Pereira vs Ankalaev</div>
+      <div class="foryou-meta">Mar 8, 2026 &middot; Las Vegas, NV</div>
+      <div class="foryou-fights">
+        <span class="foryou-fight">Pereira vs Ankalaev</span>
+        <span class="foryou-fight">Burns vs Brady</span>
+      </div>
+    </div>
+    <div class="foryou-card">
+      <div class="foryou-tag">Title Fight</div>
+      <div class="foryou-name">UFC 314: Makhachev vs Oliveira 2</div>
+      <div class="foryou-meta">Apr 12, 2026 &middot; Miami, FL</div>
+      <div class="foryou-fights">
+        <span class="foryou-fight">Makhachev vs Oliveira</span>
+        <span class="foryou-fight">Volkanovski vs Lopes</span>
+      </div>
+    </div>
+    <div class="foryou-card">
+      <div class="foryou-tag">Trending</div>
+      <div class="foryou-name">UFC Fight Night: Allen vs Dvalishvili</div>
+      <div class="foryou-meta">Mar 22, 2026 &middot; London, UK</div>
+      <div class="foryou-fights">
+        <span class="foryou-fight">Allen vs Dvalishvili</span>
+        <span class="foryou-fight">Aspinall vs Pavlovich</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upcoming section -->
+<div class="section-divider"><h3>Upcoming</h3></div>
+
+<div class="event-list">
+  <div class="event-card numbered">
+    <div class="event-num"><span class="hash">#</span>314</div>
+    <div class="event-info">
+      <div class="event-name">UFC 314: Makhachev vs Oliveira 2</div>
+      <div class="event-sub">Apr 12, 2026 &middot; <span>Miami, FL</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-amber">Upcoming</span>
+      <span class="fight-count">14 fights</span>
+    </div>
+  </div>
+
+  <div class="event-card">
+    <div class="event-num"></div>
+    <div class="event-info">
+      <div class="event-name">UFC Fight Night: Allen vs Dvalishvili</div>
+      <div class="event-sub">Mar 22, 2026 &middot; <span>London, UK</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-amber">Upcoming</span>
+      <span class="fight-count">12 fights</span>
+    </div>
+  </div>
+
+  <div class="event-card numbered">
+    <div class="event-num"><span class="hash">#</span>313</div>
+    <div class="event-info">
+      <div class="event-name">UFC 313: Pereira vs Ankalaev</div>
+      <div class="event-sub">Mar 8, 2026 &middot; <span>Las Vegas, NV</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-red">Vote</span>
+      <span class="fight-count">14 fights</span>
+    </div>
+  </div>
+</div>
+
+<!-- Recent section -->
+<div class="section-divider"><h3>Recent</h3></div>
+
+<div class="event-list">
+  <div class="event-card numbered">
+    <div class="event-num"><span class="hash">#</span>312</div>
+    <div class="event-info">
+      <div class="event-name">UFC 312: Du Plessis vs Strickland 2</div>
+      <div class="event-sub">Feb 8, 2026 &middot; <span>Sydney, AU</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-green">Scored</span>
+      <span class="fight-count">14 fights</span>
+    </div>
+  </div>
+
+  <div class="event-card">
+    <div class="event-num"></div>
+    <div class="event-info">
+      <div class="event-name">UFC Fight Night: Moreno vs Albazi</div>
+      <div class="event-sub">Feb 1, 2026 &middot; <span>Mexico City, MX</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-green">Scored</span>
+      <span class="fight-count">12 fights</span>
+    </div>
+  </div>
+
+  <div class="event-card numbered">
+    <div class="event-num"><span class="hash">#</span>311</div>
+    <div class="event-info">
+      <div class="event-name">UFC 311: Makhachev vs Tsarukyan 2</div>
+      <div class="event-sub">Jan 18, 2026 &middot; <span>Los Angeles, CA</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-green">Scored</span>
+      <span class="fight-count">14 fights</span>
+    </div>
+  </div>
+
+  <div class="event-card">
+    <div class="event-num"></div>
+    <div class="event-info">
+      <div class="event-name">UFC Fight Night: Yan vs Figueiredo</div>
+      <div class="event-sub">Jan 11, 2026 &middot; <span>Las Vegas, NV</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-green">Scored</span>
+      <span class="fight-count">12 fights</span>
+    </div>
+  </div>
+
+  <div class="event-card numbered">
+    <div class="event-num"><span class="hash">#</span>310</div>
+    <div class="event-info">
+      <div class="event-name">UFC 310: Pantoja vs Asakura</div>
+      <div class="event-sub">Dec 7, 2025 &middot; <span>Las Vegas, NV</span></div>
+    </div>
+    <div class="event-right">
+      <span class="badge badge-green">Scored</span>
+      <span class="fight-count">14 fights</span>
+    </div>
+  </div>
+</div>
+
+<button class="load-more">Load More Events</button>
+
+<!-- Swipe hint -->
+<div class="swipe-hint">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  Swipe right for fight cards
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a class="nav-item active" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+    <span>Events</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Fighters</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
+    <span>Analytics</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+    <span>Scores</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Profile</span>
+  </a>
+</nav>
+
+</body>
+</html>

@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Judge Directory</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --success: #34d399;
+    --danger: #fb7185;
+    --amber: #f59e0b;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 350px; height: 350px;
+    background: #818cf8;
+    top: -80px; right: -60px;
+  }
+  body::after {
+    width: 300px; height: 300px;
+    background: #c084fc;
+    bottom: -50px; left: -80px;
+  }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .top-bar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .top-bar-icon {
+    width: 36px; height: 36px;
+    background: var(--accent-gradient);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 9px;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  .top-bar-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+  }
+  .top-bar-profile {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    color: var(--text-secondary);
+  }
+  .top-bar-profile:hover {
+    border-color: var(--border-glass-hover);
+  }
+  .top-bar-profile svg {
+    width: 18px; height: 18px;
+  }
+
+  /* ─── DESKTOP NAV (hidden on mobile) ─── */
+  .desktop-nav {
+    display: none;
+  }
+
+  /* ─── PAGE WRAPPER ─── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 16px 100px;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    padding: 28px 0 20px;
+  }
+  .hero-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    line-height: 1.15;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+  .hero-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ─── SEARCH BAR ─── */
+  .search-bar {
+    position: relative;
+    margin-bottom: 16px;
+  }
+  .search-bar input {
+    width: 100%;
+    padding: 12px 16px 12px 44px;
+    border-radius: 14px;
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .search-bar input::placeholder {
+    color: var(--text-muted);
+  }
+  .search-bar input:focus {
+    border-color: rgba(129,140,248,0.4);
+  }
+  .search-bar-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+  .search-bar-icon svg {
+    width: 18px; height: 18px;
+  }
+
+  /* ─── SORT PILLS ─── */
+  .sort-pills {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 0 20px;
+  }
+  .sort-pills::-webkit-scrollbar { display: none; }
+  .sort-pill {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-glass);
+    color: var(--text-secondary);
+    user-select: none;
+    white-space: nowrap;
+  }
+  .sort-pill:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+    color: var(--text-primary);
+  }
+  .sort-pill.active {
+    background: rgba(129,140,248,0.12);
+    border-color: rgba(129,140,248,0.3);
+    color: var(--text-primary);
+  }
+
+  /* ─── JUDGE CARDS (Mobile) ─── */
+  .judge-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .judge-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .judge-card:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+  }
+  .judge-card-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .judge-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .judge-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+    line-height: 1.3;
+  }
+  .judge-card-date {
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .judge-card-stats {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .stat-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .stat-chip.outlier-high {
+    background: rgba(245,158,11,0.12);
+    color: var(--amber);
+  }
+  .stat-chip.outlier-danger {
+    background: rgba(251,113,133,0.12);
+    color: var(--danger);
+  }
+  .judge-card-chevron {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  .judge-card:hover .judge-card-chevron {
+    color: var(--text-secondary);
+  }
+  .judge-card-chevron svg {
+    width: 18px; height: 18px;
+  }
+
+  /* ─── DESKTOP TABLE (hidden on mobile) ─── */
+  .judge-table-wrapper {
+    display: none;
+  }
+  .judge-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-bottom: 24px;
+  }
+  .judge-table thead th {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-glass);
+    cursor: pointer;
+    user-select: none;
+    transition: color 0.2s;
+    white-space: nowrap;
+  }
+  .judge-table thead th:hover {
+    color: var(--text-secondary);
+  }
+  .judge-table thead th.sorted {
+    color: var(--accent-1);
+  }
+  .judge-table thead th .sort-arrow {
+    display: inline-block;
+    margin-left: 4px;
+    font-size: 10px;
+    opacity: 0.5;
+  }
+  .judge-table thead th.sorted .sort-arrow {
+    opacity: 1;
+  }
+  .judge-table tbody tr {
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .judge-table tbody tr:hover {
+    background: var(--bg-glass-hover);
+  }
+  .judge-table tbody td {
+    padding: 14px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    white-space: nowrap;
+  }
+  .judge-table tbody td.judge-name-cell {
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .judge-table tbody td.stat-cell {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+  .judge-table tbody td.date-cell {
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+  .judge-table tbody td .outlier-high {
+    color: var(--amber);
+    font-weight: 600;
+  }
+  .judge-table tbody td .outlier-danger {
+    color: var(--danger);
+    font-weight: 600;
+  }
+  .judge-table tbody td .chevron-cell {
+    color: var(--text-muted);
+  }
+  .judge-table tbody tr:hover td .chevron-cell {
+    color: var(--text-secondary);
+  }
+
+  /* ─── RESULTS COUNT ─── */
+  .results-count {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .results-count strong {
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  /* ─── LOAD MORE ─── */
+  .load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .load-more:hover {
+    border-color: rgba(255,255,255,0.2);
+    color: var(--text-primary);
+    background: var(--bg-glass);
+  }
+  .load-more:active {
+    transform: scale(0.98);
+  }
+  .load-more svg {
+    width: 16px; height: 16px;
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    padding: 4px 12px;
+    text-decoration: none;
+  }
+  .tab-item svg {
+    width: 22px; height: 22px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  .tab-item span {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  .tab-item.active svg {
+    color: var(--accent-1);
+  }
+  .tab-item.active span {
+    color: var(--accent-1);
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 16px;
+    right: 12px;
+    backdrop-filter: blur(16px);
+    padding: 8px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    z-index: 100;
+    border: 1px solid var(--border-glass);
+    background: rgba(5,5,16,0.8);
+  }
+  .concept-label strong {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── DESKTOP ENHANCEMENTS ─── */
+  @media (min-width: 1024px) {
+    .bottom-bar { display: none; }
+    .page { padding-bottom: 40px; max-width: 900px; }
+
+    .top-bar {
+      padding: 12px 40px;
+    }
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .desktop-nav-item {
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .desktop-nav-item:hover {
+      color: var(--text-primary);
+      background: var(--bg-glass);
+    }
+    .desktop-nav-item.active {
+      color: var(--accent-1);
+      background: rgba(129,140,248,0.1);
+    }
+
+    .hero { padding: 40px 0 28px; }
+    .hero-title { font-size: 34px; }
+    .hero-subtitle { font-size: 15px; }
+
+    /* Hide mobile cards, show table */
+    .judge-list { display: none; }
+    .judge-table-wrapper {
+      display: block;
+      background: var(--bg-glass);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border-glass);
+      border-radius: 16px;
+      overflow: hidden;
+      margin-bottom: 24px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── TOP BAR ─── -->
+<header class="top-bar">
+  <a href="#" class="top-bar-logo">
+    <div class="top-bar-icon">DNA</div>
+    <div class="top-bar-title">Judge Directory</div>
+  </a>
+
+  <nav class="desktop-nav">
+    <a href="#" class="desktop-nav-item">Events</a>
+    <a href="#" class="desktop-nav-item">Fighters</a>
+    <a href="#" class="desktop-nav-item">Analytics</a>
+    <a href="#" class="desktop-nav-item active">Scores</a>
+    <a href="#" class="desktop-nav-item">Profile</a>
+  </nav>
+
+  <button class="top-bar-profile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  </button>
+</header>
+
+<!-- ─── PAGE CONTENT ─── -->
+<main class="page">
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1 class="hero-title">Judge Directory</h1>
+    <p class="hero-subtitle">All UFC judges ranked by activity and accuracy</p>
+  </section>
+
+  <!-- SEARCH BAR -->
+  <div class="search-bar">
+    <div class="search-bar-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+    </div>
+    <input type="text" placeholder="Search judges...">
+  </div>
+
+  <!-- SORT PILLS -->
+  <div class="sort-pills">
+    <div class="sort-pill active">Most Active</div>
+    <div class="sort-pill">Highest Outlier %</div>
+    <div class="sort-pill">Most 10-8s</div>
+    <div class="sort-pill">Last Active</div>
+  </div>
+
+  <!-- RESULTS COUNT -->
+  <div class="results-count">Showing <strong>8</strong> of <strong>142</strong> judges</div>
+
+  <!-- ─── MOBILE: JUDGE CARDS ─── -->
+  <div class="judge-list">
+
+    <!-- Sal D'Amato -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Sal D'Amato</span>
+          <span class="judge-card-date">Mar 2026</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">1,247 rds</span>
+          <span class="stat-chip">4.2% outlier</span>
+          <span class="stat-chip">2.1% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Chris Lee -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Chris Lee</span>
+          <span class="judge-card-date">Mar 2026</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">1,189 rds</span>
+          <span class="stat-chip">5.8% outlier</span>
+          <span class="stat-chip">1.8% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Derek Cleary -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Derek Cleary</span>
+          <span class="judge-card-date">Feb 2026</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">1,102 rds</span>
+          <span class="stat-chip">3.1% outlier</span>
+          <span class="stat-chip">2.4% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Mike Bell -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Mike Bell</span>
+          <span class="judge-card-date">Mar 2026</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">987 rds</span>
+          <span class="stat-chip">6.2% outlier</span>
+          <span class="stat-chip">1.5% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Junichiro Kamijo -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Junichiro Kamijo</span>
+          <span class="judge-card-date">Jan 2026</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">876 rds</span>
+          <span class="stat-chip outlier-high">7.1% outlier</span>
+          <span class="stat-chip">3.2% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Adalaide Byrd -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Adalaide Byrd</span>
+          <span class="judge-card-date">Dec 2025</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">834 rds</span>
+          <span class="stat-chip outlier-danger">9.4% outlier</span>
+          <span class="stat-chip">1.2% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Mark Henry -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Mark Henry</span>
+          <span class="judge-card-date">Feb 2026</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">756 rds</span>
+          <span class="stat-chip">4.8% outlier</span>
+          <span class="stat-chip">2.8% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- Tony Weeks -->
+    <div class="judge-card glass">
+      <div class="judge-card-body">
+        <div class="judge-card-header">
+          <span class="judge-card-name">Tony Weeks</span>
+          <span class="judge-card-date">Jan 2026</span>
+        </div>
+        <div class="judge-card-stats">
+          <span class="stat-chip">698 rds</span>
+          <span class="stat-chip">5.1% outlier</span>
+          <span class="stat-chip">1.9% 10-8</span>
+        </div>
+      </div>
+      <div class="judge-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ─── DESKTOP: JUDGE TABLE ─── -->
+  <div class="judge-table-wrapper">
+    <table class="judge-table">
+      <thead>
+        <tr>
+          <th class="sorted">Judge <span class="sort-arrow">&#9660;</span></th>
+          <th>Rounds <span class="sort-arrow">&#9660;</span></th>
+          <th>Outlier % <span class="sort-arrow">&#9660;</span></th>
+          <th>10-8 % <span class="sort-arrow">&#9660;</span></th>
+          <th>Last Active <span class="sort-arrow">&#9660;</span></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="judge-name-cell">Sal D'Amato</td>
+          <td class="stat-cell">1,247</td>
+          <td class="stat-cell">4.2%</td>
+          <td class="stat-cell">2.1%</td>
+          <td class="date-cell">Mar 2026</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+        <tr>
+          <td class="judge-name-cell">Chris Lee</td>
+          <td class="stat-cell">1,189</td>
+          <td class="stat-cell">5.8%</td>
+          <td class="stat-cell">1.8%</td>
+          <td class="date-cell">Mar 2026</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+        <tr>
+          <td class="judge-name-cell">Derek Cleary</td>
+          <td class="stat-cell">1,102</td>
+          <td class="stat-cell">3.1%</td>
+          <td class="stat-cell">2.4%</td>
+          <td class="date-cell">Feb 2026</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+        <tr>
+          <td class="judge-name-cell">Mike Bell</td>
+          <td class="stat-cell">987</td>
+          <td class="stat-cell">6.2%</td>
+          <td class="stat-cell">1.5%</td>
+          <td class="date-cell">Mar 2026</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+        <tr>
+          <td class="judge-name-cell">Junichiro Kamijo</td>
+          <td class="stat-cell">876</td>
+          <td class="stat-cell"><span class="outlier-high">7.1%</span></td>
+          <td class="stat-cell">3.2%</td>
+          <td class="date-cell">Jan 2026</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+        <tr>
+          <td class="judge-name-cell">Adalaide Byrd</td>
+          <td class="stat-cell">834</td>
+          <td class="stat-cell"><span class="outlier-danger">9.4%</span></td>
+          <td class="stat-cell">1.2%</td>
+          <td class="date-cell">Dec 2025</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+        <tr>
+          <td class="judge-name-cell">Mark Henry</td>
+          <td class="stat-cell">756</td>
+          <td class="stat-cell">4.8%</td>
+          <td class="stat-cell">2.8%</td>
+          <td class="date-cell">Feb 2026</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+        <tr>
+          <td class="judge-name-cell">Tony Weeks</td>
+          <td class="stat-cell">698</td>
+          <td class="stat-cell">5.1%</td>
+          <td class="stat-cell">1.9%</td>
+          <td class="date-cell">Jan 2026</td>
+          <td><span class="chevron-cell"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- LOAD MORE -->
+  <button class="load-more">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="7 13 12 18 17 13"/>
+      <polyline points="7 6 12 11 17 6"/>
+    </svg>
+    Load More Judges
+  </button>
+
+</main>
+
+<!-- ─── BOTTOM TAB BAR ─── -->
+<nav class="bottom-bar">
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span>Events</span>
+  </a>
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    <span>Fighters</span>
+  </a>
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    <span>Analytics</span>
+  </a>
+  <a href="#" class="tab-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <span>Scores</span>
+  </a>
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+    <span>Profile</span>
+  </a>
+</nav>
+
+<!-- ─── CONCEPT LABEL ─── -->
+<div class="concept-label">
+  <strong>B — Midnight Glass</strong> &middot; Judges
+</div>
+
+<script>
+  // Sort pill toggle
+  document.querySelectorAll('.sort-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      document.querySelectorAll('.sort-pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+    });
+  });
+
+  // Search filtering (visual demo)
+  const searchInput = document.querySelector('.search-bar input');
+  searchInput.addEventListener('input', (e) => {
+    const query = e.target.value.toLowerCase();
+    // Mobile cards
+    document.querySelectorAll('.judge-card').forEach(card => {
+      const name = card.querySelector('.judge-card-name').textContent.toLowerCase();
+      card.style.display = name.includes(query) ? '' : 'none';
+    });
+    // Desktop table rows
+    document.querySelectorAll('.judge-table tbody tr').forEach(row => {
+      const name = row.querySelector('.judge-name-cell').textContent.toLowerCase();
+      row.style.display = name.includes(query) ? '' : 'none';
+    });
+  });
+</script>
+
+</body>
+</html>

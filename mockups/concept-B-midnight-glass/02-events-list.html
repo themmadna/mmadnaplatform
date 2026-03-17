@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Events List</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --success: #34d399;
+    --danger: #fb7185;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 350px; height: 350px;
+    background: #818cf8;
+    top: -80px; right: -60px;
+  }
+  body::after {
+    width: 300px; height: 300px;
+    background: #c084fc;
+    bottom: -50px; left: -80px;
+  }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .top-bar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .top-bar-icon {
+    width: 36px; height: 36px;
+    background: var(--accent-gradient);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 9px;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  .top-bar-title {
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--text-primary);
+  }
+  .top-bar-profile {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+    color: var(--text-secondary);
+  }
+  .top-bar-profile:hover {
+    border-color: var(--border-glass-hover);
+  }
+  .top-bar-profile svg {
+    width: 18px; height: 18px;
+  }
+
+  /* ─── DESKTOP NAV (hidden on mobile) ─── */
+  .desktop-nav {
+    display: none;
+  }
+
+  /* ─── PAGE WRAPPER ─── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 0 16px 100px;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    padding: 28px 0 20px;
+  }
+  .hero-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    line-height: 1.15;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+  .hero-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* ─── YEAR TABS ─── */
+  .year-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 0 20px;
+  }
+  .year-tabs::-webkit-scrollbar { display: none; }
+  .year-tab {
+    flex-shrink: 0;
+    padding: 8px 18px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid var(--border-glass);
+    background: var(--bg-glass);
+    color: var(--text-secondary);
+    user-select: none;
+  }
+  .year-tab:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+    color: var(--text-primary);
+  }
+  .year-tab.active {
+    background: rgba(129,140,248,0.12);
+    border-color: rgba(129,140,248,0.3);
+    color: var(--text-primary);
+  }
+  .year-tab.for-you {
+    background: var(--accent-gradient);
+    border-color: transparent;
+    color: #fff;
+  }
+  .year-tab.for-you:hover {
+    opacity: 0.9;
+  }
+
+  /* ─── FOR YOU SECTION ─── */
+  .for-you-section {
+    margin-bottom: 24px;
+  }
+  .for-you-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .for-you-label {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+  .for-you-see-all {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent-1);
+    cursor: pointer;
+  }
+  .for-you-scroll {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 4px;
+  }
+  .for-you-scroll::-webkit-scrollbar { display: none; }
+  .for-you-card {
+    flex-shrink: 0;
+    width: 220px;
+    padding: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+  .for-you-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%;
+    height: 3px;
+    background: var(--accent-gradient);
+  }
+  .for-you-card:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+  }
+  .for-you-card .rec-tag {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    background: rgba(129,140,248,0.15);
+    color: var(--accent-1);
+    margin-bottom: 10px;
+  }
+  .for-you-card .rec-name {
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+  }
+  .for-you-card .rec-detail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  /* ─── SECTION DIVIDER ─── */
+  .section-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .section-divider-label {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .section-divider-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border-glass);
+  }
+
+  /* ─── EVENT CARDS ─── */
+  .event-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .event-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .event-card:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+  }
+  .event-card.main-card {
+    border-left: 3px solid transparent;
+    border-image: var(--accent-gradient) 1;
+    border-image-slice: 1;
+    border-left-width: 3px;
+    border-top: 1px solid var(--border-glass);
+    border-right: 1px solid var(--border-glass);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .event-card-body {
+    flex: 1;
+    min-width: 0;
+  }
+  .event-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    margin-bottom: 4px;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .event-card-meta {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    margin-bottom: 8px;
+  }
+  .event-card-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .event-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-secondary);
+  }
+  .event-badge svg {
+    width: 12px; height: 12px;
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .status-badge.scored {
+    background: rgba(52,211,153,0.12);
+    color: var(--success);
+  }
+  .status-badge.vote {
+    background: rgba(129,140,248,0.12);
+    color: var(--accent-1);
+  }
+  .status-badge.upcoming {
+    background: rgba(192,132,252,0.12);
+    color: var(--accent-2);
+  }
+  .status-badge svg {
+    width: 12px; height: 12px;
+  }
+  .event-card-chevron {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  .event-card:hover .event-card-chevron {
+    color: var(--text-secondary);
+  }
+  .event-card-chevron svg {
+    width: 18px; height: 18px;
+  }
+
+  /* ─── LOAD MORE ─── */
+  .load-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .load-more:hover {
+    border-color: rgba(255,255,255,0.2);
+    color: var(--text-primary);
+    background: var(--bg-glass);
+  }
+  .load-more:active {
+    transform: scale(0.98);
+  }
+  .load-more svg {
+    width: 16px; height: 16px;
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    padding: 4px 12px;
+    text-decoration: none;
+  }
+  .tab-item svg {
+    width: 22px; height: 22px;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  .tab-item span {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color 0.2s;
+  }
+  .tab-item.active svg {
+    color: var(--accent-1);
+  }
+  .tab-item.active span {
+    color: var(--accent-1);
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 16px;
+    right: 12px;
+    backdrop-filter: blur(16px);
+    padding: 8px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    z-index: 100;
+    border: 1px solid var(--border-glass);
+    background: rgba(5,5,16,0.8);
+  }
+  .concept-label strong {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── DESKTOP ENHANCEMENTS ─── */
+  @media (min-width: 1024px) {
+    .bottom-bar { display: none; }
+    .page { padding-bottom: 40px; max-width: 700px; }
+
+    .top-bar {
+      padding: 12px 40px;
+    }
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .desktop-nav-item {
+      padding: 8px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .desktop-nav-item:hover {
+      color: var(--text-primary);
+      background: var(--bg-glass);
+    }
+    .desktop-nav-item.active {
+      color: var(--accent-1);
+      background: rgba(129,140,248,0.1);
+    }
+
+    .hero { padding: 40px 0 28px; }
+    .hero-title { font-size: 34px; }
+    .hero-subtitle { font-size: 15px; }
+
+    .for-you-card { width: 250px; }
+
+    .event-card { padding: 18px 20px; }
+    .event-card-name { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ─── TOP BAR ─── -->
+<header class="top-bar">
+  <a href="#" class="top-bar-logo">
+    <div class="top-bar-icon">DNA</div>
+    <div class="top-bar-title">MMA DNA</div>
+  </a>
+
+  <nav class="desktop-nav">
+    <a href="#" class="desktop-nav-item active">Events</a>
+    <a href="#" class="desktop-nav-item">Fighters</a>
+    <a href="#" class="desktop-nav-item">Analytics</a>
+    <a href="#" class="desktop-nav-item">Scores</a>
+    <a href="#" class="desktop-nav-item">Profile</a>
+  </nav>
+
+  <button class="top-bar-profile">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+  </button>
+</header>
+
+<!-- ─── PAGE CONTENT ─── -->
+<main class="page">
+
+  <!-- HERO -->
+  <section class="hero">
+    <h1 class="hero-title">Upcoming Events</h1>
+    <p class="hero-subtitle">Score fights live or revisit past events</p>
+  </section>
+
+  <!-- YEAR TABS -->
+  <div class="year-tabs">
+    <div class="year-tab for-you" onclick="showForYou(true)">For You</div>
+    <div class="year-tab active" onclick="switchYear(this, 2026)">2026</div>
+    <div class="year-tab" onclick="switchYear(this, 2025)">2025</div>
+    <div class="year-tab" onclick="switchYear(this, 2024)">2024</div>
+    <div class="year-tab" onclick="switchYear(this, 2023)">2023</div>
+    <div class="year-tab" onclick="switchYear(this, 2022)">2022</div>
+  </div>
+
+  <!-- FOR YOU SECTION -->
+  <section class="for-you-section" id="forYouSection">
+    <div class="for-you-header">
+      <span class="for-you-label">Recommended for You</span>
+      <span class="for-you-see-all">See all</span>
+    </div>
+    <div class="for-you-scroll">
+      <div class="for-you-card glass">
+        <span class="rec-tag">Based on your scores</span>
+        <div class="rec-name">UFC 313: Pereira vs Ankalaev</div>
+        <div class="rec-detail">March 22, 2026 &middot; Main card has fighters you follow</div>
+      </div>
+      <div class="for-you-card glass">
+        <span class="rec-tag">Trending</span>
+        <div class="rec-name">UFC Fight Night: Allen vs Costa</div>
+        <div class="rec-detail">March 15, 2026 &middot; High community activity</div>
+      </div>
+      <div class="for-you-card glass">
+        <span class="rec-tag">Unscored</span>
+        <div class="rec-name">UFC 312: du Plessis vs Strickland 2</div>
+        <div class="rec-detail">Feb 8, 2026 &middot; You watched but didn't score</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- UPCOMING EVENTS -->
+  <div class="section-divider">
+    <span class="section-divider-label">Upcoming</span>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="event-stack">
+    <!-- UFC 313 — main card highlight -->
+    <div class="event-card glass main-card">
+      <div class="event-card-body">
+        <div class="event-card-name">UFC 313: Pereira vs Ankalaev</div>
+        <div class="event-card-meta">March 22, 2026 &middot; T-Mobile Arena, Las Vegas</div>
+        <div class="event-card-footer">
+          <span class="event-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+            14 fights
+          </span>
+          <span class="status-badge upcoming">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            5 days
+          </span>
+        </div>
+      </div>
+      <div class="event-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- RECENT EVENTS -->
+  <div class="section-divider">
+    <span class="section-divider-label">Recent</span>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="event-stack">
+    <!-- UFC Fight Night — scored -->
+    <div class="event-card glass">
+      <div class="event-card-body">
+        <div class="event-card-name">UFC Fight Night: Allen vs Costa</div>
+        <div class="event-card-meta">March 15, 2026 &middot; UFC APEX, Las Vegas</div>
+        <div class="event-card-footer">
+          <span class="event-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+            12 fights
+          </span>
+          <span class="status-badge scored">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Scored
+          </span>
+        </div>
+      </div>
+      <div class="event-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- UFC Fight Night — vote available -->
+    <div class="event-card glass">
+      <div class="event-card-body">
+        <div class="event-card-name">UFC Fight Night: Moreno vs Albazi</div>
+        <div class="event-card-meta">March 8, 2026 &middot; UFC APEX, Las Vegas</div>
+        <div class="event-card-footer">
+          <span class="event-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+            11 fights
+          </span>
+          <span class="status-badge vote">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Vote
+          </span>
+        </div>
+      </div>
+      <div class="event-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- UFC 312 — main card highlight, scored -->
+    <div class="event-card glass main-card">
+      <div class="event-card-body">
+        <div class="event-card-name">UFC 312: du Plessis vs Strickland 2</div>
+        <div class="event-card-meta">Feb 8, 2026 &middot; Qudos Bank Arena, Sydney</div>
+        <div class="event-card-footer">
+          <span class="event-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+            13 fights
+          </span>
+          <span class="status-badge scored">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Scored
+          </span>
+        </div>
+      </div>
+      <div class="event-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- UFC Fight Night — vote -->
+    <div class="event-card glass">
+      <div class="event-card-body">
+        <div class="event-card-name">UFC Fight Night: Rozenstruik vs Gaziev</div>
+        <div class="event-card-meta">Feb 1, 2026 &middot; UFC APEX, Las Vegas</div>
+        <div class="event-card-footer">
+          <span class="event-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+            12 fights
+          </span>
+          <span class="status-badge vote">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Vote
+          </span>
+        </div>
+      </div>
+      <div class="event-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <!-- UFC 311 — main card, scored -->
+    <div class="event-card glass main-card">
+      <div class="event-card-body">
+        <div class="event-card-name">UFC 311: Makhachev vs Tsarukyan 2</div>
+        <div class="event-card-meta">Jan 18, 2026 &middot; Intuit Dome, Inglewood</div>
+        <div class="event-card-footer">
+          <span class="event-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/></svg>
+            14 fights
+          </span>
+          <span class="status-badge scored">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Scored
+          </span>
+        </div>
+      </div>
+      <div class="event-card-chevron">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOAD MORE -->
+  <button class="load-more">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="7 13 12 18 17 13"/>
+      <polyline points="7 6 12 11 17 6"/>
+    </svg>
+    Load More Events
+  </button>
+
+</main>
+
+<!-- ─── BOTTOM TAB BAR ─── -->
+<nav class="bottom-bar">
+  <a href="#" class="tab-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    <span>Events</span>
+  </a>
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+    <span>Fighters</span>
+  </a>
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    <span>Analytics</span>
+  </a>
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <span>Scores</span>
+  </a>
+  <a href="#" class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+    <span>Profile</span>
+  </a>
+</nav>
+
+<!-- ─── CONCEPT LABEL ─── -->
+<div class="concept-label">
+  <strong>B — Midnight Glass</strong> &middot; Events
+</div>
+
+<script>
+  function switchYear(el, year) {
+    document.querySelectorAll('.year-tab').forEach(t => {
+      t.classList.remove('active');
+      if (t.classList.contains('for-you')) return;
+    });
+    el.classList.add('active');
+    // In a real app this would filter events by year
+  }
+
+  function showForYou(show) {
+    const section = document.getElementById('forYouSection');
+    section.style.display = show ? 'block' : 'none';
+  }
+</script>
+
+</body>
+</html>

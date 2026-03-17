@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Judge Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --success: #34d399;
+    --danger: #fb7185;
+    --teal: #2dd4bf;
+    --amber: #f59e0b;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 350px; height: 350px;
+    background: #818cf8;
+    top: -80px; right: -60px;
+  }
+  body::after {
+    width: 300px; height: 300px;
+    background: #c084fc;
+    bottom: -50px; left: -80px;
+  }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── LAYOUT ─── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding-bottom: calc(80px + var(--safe-bottom));
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .top-bar .back-arrow {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .top-bar .back-arrow svg {
+    width: 18px; height: 18px;
+    stroke: var(--text-primary);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .top-bar .title {
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    text-align: center;
+    padding: 10px 16px 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── SECTION SPACING ─── */
+  .section {
+    margin: 16px;
+    border-radius: 18px;
+    padding: 20px 16px;
+  }
+
+  /* ─── JUDGE HEADER ─── */
+  .judge-header {
+    text-align: center;
+  }
+  .judge-name {
+    font-size: 1.75rem;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+  .judge-stats-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px 16px;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    margin-bottom: 14px;
+  }
+  .judge-stats-row span {
+    white-space: nowrap;
+  }
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 14px;
+    border-radius: 100px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: rgba(52,211,153,0.12);
+    color: var(--success);
+    border: 1px solid rgba(52,211,153,0.2);
+  }
+  .status-badge .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+
+  /* ─── OVERVIEW STATS GRID ─── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (min-width: 600px) {
+    .stats-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+  .stat-cell {
+    border-radius: 14px;
+    padding: 16px 14px;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .stat-indicator {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .stat-indicator.green { background: var(--success); }
+  .stat-indicator.amber { background: var(--amber); }
+
+  /* ─── SECTION TITLE ─── */
+  .section-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-primary);
+  }
+
+  /* ─── BIAS BARS ─── */
+  .bias-row {
+    margin-bottom: 18px;
+  }
+  .bias-row:last-child {
+    margin-bottom: 0;
+  }
+  .bias-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+  .bias-labels .left-label { color: var(--accent-1); }
+  .bias-labels .right-label { color: var(--teal); }
+  .bias-bar-track {
+    height: 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.04);
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+  .bias-bar-left {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-1), rgba(129,140,248,0.5));
+    border-radius: 6px 0 0 6px;
+    transition: width 0.3s ease;
+  }
+  .bias-bar-right {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(45,212,191,0.5), var(--teal));
+    border-radius: 0 6px 6px 0;
+    transition: width 0.3s ease;
+  }
+  .bias-bar-center {
+    position: absolute;
+    left: 50%;
+    top: -2px;
+    bottom: -2px;
+    width: 2px;
+    background: rgba(255,255,255,0.15);
+    transform: translateX(-50%);
+  }
+  .bias-pct {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  /* ─── GENDER COMPARISON ─── */
+  .gender-grid {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0;
+    align-items: start;
+  }
+  .gender-col {
+    text-align: center;
+  }
+  .gender-col-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--text-primary);
+  }
+  .gender-stat {
+    margin-bottom: 14px;
+  }
+  .gender-stat-value {
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+  .gender-stat-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .gender-divider {
+    width: 1px;
+    background: var(--border-glass);
+    align-self: stretch;
+    margin: 0 12px;
+  }
+
+  /* ─── INELIGIBILITY WARNING ─── */
+  .warning-card {
+    border-radius: 18px;
+    padding: 16px;
+    background: rgba(245,158,11,0.06);
+    border: 1px solid rgba(245,158,11,0.18);
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .warning-icon {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 10px;
+    background: rgba(245,158,11,0.12);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .warning-icon svg {
+    width: 18px; height: 18px;
+    stroke: var(--amber);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .warning-text {
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: var(--amber);
+  }
+
+  /* ─── RECENT SCORECARDS LIST ─── */
+  .scorecard-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border-glass);
+    gap: 10px;
+  }
+  .scorecard-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+  .scorecard-row:first-child {
+    padding-top: 0;
+  }
+  .outlier-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .outlier-dot.red { background: var(--danger); }
+  .outlier-dot.none { background: transparent; }
+  .scorecard-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .scorecard-fight {
+    font-size: 0.82rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .scorecard-date {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .scorecard-score {
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .scorecard-outlier-tag {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: var(--danger);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  /* ─── COMPARE BUTTON ─── */
+  .compare-btn {
+    display: block;
+    width: calc(100% - 32px);
+    margin: 20px 16px 16px;
+    padding: 14px;
+    border: none;
+    border-radius: 14px;
+    background: var(--accent-gradient);
+    color: #fff;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-align: center;
+    letter-spacing: 0.3px;
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+  }
+  .bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px 0;
+    min-width: 56px;
+  }
+  .bottom-tab svg {
+    width: 22px; height: 22px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .bottom-tab span {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .bottom-tab.active svg {
+    stroke: url(#tab-grad);
+  }
+  .bottom-tab.active span {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG gradient definition for bottom tab icons -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="tab-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="page">
+
+  <!-- ─── TOP BAR ─── -->
+  <div class="top-bar">
+    <div class="back-arrow">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div class="title">Judge Profile</div>
+  </div>
+
+  <!-- ─── CONCEPT LABEL ─── -->
+  <div class="concept-label">B — Midnight Glass · Judge Profile</div>
+
+  <!-- ═══════ 1. JUDGE HEADER CARD ═══════ -->
+  <div class="section glass judge-header">
+    <div class="judge-name">Sal D'Amato</div>
+    <div class="judge-stats-row">
+      <span>1,247 Rounds Scored</span>
+      <span>·</span>
+      <span>Active since 2008</span>
+      <span>·</span>
+      <span>Last: UFC 313</span>
+    </div>
+    <div class="status-badge">
+      <span class="dot"></span>
+      Active
+    </div>
+  </div>
+
+  <!-- ═══════ 2. OVERVIEW STATS GRID ═══════ -->
+  <div class="section" style="padding:0 16px;">
+    <div class="stats-grid">
+      <div class="stat-cell glass">
+        <div class="stat-value">4.2%<span class="stat-indicator green"></span></div>
+        <div class="stat-label">Outlier Rate</div>
+      </div>
+      <div class="stat-cell glass">
+        <div class="stat-value">2.1%</div>
+        <div class="stat-label">10-8 Usage</div>
+      </div>
+      <div class="stat-cell glass">
+        <div class="stat-value">87%</div>
+        <div class="stat-label">Agreement Rate</div>
+      </div>
+      <div class="stat-cell glass">
+        <div class="stat-value">156</div>
+        <div class="stat-label">Total Events</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 3. BIAS BARS — SCORING TENDENCIES ═══════ -->
+  <div class="section glass">
+    <div class="section-title">Scoring Tendencies</div>
+
+    <!-- Striker vs Grappler -->
+    <div class="bias-row">
+      <div class="bias-labels">
+        <span class="left-label">Striker</span>
+        <span class="right-label">Grappler</span>
+      </div>
+      <div class="bias-bar-track">
+        <div class="bias-bar-left" style="width:55%"></div>
+        <div class="bias-bar-right" style="width:45%"></div>
+        <div class="bias-bar-center"></div>
+      </div>
+      <div class="bias-pct"><span>55%</span><span>45%</span></div>
+    </div>
+
+    <!-- Aggressor vs Counter -->
+    <div class="bias-row">
+      <div class="bias-labels">
+        <span class="left-label">Aggressor</span>
+        <span class="right-label">Counter</span>
+      </div>
+      <div class="bias-bar-track">
+        <div class="bias-bar-left" style="width:50%"></div>
+        <div class="bias-bar-right" style="width:50%"></div>
+        <div class="bias-bar-center"></div>
+      </div>
+      <div class="bias-pct"><span>50%</span><span>50%</span></div>
+    </div>
+
+    <!-- Pressure vs Range -->
+    <div class="bias-row">
+      <div class="bias-labels">
+        <span class="left-label">Pressure</span>
+        <span class="right-label">Range</span>
+      </div>
+      <div class="bias-bar-track">
+        <div class="bias-bar-left" style="width:58%"></div>
+        <div class="bias-bar-right" style="width:42%"></div>
+        <div class="bias-bar-center"></div>
+      </div>
+      <div class="bias-pct"><span>58%</span><span>42%</span></div>
+    </div>
+  </div>
+
+  <!-- ═══════ 4. MEN'S vs WOMEN'S COMPARISON ═══════ -->
+  <div class="section glass">
+    <div class="section-title">Men's vs Women's Bouts</div>
+    <div class="gender-grid">
+      <!-- Men's column -->
+      <div class="gender-col">
+        <div class="gender-col-title">Men's</div>
+        <div class="gender-stat">
+          <div class="gender-stat-value">4.5%</div>
+          <div class="gender-stat-label">Outlier Rate</div>
+        </div>
+        <div class="gender-stat">
+          <div class="gender-stat-value">2.3%</div>
+          <div class="gender-stat-label">10-8 Usage</div>
+        </div>
+        <div class="gender-stat">
+          <div class="gender-stat-value">86%</div>
+          <div class="gender-stat-label">Agreement</div>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="gender-divider"></div>
+
+      <!-- Women's column -->
+      <div class="gender-col">
+        <div class="gender-col-title">Women's</div>
+        <div class="gender-stat">
+          <div class="gender-stat-value">3.1%</div>
+          <div class="gender-stat-label">Outlier Rate</div>
+        </div>
+        <div class="gender-stat">
+          <div class="gender-stat-value">1.4%</div>
+          <div class="gender-stat-label">10-8 Usage</div>
+        </div>
+        <div class="gender-stat">
+          <div class="gender-stat-value">91%</div>
+          <div class="gender-stat-label">Agreement</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 5. INELIGIBILITY WARNING ═══════ -->
+  <div style="margin:16px;">
+    <div class="warning-card">
+      <div class="warning-icon">
+        <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      </div>
+      <div class="warning-text">
+        This judge has not scored in 90+ days and may be ineligible for upcoming events.
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════ 6. RECENT SCORECARDS ═══════ -->
+  <div class="section glass">
+    <div class="section-title">Recent Scorecards</div>
+
+    <!-- Row 1 — outlier -->
+    <div class="scorecard-row">
+      <div class="outlier-dot red"></div>
+      <div class="scorecard-info">
+        <div class="scorecard-fight">Pereira vs Ankalaev</div>
+        <div class="scorecard-date">Jan 18, 2025 · UFC 313</div>
+      </div>
+      <div class="scorecard-score">48-47</div>
+      <div class="scorecard-outlier-tag">Outlier</div>
+    </div>
+
+    <!-- Row 2 — normal -->
+    <div class="scorecard-row">
+      <div class="outlier-dot none"></div>
+      <div class="scorecard-info">
+        <div class="scorecard-fight">Dvalishvili vs O'Malley</div>
+        <div class="scorecard-date">Jan 18, 2025 · UFC 313</div>
+      </div>
+      <div class="scorecard-score">49-46</div>
+    </div>
+
+    <!-- Row 3 — outlier -->
+    <div class="scorecard-row">
+      <div class="outlier-dot red"></div>
+      <div class="scorecard-info">
+        <div class="scorecard-fight">Moreno vs Pantoja</div>
+        <div class="scorecard-date">Dec 14, 2024 · UFC 310</div>
+      </div>
+      <div class="scorecard-score">29-28</div>
+      <div class="scorecard-outlier-tag">Outlier</div>
+    </div>
+
+    <!-- Row 4 — normal -->
+    <div class="scorecard-row">
+      <div class="outlier-dot none"></div>
+      <div class="scorecard-info">
+        <div class="scorecard-fight">Aspinall vs Blaydes</div>
+        <div class="scorecard-date">Dec 14, 2024 · UFC 310</div>
+      </div>
+      <div class="scorecard-score">30-27</div>
+    </div>
+  </div>
+
+  <!-- ═══════ 7. COMPARE BUTTON ═══════ -->
+  <button class="compare-btn">Compare with another judge</button>
+
+</div><!-- /.page -->
+
+<!-- ─── BOTTOM TAB BAR ─── -->
+<div class="bottom-bar">
+  <!-- Events -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Events</span>
+  </div>
+  <!-- Fighters -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Fighters</span>
+  </div>
+  <!-- Analytics -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Analytics</span>
+  </div>
+  <!-- Scores (active) -->
+  <div class="bottom-tab active">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>Scores</span>
+  </div>
+  <!-- Profile -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Profile</span>
+  </div>
+</div>
+
+</body>
+</html>

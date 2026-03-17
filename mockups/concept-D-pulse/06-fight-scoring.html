@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pulse — Fight Scoring</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .concept-label {
+    position: fixed; top: 8px; right: 8px;
+    font-size: 10px; color: var(--text-3);
+    font-family: 'Inter', sans-serif; z-index: 999;
+    background: rgba(14,14,18,0.8); padding: 3px 8px; border-radius: 4px;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* Story progress */
+  .story-progress {
+    display: flex; gap: 3px; padding: 8px 16px 0;
+    position: sticky; top: 0; z-index: 50; background: var(--bg);
+  }
+  .story-progress .bar { flex: 1; height: 2px; background: var(--text-3); border-radius: 2px; }
+  .story-progress .bar.active { background: var(--red); }
+  .story-progress .bar.done { background: var(--text-2); }
+
+  /* Top bar */
+  .top-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; position: sticky; top: 10px;
+    z-index: 50; background: var(--bg);
+  }
+  .back {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border-radius: 10px; color: var(--text);
+    font-size: 18px; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .top-bar .title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 18px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+
+  /* Fighter header */
+  .fighter-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin: 8px 16px;
+    padding: 16px;
+  }
+  .fighter-header .fighters {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .fighter-side {
+    display: flex; flex-direction: column; align-items: center; flex: 1;
+  }
+  .fighter-avatar {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 18px; color: var(--text);
+    margin-bottom: 6px;
+  }
+  .fighter-avatar.red { border: 3px solid var(--red); background: rgba(239,68,68,0.08); }
+  .fighter-avatar.blue { border: 3px solid var(--blue); background: rgba(59,130,246,0.08); }
+  .fighter-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 14px; text-transform: uppercase;
+    letter-spacing: 0.5px; text-align: center; line-height: 1.2;
+  }
+  .vs-divider {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 14px; color: var(--text-3);
+    letter-spacing: 1px; padding: 0 8px;
+  }
+
+  /* Round selector */
+  .round-selector {
+    display: flex; gap: 8px; padding: 12px 16px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .round-selector::-webkit-scrollbar { display: none; }
+  .round-btn {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    background: var(--surface); color: var(--text-3);
+    border: 2px solid var(--border);
+    flex-shrink: 0;
+    transition: all 0.2s;
+  }
+  .round-btn.active {
+    border-color: var(--red);
+    color: var(--red);
+    background: rgba(239,68,68,0.08);
+  }
+  .round-btn.scored {
+    border-color: var(--green);
+    color: var(--green);
+    background: rgba(34,197,94,0.06);
+  }
+
+  /* Blind scoring */
+  .scoring-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin: 8px 16px;
+    padding: 20px 16px;
+  }
+  .scoring-panel .header {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px; text-transform: uppercase;
+    letter-spacing: 1px; color: var(--text);
+    margin-bottom: 20px; text-align: center;
+  }
+  .scoring-panel .header span { color: var(--red); }
+
+  .score-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  .score-column {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
+  .score-column .fighter-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 13px; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 4px;
+  }
+  .score-column .fighter-label.red { color: var(--red); }
+  .score-column .fighter-label.blue { color: var(--blue); }
+
+  .score-btn {
+    width: 72px; height: 72px; border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 28px; cursor: pointer;
+    background: var(--surface-2);
+    color: var(--text-3);
+    border: 2px solid var(--border);
+    transition: all 0.2s;
+  }
+  .score-btn.selected {
+    border-color: var(--red);
+    color: var(--text);
+    background: rgba(239,68,68,0.12);
+    box-shadow: 0 0 20px rgba(239,68,68,0.2);
+  }
+  .score-btn.selected-blue {
+    border-color: var(--blue);
+    color: var(--text);
+    background: rgba(59,130,246,0.12);
+    box-shadow: 0 0 20px rgba(59,130,246,0.2);
+  }
+
+  .ten-eight-toggle {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; margin-top: 16px;
+  }
+  .ten-eight-btn {
+    font-size: 12px; font-weight: 600;
+    padding: 6px 16px; border-radius: 20px;
+    background: var(--surface-2);
+    color: var(--text-3);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .ten-eight-btn.active {
+    background: rgba(239,68,68,0.12);
+    color: var(--red);
+    border-color: var(--red);
+  }
+
+  .lock-btn {
+    display: block; width: 100%;
+    margin-top: 20px; padding: 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px;
+    text-transform: uppercase; letter-spacing: 1px;
+    background: var(--red); color: #fff;
+    border: none; border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .lock-btn:active { transform: scale(0.98); }
+
+  /* Scored rounds summary */
+  .scored-summary {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin: 10px 16px;
+    padding: 14px;
+  }
+  .scored-summary .title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 13px; text-transform: uppercase;
+    color: var(--text-2); letter-spacing: 1px; margin-bottom: 12px;
+  }
+  .scored-rounds-row {
+    display: flex; gap: 8px; justify-content: center;
+  }
+  .scored-round {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .scored-round .r-label {
+    font-size: 10px; color: var(--text-3); font-weight: 600;
+  }
+  .scored-round .r-score {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 14px;
+    padding: 6px 10px; border-radius: 8px;
+    background: var(--surface-2);
+    min-width: 52px; text-align: center;
+  }
+  .scored-round .r-score.red { color: var(--red); border: 1px solid rgba(239,68,68,0.2); }
+  .scored-round .r-score.blue { color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+  .scored-round .r-score.empty {
+    color: var(--text-3); border: 1px dashed var(--border);
+    background: transparent;
+  }
+
+  /* Running total */
+  .running-total {
+    text-align: center;
+    padding: 16px;
+  }
+  .running-total .label {
+    font-size: 11px; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: 1px; margin-bottom: 4px;
+  }
+  .running-total .score {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 32px; color: var(--text);
+    letter-spacing: 2px;
+  }
+  .running-total .score .red { color: var(--red); }
+  .running-total .score .blue { color: var(--blue); }
+
+  /* Submit */
+  .submit-btn {
+    display: block; width: calc(100% - 32px);
+    margin: 0 16px 16px; padding: 16px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px;
+    text-transform: uppercase; letter-spacing: 1px;
+    background: var(--surface-2); color: var(--text-3);
+    border: 2px dashed var(--border); border-radius: 12px;
+    cursor: not-allowed;
+    text-align: center;
+  }
+  .submit-btn.ready {
+    background: var(--red); color: #fff;
+    border: none; cursor: pointer;
+  }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom)); z-index: 100;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; color: var(--text-3); cursor: pointer; padding: 4px 12px;
+  }
+  .nav-item.active { color: var(--red); }
+  .nav-item .icon { font-size: 20px; }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · FightScoring</div>
+
+<!-- Story Progress -->
+<div class="story-progress">
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar active"></div>
+</div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="back">&#8592;</div>
+  <div class="title">Score Fight</div>
+</div>
+
+<!-- Fighter Header -->
+<div class="fighter-header">
+  <div class="fighters">
+    <div class="fighter-side">
+      <div class="fighter-avatar red">AP</div>
+      <div class="fighter-name">Alex<br>Pereira</div>
+    </div>
+    <div class="vs-divider">VS</div>
+    <div class="fighter-side">
+      <div class="fighter-avatar blue">MA</div>
+      <div class="fighter-name">Magomed<br>Ankalaev</div>
+    </div>
+  </div>
+</div>
+
+<!-- Round Selector -->
+<div class="round-selector">
+  <div class="round-btn active">R1</div>
+  <div class="round-btn scored">R2</div>
+  <div class="round-btn scored">R3</div>
+  <div class="round-btn">R4</div>
+  <div class="round-btn">R5</div>
+</div>
+
+<!-- Blind Scoring Panel -->
+<div class="scoring-panel">
+  <div class="header">Round 1 — <span>Score Blind</span></div>
+
+  <div class="score-grid">
+    <div class="score-column">
+      <div class="fighter-label red">Pereira</div>
+      <div class="score-btn selected">10</div>
+      <div class="score-btn">9</div>
+    </div>
+    <div class="score-column">
+      <div class="fighter-label blue">Ankalaev</div>
+      <div class="score-btn">10</div>
+      <div class="score-btn selected-blue">9</div>
+    </div>
+  </div>
+
+  <div class="ten-eight-toggle">
+    <div class="ten-eight-btn">10-8 Pereira</div>
+    <div class="ten-eight-btn">10-8 Ankalaev</div>
+  </div>
+
+  <button class="lock-btn">Lock Round</button>
+</div>
+
+<!-- Scored Rounds Summary -->
+<div class="scored-summary">
+  <div class="title">Your Scorecard</div>
+  <div class="scored-rounds-row">
+    <div class="scored-round">
+      <div class="r-label">R1</div>
+      <div class="r-score red">10-9</div>
+    </div>
+    <div class="scored-round">
+      <div class="r-label">R2</div>
+      <div class="r-score blue">9-10</div>
+    </div>
+    <div class="scored-round">
+      <div class="r-label">R3</div>
+      <div class="r-score red">10-9</div>
+    </div>
+    <div class="scored-round">
+      <div class="r-label">R4</div>
+      <div class="r-score empty">--</div>
+    </div>
+    <div class="scored-round">
+      <div class="r-label">R5</div>
+      <div class="r-score empty">--</div>
+    </div>
+  </div>
+</div>
+
+<!-- Running Total -->
+<div class="running-total">
+  <div class="label">Your Score</div>
+  <div class="score"><span class="red">29</span> - <span class="blue">28</span></div>
+</div>
+
+<!-- Submit Button (not ready - not all rounds scored) -->
+<div class="submit-btn">Submit Full Scorecard (2 rounds remaining)</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-item">
+    <div class="icon">&#9670;</div>
+    <div>Events</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9899;</div>
+    <div>Fighters</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9636;</div>
+    <div>Analytics</div>
+  </div>
+  <div class="nav-item active">
+    <div class="icon">&#9733;</div>
+    <div>Scores</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9786;</div>
+    <div>Profile</div>
+  </div>
+</div>
+
+</body>
+</html>

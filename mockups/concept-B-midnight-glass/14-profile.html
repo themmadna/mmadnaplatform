@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --success: #34d399;
+    --danger: #fb7185;
+    --amber: #f59e0b;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-bottom: calc(64px + var(--safe-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before { width: 300px; height: 300px; background: #818cf8; top: -100px; right: -80px; }
+  body::after { width: 250px; height: 250px; background: #c084fc; bottom: 100px; left: -100px; }
+
+  .app { position: relative; z-index: 1; }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .top-bar-title {
+    font-weight: 700;
+    font-size: 17px;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-tabs {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 8px calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--border-glass);
+    z-index: 50;
+  }
+  .bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    min-width: 56px;
+  }
+  .bottom-tab.active { color: var(--accent-1); }
+  .bottom-tab svg { width: 22px; height: 22px; }
+  .bottom-tab.active svg { filter: drop-shadow(0 0 6px rgba(129,140,248,0.4)); }
+
+  .content-wrap { max-width: 900px; margin: 0 auto; }
+
+  /* ─── PROFILE HEADER ─── */
+  .profile-header {
+    margin: 16px 12px;
+    border-radius: 18px;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .avatar-ring {
+    width: 76px; height: 76px;
+    border-radius: 50%;
+    padding: 3px;
+    background: var(--accent-gradient);
+    margin-bottom: 14px;
+  }
+  .avatar-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    background: #15152a;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--accent-1);
+  }
+  .profile-name {
+    font-size: 20px;
+    font-weight: 800;
+    letter-spacing: -0.3px;
+    margin-bottom: 2px;
+  }
+  .profile-email {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .profile-since {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+  }
+  .profile-stats {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+  }
+  .profile-stat {
+    text-align: center;
+  }
+  .profile-stat-val {
+    font-size: 20px;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .profile-stat-lbl {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-top: 2px;
+  }
+
+  /* ─── ACTION BUTTONS ─── */
+  .action-row {
+    display: flex;
+    gap: 10px;
+    padding: 0 12px;
+    margin-bottom: 20px;
+  }
+  .btn-outline {
+    flex: 1;
+    padding: 12px;
+    border-radius: 12px;
+    background: transparent;
+    border: 1px solid var(--border-glass);
+    color: var(--text-secondary);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-outline:active {
+    background: var(--bg-glass);
+    transform: scale(0.98);
+  }
+  .btn-outline.danger {
+    border-color: rgba(251,113,133,0.2);
+    color: var(--danger);
+  }
+
+  /* ─── TAB BAR ─── */
+  .tabs-bar {
+    display: flex;
+    padding: 0 12px;
+    gap: 2px;
+    margin-bottom: 16px;
+  }
+  .tab-btn {
+    flex: 1;
+    padding: 10px 8px;
+    border-radius: 10px;
+    background: transparent;
+    border: 1px solid var(--border-glass);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: center;
+  }
+  .tab-btn.active {
+    background: rgba(129,140,248,0.1);
+    border-color: rgba(129,140,248,0.3);
+    color: var(--accent-1);
+  }
+
+  /* ─── SECTION HEADER ─── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 16px 10px;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .section-header::before {
+    content: '';
+    width: 3px; height: 14px;
+    background: var(--accent-gradient);
+    border-radius: 3px;
+  }
+
+  /* ─── FAVORITE EVENTS ─── */
+  .fav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 12px;
+    margin-bottom: 16px;
+  }
+  .fav-card {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .fav-card:active {
+    transform: scale(0.98);
+    background: var(--bg-glass-hover);
+  }
+  .fav-info { flex: 1; min-width: 0; }
+  .fav-name {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .fav-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .fav-icon {
+    flex-shrink: 0;
+    color: var(--danger);
+    font-size: 18px;
+    margin-right: 12px;
+  }
+  .fav-chevron {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 14px;
+  }
+
+  /* ─── FAVORITE FIGHTERS (horizontal pills) ─── */
+  .fighter-chips {
+    display: flex;
+    gap: 8px;
+    padding: 0 12px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    margin-bottom: 20px;
+  }
+  .fighter-chips::-webkit-scrollbar { display: none; }
+  .fighter-chip {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .fighter-chip:active { transform: scale(0.96); }
+  .fighter-chip .heart { color: var(--danger); font-size: 14px; }
+
+  /* ─── VOTING HISTORY ─── */
+  .history-card {
+    margin: 0 12px 16px;
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .history-title {
+    padding: 16px 16px 10px;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .history-title::before {
+    content: '';
+    width: 3px; height: 14px;
+    background: var(--accent-gradient);
+    border-radius: 3px;
+  }
+  .history-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .history-row:active { background: var(--bg-glass-hover); }
+  .history-fight {
+    flex: 1;
+    min-width: 0;
+  }
+  .history-fight-name {
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 2px;
+  }
+  .history-fight-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .history-score {
+    flex-shrink: 0;
+    text-align: right;
+    margin-left: 12px;
+  }
+  .history-score-val {
+    font-size: 15px;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .history-score-match {
+    font-size: 10px;
+    color: var(--success);
+    font-weight: 600;
+  }
+  .history-score-match.low {
+    color: var(--amber);
+  }
+
+  .view-all-link {
+    display: block;
+    text-align: center;
+    padding: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-1);
+    text-decoration: none;
+    border-top: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer;
+  }
+
+  /* ─── FOOTER ─── */
+  .profile-footer {
+    padding: 20px 12px 40px;
+    text-align: center;
+  }
+  .app-version {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .delete-link {
+    font-size: 12px;
+    color: var(--danger);
+    opacity: 0.6;
+    text-decoration: none;
+    cursor: pointer;
+    font-weight: 500;
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 60px;
+    right: 12px;
+    backdrop-filter: blur(16px);
+    padding: 8px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    z-index: 100;
+    border: 1px solid var(--border-glass);
+    background: rgba(5,5,16,0.8);
+  }
+  .concept-label strong {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── DESKTOP ─── */
+  @media (min-width: 640px) {
+    .profile-header { padding: 32px 24px; }
+    .avatar-ring { width: 88px; height: 88px; }
+    .avatar-inner { font-size: 26px; }
+    .profile-stats { gap: 32px; }
+    .fav-list { gap: 8px; }
+  }
+  @media (min-width: 1024px) {
+    body { padding-bottom: 0; }
+    .bottom-tabs { display: none; }
+    .top-bar { padding: 14px 32px; }
+    .content-wrap { max-width: 900px; margin: 0 auto; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-title">Profile</div>
+    <div class="icon-btn">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </div>
+  </div>
+
+  <div class="content-wrap">
+
+    <!-- PROFILE HEADER -->
+    <div class="profile-header glass">
+      <div class="avatar-ring">
+        <div class="avatar-inner">JD</div>
+      </div>
+      <div class="profile-name">John Doe</div>
+      <div class="profile-email">john@example.com</div>
+      <div class="profile-since">Member since March 2025</div>
+      <div class="profile-stats">
+        <div class="profile-stat">
+          <div class="profile-stat-val">47</div>
+          <div class="profile-stat-lbl">Fights Scored</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val">76%</div>
+          <div class="profile-stat-lbl">Accuracy</div>
+        </div>
+        <div class="profile-stat">
+          <div class="profile-stat-val">12</div>
+          <div class="profile-stat-lbl">Events</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="action-row">
+      <button class="btn-outline">Edit Profile</button>
+      <button class="btn-outline danger">Sign Out</button>
+    </div>
+
+    <!-- TABS: Favorites / Likes / Dislikes -->
+    <div class="tabs-bar">
+      <button class="tab-btn active">Favorites</button>
+      <button class="tab-btn">Likes</button>
+      <button class="tab-btn">Dislikes</button>
+    </div>
+
+    <!-- FAVORITE EVENTS -->
+    <div class="section-header">Favorite Events</div>
+    <div class="fav-list">
+      <div class="fav-card glass">
+        <span class="fav-icon">&hearts;</span>
+        <div class="fav-info">
+          <div class="fav-name">UFC 313: Pereira vs Ankalaev</div>
+          <div class="fav-meta">March 22, 2026 · T-Mobile Arena</div>
+        </div>
+        <span class="fav-chevron">&rsaquo;</span>
+      </div>
+      <div class="fav-card glass">
+        <span class="fav-icon">&hearts;</span>
+        <div class="fav-info">
+          <div class="fav-name">UFC 300: Pereira vs Hill</div>
+          <div class="fav-meta">April 13, 2024 · T-Mobile Arena</div>
+        </div>
+        <span class="fav-chevron">&rsaquo;</span>
+      </div>
+      <div class="fav-card glass">
+        <span class="fav-icon">&hearts;</span>
+        <div class="fav-info">
+          <div class="fav-name">UFC 294: Makhachev vs Volkanovski 2</div>
+          <div class="fav-meta">October 21, 2023 · Etihad Arena</div>
+        </div>
+        <span class="fav-chevron">&rsaquo;</span>
+      </div>
+    </div>
+
+    <!-- FAVORITE FIGHTERS -->
+    <div class="section-header">Favorite Fighters</div>
+    <div class="fighter-chips">
+      <div class="fighter-chip glass">
+        <span class="heart">&hearts;</span>
+        Alex Pereira
+      </div>
+      <div class="fighter-chip glass">
+        <span class="heart">&hearts;</span>
+        Islam Makhachev
+      </div>
+      <div class="fighter-chip glass">
+        <span class="heart">&hearts;</span>
+        Valentina Shevchenko
+      </div>
+      <div class="fighter-chip glass">
+        <span class="heart">&hearts;</span>
+        Max Holloway
+      </div>
+    </div>
+
+    <!-- VOTING HISTORY -->
+    <div class="history-card glass">
+      <div class="history-title">Recent Scoring Activity</div>
+
+      <div class="history-row">
+        <div class="history-fight">
+          <div class="history-fight-name">Pereira vs Ankalaev</div>
+          <div class="history-fight-meta">Mar 22, 2026 · LHW Title</div>
+        </div>
+        <div class="history-score">
+          <div class="history-score-val">49-46</div>
+          <div class="history-score-match">Matched 4/5</div>
+        </div>
+      </div>
+
+      <div class="history-row">
+        <div class="history-fight">
+          <div class="history-fight-name">du Plessis vs Strickland 2</div>
+          <div class="history-fight-meta">Feb 8, 2026 · MW Title</div>
+        </div>
+        <div class="history-score">
+          <div class="history-score-val">48-47</div>
+          <div class="history-score-match low">Matched 3/5</div>
+        </div>
+      </div>
+
+      <div class="history-row">
+        <div class="history-fight">
+          <div class="history-fight-name">Hill vs Moicano</div>
+          <div class="history-fight-meta">Mar 22, 2026 · Welterweight</div>
+        </div>
+        <div class="history-score">
+          <div class="history-score-val">29-28</div>
+          <div class="history-score-match">Matched 3/3</div>
+        </div>
+      </div>
+
+      <div class="history-row">
+        <div class="history-fight">
+          <div class="history-fight-name">Nickal vs Craig</div>
+          <div class="history-fight-meta">Mar 22, 2026 · Middleweight</div>
+        </div>
+        <div class="history-score">
+          <div class="history-score-val">30-27</div>
+          <div class="history-score-match">Matched 3/3</div>
+        </div>
+      </div>
+
+      <div class="history-row">
+        <div class="history-fight">
+          <div class="history-fight-name">Poirier vs Dariush</div>
+          <div class="history-fight-meta">Mar 22, 2026 · Lightweight</div>
+        </div>
+        <div class="history-score">
+          <div class="history-score-val">29-28</div>
+          <div class="history-score-match low">Matched 2/3</div>
+        </div>
+      </div>
+
+      <a class="view-all-link" href="#">View All 47 Scorecards</a>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="profile-footer">
+      <div class="app-version">MMA DNA v2.0</div>
+      <a class="delete-link" href="#">Delete Account</a>
+    </div>
+
+  </div><!-- /content-wrap -->
+
+  <!-- BOTTOM TAB BAR -->
+  <div class="bottom-tabs">
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Events
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Fighters
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+      Analytics
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Scores
+    </a>
+    <a class="bottom-tab active" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Profile
+    </a>
+  </div>
+
+</div>
+
+<div class="concept-label">
+  <strong>B — Midnight Glass</strong> · Profile
+</div>
+
+</body>
+</html>

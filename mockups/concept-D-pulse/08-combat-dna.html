@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Combat DNA — MMA DNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0e0e12; --surface: #1a1a22; --surface-2: #24242e;
+    --red: #ef4444; --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b;
+    --text: #f5f5f7; --text-2: #9898a8; --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    padding-bottom: 80px;
+  }
+  h1,h2,h3,h4,h5 { font-family: 'Barlow Condensed', sans-serif; }
+
+  .concept-label {
+    position: fixed; top: 12px; right: 12px; z-index: 999;
+    font-family: 'Inter', sans-serif; font-size: 10px; color: var(--text-3);
+    background: rgba(14,14,18,0.85); padding: 4px 8px; border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .top-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px 12px; background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 1px solid var(--border);
+  }
+  .top-bar .back { color: var(--text); font-size: 20px; cursor: pointer; text-decoration: none; line-height: 1; }
+  .top-bar h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .story-progress { display: flex; gap: 3px; padding: 8px 20px 4px; }
+  .story-progress .bar { flex: 1; height: 2px; border-radius: 1px; background: var(--surface-2); }
+  .story-progress .bar.active { background: var(--red); }
+  .story-progress .bar.done { background: var(--text-3); }
+
+  .content { padding: 16px 16px 24px; }
+
+  /* Fighter header */
+  .fighter-header {
+    background: var(--surface); border-radius: 14px; padding: 20px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .avatar {
+    width: 56px; height: 56px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 20px;
+    color: #fff; border: 3px solid var(--red); background: var(--surface-2);
+  }
+  .fighter-header .info h2 { font-size: 22px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+  .fighter-header .info .record { font-size: 13px; color: var(--text-2); margin-top: 2px; }
+  .fighter-header .info .record span { color: var(--red); font-weight: 600; }
+
+  /* DNA metrics grid */
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-2);
+    margin-bottom: 12px;
+  }
+  .dna-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    margin-bottom: 20px;
+  }
+  .dna-metric {
+    background: var(--surface); border-radius: 12px; padding: 14px 12px;
+    border: 1px solid var(--border); text-align: center;
+  }
+  .dna-metric .value {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 28px;
+    color: var(--red); line-height: 1;
+  }
+  .dna-metric .label {
+    font-size: 11px; color: var(--text-2); margin-top: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .dna-metric .bar-track {
+    height: 3px; background: var(--surface-2); border-radius: 2px; margin-top: 8px; overflow: hidden;
+  }
+  .dna-metric .bar-fill { height: 100%; border-radius: 2px; background: var(--red); }
+
+  /* Scatter card */
+  .card {
+    background: var(--surface); border-radius: 14px; padding: 20px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 17px;
+    text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px;
+  }
+  .axis-selectors {
+    display: flex; gap: 10px; margin-bottom: 14px;
+  }
+  .axis-selectors select {
+    flex: 1; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text); font-family: 'Inter', sans-serif;
+    font-size: 12px; appearance: none; cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239898a8' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 10px center;
+  }
+  .axis-selectors label { font-size: 10px; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; }
+  .axis-sel-wrap { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+
+  .scatter-area {
+    position: relative; width: 100%; aspect-ratio: 1.2; overflow: visible;
+  }
+  .scatter-area svg { width: 100%; height: 100%; }
+  .scatter-legend {
+    display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px;
+  }
+  .scatter-legend .leg-item {
+    display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2);
+  }
+  .scatter-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* Body heatmap */
+  .body-map-wrap {
+    display: flex; gap: 24px; align-items: flex-start;
+  }
+  .body-silhouette {
+    flex-shrink: 0; width: 100px; position: relative;
+  }
+  .body-silhouette .head {
+    width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 4px;
+    background: rgba(239,68,68,0.85); box-shadow: 0 0 18px rgba(239,68,68,0.6), 0 0 40px rgba(239,68,68,0.25);
+  }
+  .body-silhouette .torso {
+    width: 48px; height: 52px; border-radius: 6px; margin: 0 auto 4px;
+    background: rgba(239,68,68,0.45); box-shadow: 0 0 12px rgba(239,68,68,0.25);
+  }
+  .body-silhouette .legs-wrap {
+    display: flex; gap: 6px; justify-content: center;
+  }
+  .body-silhouette .leg {
+    width: 18px; height: 56px; border-radius: 4px;
+    background: rgba(239,68,68,0.2); box-shadow: 0 0 8px rgba(239,68,68,0.1);
+  }
+  .body-stats { flex: 1; }
+  .body-stat-row {
+    margin-bottom: 16px;
+  }
+  .body-stat-row .stat-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+  }
+  .body-stat-row .stat-label { font-size: 13px; color: var(--text-2); }
+  .body-stat-row .stat-value { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; }
+  .body-stat-row .stat-bar { height: 4px; background: var(--surface-2); border-radius: 2px; overflow: hidden; }
+  .body-stat-row .stat-bar-fill { height: 100%; border-radius: 2px; }
+  .stat-bar-fill.high { background: var(--red); }
+  .stat-bar-fill.med { background: rgba(239,68,68,0.5); }
+  .stat-bar-fill.low { background: rgba(239,68,68,0.25); }
+
+  /* Compare prompt */
+  .compare-row {
+    display: flex; gap: 10px; margin-top: 4px;
+  }
+  .compare-row input {
+    flex: 1; padding: 12px 14px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px;
+  }
+  .compare-row input::placeholder { color: var(--text-3); }
+  .compare-row button {
+    padding: 12px 20px; border: none; border-radius: 10px;
+    background: var(--red); color: #fff; font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;
+    cursor: pointer; white-space: nowrap;
+  }
+
+  /* Pulse animation */
+  @keyframes pulse {
+    0%, 100% { r: 6; opacity: 1; }
+    50% { r: 10; opacity: 0.6; }
+  }
+  .dot-pulse { animation: pulse 2s ease-in-out infinite; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; padding: 8px 0 env(safe-area-inset-bottom, 12px);
+    z-index: 200;
+  }
+  .bottom-nav .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; color: var(--text-3); text-decoration: none; padding: 4px 12px;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+  }
+  .bottom-nav .nav-item.active { color: var(--red); }
+  .bottom-nav .nav-item .icon { font-size: 20px; line-height: 1; }
+
+  @media (min-width: 480px) {
+    body { max-width: 430px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    .bottom-nav { max-width: 430px; left: 50%; transform: translateX(-50%); }
+    .dna-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · CombatDNA</div>
+
+<div class="top-bar">
+  <a class="back" href="#">&#8592;</a>
+  <h1>Combat DNA</h1>
+</div>
+
+<div class="story-progress">
+  <div class="bar done"></div>
+  <div class="bar active"></div>
+  <div class="bar"></div>
+  <div class="bar"></div>
+  <div class="bar"></div>
+</div>
+
+<div class="content">
+
+  <!-- Fighter Header -->
+  <div class="fighter-header">
+    <div class="avatar">AP</div>
+    <div class="info">
+      <h2>Alex Pereira</h2>
+      <div class="record"><span>11-2-0</span> &middot; Light Heavyweight</div>
+    </div>
+  </div>
+
+  <!-- DNA Metrics -->
+  <div class="section-title">DNA Metrics</div>
+  <div class="dna-grid">
+    <div class="dna-metric">
+      <div class="value">8.4</div>
+      <div class="label">Volume</div>
+      <div class="bar-track"><div class="bar-fill" style="width:84%"></div></div>
+    </div>
+    <div class="dna-metric">
+      <div class="value">6.2</div>
+      <div class="label">Grappling</div>
+      <div class="bar-track"><div class="bar-fill" style="width:62%"></div></div>
+    </div>
+    <div class="dna-metric">
+      <div class="value">7.8</div>
+      <div class="label">Accuracy</div>
+      <div class="bar-track"><div class="bar-fill" style="width:78%"></div></div>
+    </div>
+    <div class="dna-metric">
+      <div class="value">9.1</div>
+      <div class="label">Finishing</div>
+      <div class="bar-track"><div class="bar-fill" style="width:91%"></div></div>
+    </div>
+    <div class="dna-metric">
+      <div class="value">5.5</div>
+      <div class="label">Defense</div>
+      <div class="bar-track"><div class="bar-fill" style="width:55%"></div></div>
+    </div>
+    <div class="dna-metric">
+      <div class="value">7.3</div>
+      <div class="label">Cardio</div>
+      <div class="bar-track"><div class="bar-fill" style="width:73%"></div></div>
+    </div>
+  </div>
+
+  <!-- Scatter Plot -->
+  <div class="card">
+    <div class="card-title">Fighter Comparison</div>
+    <div class="axis-selectors">
+      <div class="axis-sel-wrap">
+        <label>X-Axis</label>
+        <select><option selected>Volume</option><option>Grappling</option><option>Accuracy</option><option>Finishing</option><option>Defense</option><option>Cardio</option></select>
+      </div>
+      <div class="axis-sel-wrap">
+        <label>Y-Axis</label>
+        <select><option>Volume</option><option>Grappling</option><option>Accuracy</option><option selected>Finishing</option><option>Defense</option><option>Cardio</option></select>
+      </div>
+    </div>
+    <div class="scatter-area">
+      <svg viewBox="0 0 300 250">
+        <!-- Grid -->
+        <line x1="40" y1="10" x2="40" y2="220" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="105" y1="10" x2="105" y2="220" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="170" y1="10" x2="170" y2="220" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="235" y1="10" x2="235" y2="220" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="40" y1="220" x2="290" y2="220" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>
+        <line x1="40" y1="168" x2="290" y2="168" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="40" y1="115" x2="290" y2="115" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="40" y1="63" x2="290" y2="63" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <line x1="40" y1="10" x2="290" y2="10" stroke="rgba(255,255,255,0.04)" stroke-width="1"/>
+        <!-- Axis labels -->
+        <text x="165" y="245" text-anchor="middle" fill="#5a5a6e" font-size="10" font-family="Inter">Volume</text>
+        <text x="12" y="115" text-anchor="middle" fill="#5a5a6e" font-size="10" font-family="Inter" transform="rotate(-90,12,115)">Finishing</text>
+        <!-- Axis ticks -->
+        <text x="40" y="235" text-anchor="middle" fill="#5a5a6e" font-size="8" font-family="Inter">0</text>
+        <text x="105" y="235" text-anchor="middle" fill="#5a5a6e" font-size="8" font-family="Inter">2.5</text>
+        <text x="170" y="235" text-anchor="middle" fill="#5a5a6e" font-size="8" font-family="Inter">5</text>
+        <text x="235" y="235" text-anchor="middle" fill="#5a5a6e" font-size="8" font-family="Inter">7.5</text>
+        <text x="290" y="235" text-anchor="middle" fill="#5a5a6e" font-size="8" font-family="Inter">10</text>
+        <!-- Gray dots (other LHW) -->
+        <circle cx="120" cy="145" r="5" fill="#5a5a6e" opacity="0.4"/>
+        <circle cx="95" cy="170" r="5" fill="#5a5a6e" opacity="0.4"/>
+        <circle cx="155" cy="130" r="5" fill="#5a5a6e" opacity="0.4"/>
+        <circle cx="180" cy="160" r="5" fill="#5a5a6e" opacity="0.4"/>
+        <circle cx="70" cy="185" r="5" fill="#5a5a6e" opacity="0.4"/>
+        <circle cx="145" cy="175" r="5" fill="#5a5a6e" opacity="0.4"/>
+        <circle cx="200" cy="148" r="5" fill="#5a5a6e" opacity="0.4"/>
+        <!-- Prochazka (green) -->
+        <circle cx="230" cy="78" r="6" fill="#22c55e" opacity="0.8"/>
+        <!-- Blachowicz (amber) -->
+        <circle cx="160" cy="110" r="6" fill="#f59e0b" opacity="0.8"/>
+        <!-- Adesanya (blue) -->
+        <circle cx="195" cy="60" r="6" fill="#3b82f6" opacity="0.8"/>
+        <!-- Pereira (red, pulsing) -->
+        <circle cx="250" cy="28" r="6" fill="#ef4444" class="dot-pulse"/>
+        <circle cx="250" cy="28" r="6" fill="#ef4444"/>
+      </svg>
+    </div>
+    <div class="scatter-legend">
+      <div class="leg-item"><div class="dot" style="background:var(--red)"></div>Pereira</div>
+      <div class="leg-item"><div class="dot" style="background:var(--blue)"></div>Adesanya</div>
+      <div class="leg-item"><div class="dot" style="background:var(--amber)"></div>Blachowicz</div>
+      <div class="leg-item"><div class="dot" style="background:var(--green)"></div>Prochazka</div>
+      <div class="leg-item"><div class="dot" style="background:var(--text-3)"></div>Other LHW</div>
+    </div>
+  </div>
+
+  <!-- Body Heat Map -->
+  <div class="card">
+    <div class="card-title">Strike Distribution</div>
+    <div class="body-map-wrap">
+      <div class="body-silhouette">
+        <div class="head"></div>
+        <div class="torso"></div>
+        <div class="legs-wrap">
+          <div class="leg"></div>
+          <div class="leg"></div>
+        </div>
+      </div>
+      <div class="body-stats">
+        <div class="body-stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Head</span>
+            <span class="stat-value" style="color:var(--red)">4.2 / fight</span>
+          </div>
+          <div class="stat-bar"><div class="stat-bar-fill high" style="width:80%"></div></div>
+        </div>
+        <div class="body-stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Body</span>
+            <span class="stat-value" style="color:rgba(239,68,68,0.55)">1.8 / fight</span>
+          </div>
+          <div class="stat-bar"><div class="stat-bar-fill med" style="width:45%"></div></div>
+        </div>
+        <div class="body-stat-row">
+          <div class="stat-header">
+            <span class="stat-label">Legs</span>
+            <span class="stat-value" style="color:rgba(239,68,68,0.3)">1.3 / fight</span>
+          </div>
+          <div class="stat-bar"><div class="stat-bar-fill low" style="width:30%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compare Prompt -->
+  <div class="card">
+    <div class="card-title">Compare with Another Fighter</div>
+    <div class="compare-row">
+      <input type="text" placeholder="Search fighter name...">
+      <button>Compare</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="#"><span class="icon">&#9783;</span>Events</a>
+  <a class="nav-item" href="#"><span class="icon">&#9935;</span>Fighters</a>
+  <a class="nav-item active" href="#"><span class="icon">&#9636;</span>Analytics</a>
+  <a class="nav-item" href="#"><span class="icon">&#9733;</span>Scores</a>
+  <a class="nav-item" href="#"><span class="icon">&#9679;</span>Profile</a>
+</nav>
+
+</body>
+</html>

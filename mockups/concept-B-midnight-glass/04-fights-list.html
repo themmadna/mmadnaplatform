@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Fights List</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --success: #34d399;
+    --danger: #fb7185;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-bottom: calc(64px + var(--safe-bottom));
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 300px; height: 300px;
+    background: #818cf8;
+    top: -100px; right: -80px;
+  }
+  body::after {
+    width: 250px; height: 250px;
+    background: #c084fc;
+    bottom: 100px; left: -100px;
+  }
+
+  .app { position: relative; z-index: 1; }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── STICKY TOP BAR ─── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .top-bar-title {
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.3px;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .icon-btn:active {
+    background: var(--bg-glass-hover);
+    transform: scale(0.95);
+  }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  /* ─── EVENT HERO HEADER ─── */
+  .event-hero {
+    padding: 24px 16px 16px;
+    text-align: center;
+  }
+  .event-hero-name {
+    font-size: 36px;
+    font-weight: 800;
+    letter-spacing: -1.5px;
+    line-height: 1;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 6px;
+  }
+  .event-hero-subtitle {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.3px;
+    margin-bottom: 8px;
+  }
+  .event-hero-details {
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  /* Horizontal stat pills */
+  .stat-pills {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px 16px 4px;
+    flex-wrap: wrap;
+  }
+  .stat-pill {
+    padding: 10px 18px;
+    border-radius: 14px;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .stat-pill-val {
+    font-size: 15px;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-pill-lbl {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  /* ─── SECTION DIVIDER ─── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 24px 16px 10px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .section-header::before {
+    content: '';
+    width: 3px; height: 16px;
+    background: var(--accent-gradient);
+    border-radius: 3px;
+  }
+
+  /* ─── FIGHT CARDS STACK ─── */
+  .fight-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 12px;
+  }
+
+  .fight-card {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    min-height: 44px;
+  }
+  .fight-card:active {
+    transform: scale(0.98);
+    background: var(--bg-glass-hover);
+  }
+  .fight-card.main-event {
+    padding: 18px 16px;
+    background: linear-gradient(135deg, rgba(129,140,248,0.06), rgba(192,132,252,0.04));
+    border-color: rgba(129,140,248,0.15);
+  }
+
+  .fight-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .fight-meta {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .fight-meta.main { color: var(--accent-1); }
+  .fight-round-info {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .matchup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .matchup-fighter {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .matchup-fighter.right { flex-direction: row-reverse; text-align: right; }
+  .fighter-avatar {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(129,140,248,0.15), rgba(192,132,252,0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent-1);
+    flex-shrink: 0;
+    border: 1px solid rgba(129,140,248,0.15);
+  }
+  .main-event .fighter-avatar { width: 46px; height: 46px; font-size: 14px; }
+  .fighter-info { min-width: 0; }
+  .fighter-name {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .main-event .fighter-name { font-size: 16px; }
+  .fighter-record { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  .vs-divider {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  /* ─── SCORING STATUS ─── */
+  .fight-footer {
+    display: flex;
+    justify-content: center;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .score-link {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent-1);
+    text-decoration: none;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .score-link:hover { opacity: 0.8; }
+  .score-badge {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--success);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-tabs {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 8px calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--border-glass);
+    z-index: 50;
+  }
+  .bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    min-width: 56px;
+  }
+  .bottom-tab.active { color: var(--accent-1); }
+  .bottom-tab svg { width: 22px; height: 22px; }
+  .bottom-tab.active svg { filter: drop-shadow(0 0 6px rgba(129,140,248,0.4)); }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 60px;
+    right: 12px;
+    backdrop-filter: blur(16px);
+    padding: 8px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    z-index: 100;
+    border: 1px solid var(--border-glass);
+    background: rgba(5,5,16,0.8);
+  }
+  .concept-label strong {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── DESKTOP ENHANCEMENTS ─── */
+  @media (min-width: 640px) {
+    .event-hero { padding: 32px 24px 20px; }
+    .event-hero-name { font-size: 48px; }
+    .event-hero-subtitle { font-size: 22px; }
+    .fight-stack { padding: 0 20px; gap: 8px; }
+    .fight-card { padding: 20px; }
+    .matchup { gap: 14px; }
+    .fighter-avatar { width: 48px; height: 48px; font-size: 15px; }
+    .fighter-name { font-size: 16px; }
+  }
+
+  @media (min-width: 1024px) {
+    body { padding-bottom: 0; }
+    .bottom-tabs { display: none; }
+    .top-bar { padding: 14px 32px; }
+    .desktop-nav {
+      display: flex !important;
+      gap: 2px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      padding: 3px;
+    }
+    .desktop-nav-item {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .desktop-nav-item.active { color: #fff; background: rgba(255,255,255,0.1); }
+    .content-wrap { max-width: 900px; margin: 0 auto; }
+    .event-hero { padding: 40px 32px 24px; }
+    .event-hero-name { font-size: 56px; }
+    .fight-stack { padding: 0 24px; }
+    .fight-card { padding: 22px 24px; }
+    .main-event .fighter-avatar { width: 52px; height: 52px; font-size: 16px; }
+    .main-event .fighter-name { font-size: 18px; }
+  }
+
+  /* Hide desktop nav on mobile */
+  .desktop-nav { display: none; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- STICKY TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div class="icon-btn" aria-label="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/>
+        </svg>
+      </div>
+      <span class="top-bar-title">UFC 313</span>
+    </div>
+    <!-- Desktop nav (hidden on mobile) -->
+    <div class="desktop-nav">
+      <div class="desktop-nav-item active">Events</div>
+      <div class="desktop-nav-item">Fighters</div>
+      <div class="desktop-nav-item">Analytics</div>
+      <div class="desktop-nav-item">Scores</div>
+    </div>
+    <div class="icon-btn" aria-label="Share">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+      </svg>
+    </div>
+  </div>
+
+  <div class="content-wrap">
+
+    <!-- EVENT HERO HEADER -->
+    <div class="event-hero">
+      <div class="event-hero-name">UFC 313</div>
+      <div class="event-hero-subtitle">Pereira vs Ankalaev</div>
+      <div class="event-hero-details">March 22, 2026 &middot; T-Mobile Arena, Las Vegas</div>
+    </div>
+
+    <!-- STAT PILLS -->
+    <div class="stat-pills">
+      <div class="stat-pill glass">
+        <span class="stat-pill-val">6</span>
+        <span class="stat-pill-lbl">Fights</span>
+      </div>
+      <div class="stat-pill glass">
+        <span class="stat-pill-val">2</span>
+        <span class="stat-pill-lbl">Titles</span>
+      </div>
+      <div class="stat-pill glass">
+        <span class="stat-pill-val">73%</span>
+        <span class="stat-pill-lbl">Finish Rate</span>
+      </div>
+    </div>
+
+    <!-- MAIN CARD SECTION -->
+    <div class="section-header">Main Card</div>
+    <div class="fight-stack">
+
+      <!-- Main Event: Pereira vs Ankalaev -->
+      <div class="fight-card glass main-event">
+        <div class="fight-top">
+          <span class="fight-meta main">Main Event &middot; LHW Title</span>
+          <span class="fight-round-info">5 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">AP</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Alex Pereira</div>
+              <div class="fighter-record">11-2-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">MA</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Magomed Ankalaev</div>
+              <div class="fighter-record">19-1-1</div>
+            </div>
+          </div>
+        </div>
+        <div class="fight-footer">
+          <span class="score-link">Score this fight</span>
+        </div>
+      </div>
+
+      <!-- Co-Main: Hill vs Moicano -->
+      <div class="fight-card glass">
+        <div class="fight-top">
+          <span class="fight-meta">Co-Main &middot; Welterweight</span>
+          <span class="fight-round-info">5 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">JH</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Jamahal Hill</div>
+              <div class="fighter-record">12-2-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">RM</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Renato Moicano</div>
+              <div class="fighter-record">19-5-1</div>
+            </div>
+          </div>
+        </div>
+        <div class="fight-footer">
+          <span class="score-badge">Scored &#10003;</span>
+        </div>
+      </div>
+
+      <!-- Nickal vs Craig -->
+      <div class="fight-card glass">
+        <div class="fight-top">
+          <span class="fight-meta">Middleweight</span>
+          <span class="fight-round-info">3 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">BN</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Bo Nickal</div>
+              <div class="fighter-record">6-0-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">PC</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Paul Craig</div>
+              <div class="fighter-record">16-8-1</div>
+            </div>
+          </div>
+        </div>
+        <div class="fight-footer">
+          <span class="score-link">Score this fight</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PRELIMS SECTION -->
+    <div class="section-header">Prelims</div>
+    <div class="fight-stack">
+
+      <!-- Poirier vs Dariush -->
+      <div class="fight-card glass">
+        <div class="fight-top">
+          <span class="fight-meta">Lightweight</span>
+          <span class="fight-round-info">3 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">DP</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Dustin Poirier</div>
+              <div class="fighter-record">30-8-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">BD</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Beneil Dariush</div>
+              <div class="fighter-record">22-6-1</div>
+            </div>
+          </div>
+        </div>
+        <div class="fight-footer">
+          <span class="score-link">Score this fight</span>
+        </div>
+      </div>
+
+      <!-- Fiorot vs Pennington -->
+      <div class="fight-card glass">
+        <div class="fight-top">
+          <span class="fight-meta">Women's Flyweight</span>
+          <span class="fight-round-info">3 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">MF</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Manon Fiorot</div>
+              <div class="fighter-record">12-1-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">RP</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Raquel Pennington</div>
+              <div class="fighter-record">15-8-0</div>
+            </div>
+          </div>
+        </div>
+        <div class="fight-footer">
+          <span class="score-badge">Scored &#10003;</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom spacer for content behind tab bar -->
+    <div style="height: 24px;"></div>
+
+  </div><!-- /content-wrap -->
+
+  <!-- BOTTOM TAB BAR -->
+  <div class="bottom-tabs">
+    <a class="bottom-tab active" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Events
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Fighters
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+      Analytics
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Scores
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Profile
+    </a>
+  </div>
+
+</div>
+
+<div class="concept-label">
+  <strong>B — Midnight Glass</strong> &middot; Fights
+</div>
+
+</body>
+</html>

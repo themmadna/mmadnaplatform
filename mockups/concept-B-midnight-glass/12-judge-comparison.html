@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Judge Comparison</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --success: #34d399;
+    --danger: #fb7185;
+    --teal: #2dd4bf;
+    --amber: #f59e0b;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 350px; height: 350px;
+    background: #818cf8;
+    top: -80px; right: -60px;
+  }
+  body::after {
+    width: 300px; height: 300px;
+    background: #c084fc;
+    bottom: -50px; left: -80px;
+  }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── LAYOUT ─── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding-bottom: calc(80px + var(--safe-bottom));
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .top-bar .back-arrow {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .top-bar .back-arrow svg {
+    width: 18px; height: 18px;
+    stroke: var(--text-primary);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .top-bar .title {
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    text-align: center;
+    padding: 10px 16px 0;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+
+  /* ─── SECTION TITLE ─── */
+  .section-title {
+    padding: 20px 16px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  /* ─── CARD BASE ─── */
+  .card {
+    margin: 0 16px 16px;
+    border-radius: 18px;
+    padding: 20px 16px;
+  }
+  .card-title {
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 16px;
+  }
+
+  /* ─── JUDGE PICKER ─── */
+  .picker-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .picker-slot {
+    flex: 1;
+    border-radius: 14px;
+    padding: 14px 12px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  .picker-slot.indigo {
+    background: rgba(129,140,248,0.06);
+    border: 1.5px solid rgba(129,140,248,0.35);
+  }
+  .picker-slot.teal-border {
+    background: rgba(45,212,191,0.06);
+    border: 1.5px solid rgba(45,212,191,0.35);
+  }
+  .picker-avatar {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 700;
+    margin: 0 auto 8px;
+  }
+  .picker-slot.indigo .picker-avatar {
+    background: linear-gradient(135deg, rgba(129,140,248,0.3), rgba(192,132,252,0.3));
+    border: 2px solid rgba(129,140,248,0.4);
+    color: var(--accent-1);
+  }
+  .picker-slot.teal-border .picker-avatar {
+    background: linear-gradient(135deg, rgba(45,212,191,0.3), rgba(52,211,153,0.3));
+    border: 2px solid rgba(45,212,191,0.4);
+    color: var(--teal);
+  }
+  .picker-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+  .picker-change {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--accent-1);
+    cursor: pointer;
+  }
+  .picker-slot.teal-border .picker-change {
+    color: var(--teal);
+  }
+  .picker-vs {
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .compare-btn {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: var(--accent-gradient);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    opacity: 0.7;
+  }
+  .compare-btn span {
+    font-size: 0.7rem;
+    font-weight: 500;
+    opacity: 0.8;
+    margin-left: 6px;
+  }
+
+  /* ─── AGREEMENT SUMMARY ─── */
+  .agreement-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 20px;
+  }
+  .ring-wrap {
+    position: relative;
+    width: 110px; height: 110px;
+  }
+  .ring-wrap svg {
+    width: 110px; height: 110px;
+    transform: rotate(-90deg);
+  }
+  .ring-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.06);
+    stroke-width: 8;
+  }
+  .ring-fg {
+    fill: none;
+    stroke: url(#ring-grad);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 282.74;
+    stroke-dashoffset: 73.51; /* 100% - 74% = 26% of 282.74 */
+  }
+  .ring-label {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .ring-pct {
+    font-size: 1.6rem;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+  .ring-word {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+  .agreement-basis {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+  }
+  .sub-stats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+  }
+  .sub-stat {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .sub-stat-value {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    line-height: 1;
+  }
+  .sub-stat-label {
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    line-height: 1.2;
+  }
+
+  /* ─── SIDE-BY-SIDE STATS ─── */
+  .col-headers {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .col-header {
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+  .col-header.left { color: var(--accent-1); }
+  .col-header.right { color: var(--teal); }
+
+  .dual-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .dual-row:last-child { margin-bottom: 0; }
+  .dual-val {
+    width: 48px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .dual-val.left { text-align: right; color: var(--accent-1); }
+  .dual-val.right { text-align: left; color: var(--teal); }
+  .dual-bars {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .dual-bar-left, .dual-bar-right {
+    height: 6px;
+    border-radius: 3px;
+    flex: 1;
+    position: relative;
+    background: rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+  .dual-bar-left .fill {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(129,140,248,0.2), rgba(129,140,248,0.5));
+  }
+  .dual-bar-right .fill {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    border-radius: 3px;
+    background: linear-gradient(90deg, rgba(45,212,191,0.5), rgba(45,212,191,0.2));
+  }
+  .dual-label {
+    width: 90px;
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+
+  /* ─── DISAGREEMENT BREAKDOWN ─── */
+  .disagree-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .disagree-row:last-child { margin-bottom: 0; }
+  .disagree-class {
+    width: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .disagree-bar-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.04);
+    overflow: hidden;
+  }
+  .disagree-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--danger), rgba(251,113,133,0.4));
+  }
+  .disagree-pct {
+    width: 42px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--danger);
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ─── NOTABLE FIGHTS ─── */
+  .fight-row {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .fight-row:last-child { margin-bottom: 0; }
+  .fight-row:hover {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+  }
+  .fight-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .fight-bout {
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fight-round {
+    font-size: 0.66rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+  .fight-scores {
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+  .fight-score {
+    text-align: center;
+  }
+  .fight-score-val {
+    font-size: 0.82rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .fight-score-val.indigo { color: var(--accent-1); }
+  .fight-score-val.teal { color: var(--teal); }
+  .fight-score-judge {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .fight-chevron {
+    flex-shrink: 0;
+    margin-left: 8px;
+  }
+  .fight-chevron svg {
+    width: 16px; height: 16px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+  }
+  .bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    cursor: pointer;
+    padding: 4px 0;
+    min-width: 56px;
+  }
+  .bottom-tab svg {
+    width: 22px; height: 22px;
+    stroke: var(--text-muted);
+    fill: none;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .bottom-tab span {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .bottom-tab.active svg {
+    stroke: url(#tab-grad);
+  }
+  .bottom-tab.active span {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (min-width: 600px) {
+    .card { margin-left: 24px; margin-right: 24px; }
+    .section-title { padding-left: 24px; }
+    .picker-name { font-size: 0.9rem; }
+    .dual-label { width: 110px; font-size: 0.72rem; }
+    .dual-val { font-size: 0.88rem; }
+    .disagree-class { width: 120px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG gradient definitions -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="tab-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<div class="page">
+
+  <!-- ─── TOP BAR ─── -->
+  <div class="top-bar">
+    <div class="back-arrow">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </div>
+    <div class="title">Compare Judges</div>
+  </div>
+
+  <!-- Concept label -->
+  <div class="concept-label">B — Midnight Glass · Judge Compare</div>
+
+  <!-- ─── 1. JUDGE PICKER ─── -->
+  <div class="section-title">Select Judges</div>
+  <div class="card glass">
+    <div class="picker-row">
+      <div class="picker-slot indigo">
+        <div class="picker-avatar">SD</div>
+        <div class="picker-name">Sal D'Amato</div>
+        <div class="picker-change">Change</div>
+      </div>
+      <div class="picker-vs">VS</div>
+      <div class="picker-slot teal-border">
+        <div class="picker-avatar">CL</div>
+        <div class="picker-name">Chris Lee</div>
+        <div class="picker-change">Change</div>
+      </div>
+    </div>
+    <button class="compare-btn">Compared <span>&#10003;</span></button>
+  </div>
+
+  <!-- ─── 2. AGREEMENT SUMMARY ─── -->
+  <div class="card glass">
+    <div class="agreement-center">
+      <div class="ring-wrap">
+        <svg viewBox="0 0 100 100">
+          <circle class="ring-bg" cx="50" cy="50" r="45"/>
+          <circle class="ring-fg" cx="50" cy="50" r="45"/>
+        </svg>
+        <div class="ring-label">
+          <div class="ring-pct">74%</div>
+          <div class="ring-word">Agreement</div>
+        </div>
+      </div>
+      <div class="agreement-basis">Based on 312 shared rounds</div>
+    </div>
+    <div class="sub-stats">
+      <div class="sub-stat">
+        <div class="sub-stat-value">81%</div>
+        <div class="sub-stat-label">Same Winner</div>
+      </div>
+      <div class="sub-stat">
+        <div class="sub-stat-value">68%</div>
+        <div class="sub-stat-label">Same Score</div>
+      </div>
+      <div class="sub-stat">
+        <div class="sub-stat-value">2.1%</div>
+        <div class="sub-stat-label">Both Outlier</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── 3. SIDE-BY-SIDE STATS ─── -->
+  <div class="card glass">
+    <div class="card-title">Head to Head</div>
+    <div class="col-headers">
+      <div class="col-header left">D'Amato</div>
+      <div class="col-header right">Lee</div>
+    </div>
+
+    <!-- Outlier Rate -->
+    <div class="dual-row">
+      <div class="dual-val left">4.2%</div>
+      <div class="dual-bars">
+        <div class="dual-bar-left"><div class="fill" style="width:42%"></div></div>
+        <div class="dual-bar-right"><div class="fill" style="width:58%"></div></div>
+      </div>
+      <div class="dual-val right">5.8%</div>
+    </div>
+    <div style="text-align:center;margin-top:-8px;margin-bottom:14px"><span class="dual-label">Outlier Rate</span></div>
+
+    <!-- 10-8 Usage -->
+    <div class="dual-row">
+      <div class="dual-val left">2.1%</div>
+      <div class="dual-bars">
+        <div class="dual-bar-left"><div class="fill" style="width:54%"></div></div>
+        <div class="dual-bar-right"><div class="fill" style="width:46%"></div></div>
+      </div>
+      <div class="dual-val right">1.8%</div>
+    </div>
+    <div style="text-align:center;margin-top:-8px;margin-bottom:14px"><span class="dual-label">10-8 Usage</span></div>
+
+    <!-- Avg Agreement -->
+    <div class="dual-row">
+      <div class="dual-val left">87%</div>
+      <div class="dual-bars">
+        <div class="dual-bar-left"><div class="fill" style="width:87%"></div></div>
+        <div class="dual-bar-right"><div class="fill" style="width:82%"></div></div>
+      </div>
+      <div class="dual-val right">82%</div>
+    </div>
+    <div style="text-align:center;margin-top:-8px;margin-bottom:14px"><span class="dual-label">Avg Agreement</span></div>
+
+    <!-- Total Rounds -->
+    <div class="dual-row">
+      <div class="dual-val left">1,247</div>
+      <div class="dual-bars">
+        <div class="dual-bar-left"><div class="fill" style="width:95%"></div></div>
+        <div class="dual-bar-right"><div class="fill" style="width:90%"></div></div>
+      </div>
+      <div class="dual-val right">1,189</div>
+    </div>
+    <div style="text-align:center;margin-top:-8px"><span class="dual-label">Total Rounds</span></div>
+  </div>
+
+  <!-- ─── 4. DISAGREEMENT BREAKDOWN ─── -->
+  <div class="card glass">
+    <div class="card-title">Where They Disagree</div>
+
+    <div class="disagree-row">
+      <div class="disagree-class">Heavyweight</div>
+      <div class="disagree-bar-track"><div class="disagree-bar-fill" style="width:32%"></div></div>
+      <div class="disagree-pct">32%</div>
+    </div>
+
+    <div class="disagree-row">
+      <div class="disagree-class">Lightweight</div>
+      <div class="disagree-bar-track"><div class="disagree-bar-fill" style="width:28%"></div></div>
+      <div class="disagree-pct">28%</div>
+    </div>
+
+    <div class="disagree-row">
+      <div class="disagree-class">Welterweight</div>
+      <div class="disagree-bar-track"><div class="disagree-bar-fill" style="width:22%"></div></div>
+      <div class="disagree-pct">22%</div>
+    </div>
+  </div>
+
+  <!-- ─── 5. NOTABLE SHARED FIGHTS ─── -->
+  <div class="card glass">
+    <div class="card-title">Biggest Scoring Gaps</div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-bout">Jones vs Reyes</div>
+        <div class="fight-round">Disagreed on Rounds 2, 3</div>
+      </div>
+      <div class="fight-scores">
+        <div class="fight-score">
+          <div class="fight-score-val indigo">48-47</div>
+          <div class="fight-score-judge">D'Amato</div>
+        </div>
+        <div class="fight-score">
+          <div class="fight-score-val teal">49-46</div>
+          <div class="fight-score-judge">Lee</div>
+        </div>
+      </div>
+      <div class="fight-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-bout">Holloway vs Volkanovski III</div>
+        <div class="fight-round">Disagreed on Round 4</div>
+      </div>
+      <div class="fight-scores">
+        <div class="fight-score">
+          <div class="fight-score-val indigo">48-47</div>
+          <div class="fight-score-judge">D'Amato</div>
+        </div>
+        <div class="fight-score">
+          <div class="fight-score-val teal">47-48</div>
+          <div class="fight-score-judge">Lee</div>
+        </div>
+      </div>
+      <div class="fight-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-bout">Edwards vs Usman II</div>
+        <div class="fight-round">Disagreed on Rounds 1, 2</div>
+      </div>
+      <div class="fight-scores">
+        <div class="fight-score">
+          <div class="fight-score-val indigo">39-37</div>
+          <div class="fight-score-judge">D'Amato</div>
+        </div>
+        <div class="fight-score">
+          <div class="fight-score-val teal">38-38</div>
+          <div class="fight-score-judge">Lee</div>
+        </div>
+      </div>
+      <div class="fight-chevron"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+    </div>
+  </div>
+
+</div><!-- .page -->
+
+<!-- ─── BOTTOM TAB BAR ─── -->
+<div class="bottom-bar">
+  <!-- Events -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    <span>Events</span>
+  </div>
+  <!-- Fighters -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Fighters</span>
+  </div>
+  <!-- Analytics -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    <span>Analytics</span>
+  </div>
+  <!-- Scores (active) -->
+  <div class="bottom-tab active">
+    <svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>Scores</span>
+  </div>
+  <!-- Profile -->
+  <div class="bottom-tab">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span>Profile</span>
+  </div>
+</div>
+
+</body>
+</html>

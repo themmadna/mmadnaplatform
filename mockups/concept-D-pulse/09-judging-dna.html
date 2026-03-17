@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Judging DNA — MMA DNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0e0e12; --surface: #1a1a22; --surface-2: #24242e;
+    --red: #ef4444; --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b;
+    --text: #f5f5f7; --text-2: #9898a8; --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    padding-bottom: 80px;
+  }
+  h1,h2,h3,h4,h5 { font-family: 'Barlow Condensed', sans-serif; }
+
+  .concept-label {
+    position: fixed; top: 12px; right: 12px; z-index: 999;
+    font-family: 'Inter', sans-serif; font-size: 10px; color: var(--text-3);
+    background: rgba(14,14,18,0.85); padding: 4px 8px; border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  .top-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px 12px; background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 1px solid var(--border);
+  }
+  .top-bar .back { color: var(--text); font-size: 20px; cursor: pointer; text-decoration: none; line-height: 1; }
+  .top-bar h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  .story-progress { display: flex; gap: 3px; padding: 8px 20px 4px; }
+  .story-progress .bar { flex: 1; height: 2px; border-radius: 1px; background: var(--surface-2); }
+  .story-progress .bar.active { background: var(--red); }
+  .story-progress .bar.done { background: var(--text-3); }
+
+  .content { padding: 16px 16px 24px; }
+
+  /* Profile header */
+  .profile-header {
+    background: var(--surface); border-radius: 14px; padding: 24px 20px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .avatar {
+    width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 18px;
+    color: #fff; background: linear-gradient(135deg, var(--red), #b91c1c);
+  }
+  .profile-header .info h2 { font-size: 18px; font-weight: 700; text-transform: uppercase; }
+  .profile-header .info .sub { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+
+  /* Card */
+  .card {
+    background: var(--surface); border-radius: 14px; padding: 20px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+  }
+  .card-title {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px;
+    text-transform: uppercase; letter-spacing: 1px; color: var(--text-2); margin-bottom: 14px;
+  }
+
+  /* Accuracy overview */
+  .accuracy-hero {
+    display: flex; align-items: center; gap: 24px; margin-bottom: 16px;
+  }
+  .accuracy-ring {
+    width: 96px; height: 96px; position: relative; flex-shrink: 0;
+  }
+  .accuracy-ring svg { width: 96px; height: 96px; transform: rotate(-90deg); }
+  .accuracy-ring .ring-bg { fill: none; stroke: var(--surface-2); stroke-width: 7; }
+  .accuracy-ring .ring-fill {
+    fill: none; stroke: var(--red); stroke-width: 7; stroke-linecap: round;
+    stroke-dasharray: 264; stroke-dashoffset: 63; /* 76% fill: 264 * 0.24 = 63 */
+    transition: stroke-dashoffset 1s ease;
+  }
+  .accuracy-ring .ring-text {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 28px; color: var(--red);
+  }
+  .accuracy-desc { font-size: 14px; color: var(--text-2); line-height: 1.5; }
+  .accuracy-desc strong { color: var(--text); }
+
+  /* Trend line placeholder */
+  .trend-line {
+    height: 40px; border-radius: 8px; background: var(--surface-2);
+    position: relative; overflow: hidden; margin-top: 12px;
+  }
+  .trend-line svg { width: 100%; height: 100%; }
+
+  /* Bias rows */
+  .bias-row {
+    margin-bottom: 16px;
+  }
+  .bias-row:last-child { margin-bottom: 0; }
+  .bias-row .bias-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;
+  }
+  .bias-row .bias-label { font-size: 13px; color: var(--text-2); }
+  .bias-row .bias-value {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 15px;
+  }
+  .bias-bar {
+    display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--surface-2);
+  }
+  .bias-bar .red-fill { background: var(--red); border-radius: 3px 0 0 3px; }
+  .bias-bar .blue-fill { background: var(--blue); border-radius: 0 3px 3px 0; }
+  .bias-bar .single-fill { border-radius: 3px; }
+
+  /* Weight class scroll */
+  .wc-scroll {
+    display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px;
+    -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .wc-scroll::-webkit-scrollbar { display: none; }
+  .wc-card {
+    flex-shrink: 0; width: 140px; background: var(--surface-2); border-radius: 12px;
+    padding: 16px 14px; border: 1px solid var(--border);
+  }
+  .wc-card .wc-name {
+    font-size: 12px; color: var(--text-2); margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 600;
+  }
+  .wc-card .wc-pct {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 26px;
+    color: var(--text); margin-bottom: 8px; line-height: 1;
+  }
+  .wc-card .wc-bar {
+    height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; overflow: hidden;
+  }
+  .wc-card .wc-bar-fill { height: 100%; border-radius: 2px; background: var(--red); }
+
+  /* Judge match cards */
+  .judge-card {
+    display: flex; align-items: center; gap: 14px;
+  }
+  .judge-avatar {
+    width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 14px;
+    color: #fff;
+  }
+  .judge-avatar.green-bg { background: var(--green); }
+  .judge-avatar.amber-bg { background: var(--amber); }
+  .judge-card .judge-info { flex: 1; }
+  .judge-card .judge-info .judge-name { font-size: 14px; font-weight: 600; }
+  .judge-card .judge-info .judge-desc { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .judge-card .judge-pct {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 22px;
+    flex-shrink: 0;
+  }
+  .judge-card .judge-pct.green { color: var(--green); }
+  .judge-card .judge-pct.amber { color: var(--amber); }
+  .judge-card .arrow { color: var(--text-3); font-size: 16px; flex-shrink: 0; margin-left: 4px; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; padding: 8px 0 env(safe-area-inset-bottom, 12px);
+    z-index: 200;
+  }
+  .bottom-nav .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; color: var(--text-3); text-decoration: none; padding: 4px 12px;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+  }
+  .bottom-nav .nav-item.active { color: var(--red); }
+  .bottom-nav .nav-item .icon { font-size: 20px; line-height: 1; }
+
+  @media (min-width: 480px) {
+    body { max-width: 430px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    .bottom-nav { max-width: 430px; left: 50%; transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · JudgingDNA</div>
+
+<div class="top-bar">
+  <a class="back" href="#">&#8592;</a>
+  <h1>Judging DNA</h1>
+</div>
+
+<div class="story-progress">
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar active"></div>
+  <div class="bar"></div>
+</div>
+
+<div class="content">
+
+  <!-- Profile Header -->
+  <div class="profile-header">
+    <div class="avatar">JD</div>
+    <div class="info">
+      <h2>Your Judging Profile</h2>
+      <div class="sub">Member since January 2024 &middot; 142 fights scored</div>
+    </div>
+  </div>
+
+  <!-- Accuracy Overview -->
+  <div class="card">
+    <div class="card-title">Overall Accuracy</div>
+    <div class="accuracy-hero">
+      <div class="accuracy-ring">
+        <svg viewBox="0 0 96 96">
+          <circle class="ring-bg" cx="48" cy="48" r="42"/>
+          <circle class="ring-fill" cx="48" cy="48" r="42"/>
+        </svg>
+        <div class="ring-text">76%</div>
+      </div>
+      <div class="accuracy-desc">
+        You match <strong>official judges 76%</strong> of the time across all scored fights. That puts you in the <strong>top 18%</strong> of community scorers.
+      </div>
+    </div>
+    <div class="trend-line">
+      <svg viewBox="0 0 360 40" preserveAspectRatio="none">
+        <polyline fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          points="0,30 30,28 60,22 90,25 120,18 150,20 180,15 210,16 240,12 270,14 300,10 330,11 360,8"/>
+        <polyline fill="url(#fade)" stroke="none"
+          points="0,40 0,30 30,28 60,22 90,25 120,18 150,20 180,15 210,16 240,12 270,14 300,10 330,11 360,8 360,40"/>
+        <defs>
+          <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ef4444" stop-opacity="0.2"/>
+            <stop offset="100%" stop-color="#ef4444" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+      </svg>
+    </div>
+  </div>
+
+  <!-- Bias Analysis -->
+  <div class="card">
+    <div class="card-title">Scoring Tendencies</div>
+
+    <div class="bias-row">
+      <div class="bias-header">
+        <span class="bias-label">Corner Preference</span>
+        <span class="bias-value" style="color:var(--red)">54% Red</span>
+      </div>
+      <div class="bias-bar">
+        <div class="red-fill" style="width:54%"></div>
+        <div class="blue-fill" style="width:46%"></div>
+      </div>
+    </div>
+
+    <div class="bias-row">
+      <div class="bias-header">
+        <span class="bias-label">Favors Blue Corner</span>
+        <span class="bias-value" style="color:var(--blue)">46%</span>
+      </div>
+      <div class="bias-bar">
+        <div class="blue-fill single-fill" style="width:46%"></div>
+      </div>
+    </div>
+
+    <div class="bias-row">
+      <div class="bias-header">
+        <span class="bias-label">10-8 Round Usage</span>
+        <span class="bias-value" style="color:var(--amber)">8.2%</span>
+      </div>
+      <div class="bias-bar">
+        <div class="single-fill" style="width:8.2%; background:var(--amber); border-radius:3px;"></div>
+      </div>
+    </div>
+
+    <div class="bias-row">
+      <div class="bias-header">
+        <span class="bias-label">Avg Score Gap</span>
+        <span class="bias-value" style="color:var(--text)">1.4 pts</span>
+      </div>
+      <div class="bias-bar">
+        <div class="single-fill" style="width:28%; background:var(--text-2); border-radius:3px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- By Weight Class -->
+  <div class="card" style="padding-right:0;">
+    <div class="card-title" style="padding-right:20px;">Accuracy by Weight Class</div>
+    <div class="wc-scroll">
+      <div class="wc-card">
+        <div class="wc-name">Lightweight</div>
+        <div class="wc-pct">82%</div>
+        <div class="wc-bar"><div class="wc-bar-fill" style="width:82%"></div></div>
+      </div>
+      <div class="wc-card">
+        <div class="wc-name">Middleweight</div>
+        <div class="wc-pct">79%</div>
+        <div class="wc-bar"><div class="wc-bar-fill" style="width:79%"></div></div>
+      </div>
+      <div class="wc-card">
+        <div class="wc-name">Welterweight</div>
+        <div class="wc-pct">71%</div>
+        <div class="wc-bar"><div class="wc-bar-fill" style="width:71%"></div></div>
+      </div>
+      <div class="wc-card">
+        <div class="wc-name">Heavyweight</div>
+        <div class="wc-pct">68%</div>
+        <div class="wc-bar"><div class="wc-bar-fill" style="width:68%"></div></div>
+      </div>
+      <div class="wc-card">
+        <div class="wc-name">Flyweight</div>
+        <div class="wc-pct">74%</div>
+        <div class="wc-bar"><div class="wc-bar-fill" style="width:74%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Most Agreed Judge -->
+  <div class="card">
+    <div class="card-title">Most Agreed Judge</div>
+    <div class="judge-card">
+      <div class="judge-avatar green-bg">DC</div>
+      <div class="judge-info">
+        <div class="judge-name">Derek Cleary</div>
+        <div class="judge-desc">You most align with this judge's scoring</div>
+      </div>
+      <div class="judge-pct green">81%</div>
+      <div class="arrow">&#8250;</div>
+    </div>
+  </div>
+
+  <!-- Most Disagreed Judge -->
+  <div class="card">
+    <div class="card-title">Most Disagreed Judge</div>
+    <div class="judge-card">
+      <div class="judge-avatar amber-bg">AB</div>
+      <div class="judge-info">
+        <div class="judge-name">Adalaide Byrd</div>
+        <div class="judge-desc">You most disagree with this judge's scoring</div>
+      </div>
+      <div class="judge-pct amber">42%</div>
+      <div class="arrow">&#8250;</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="#"><span class="icon">&#9783;</span>Events</a>
+  <a class="nav-item" href="#"><span class="icon">&#9935;</span>Fighters</a>
+  <a class="nav-item" href="#"><span class="icon">&#9636;</span>Analytics</a>
+  <a class="nav-item active" href="#"><span class="icon">&#9733;</span>Scores</a>
+  <a class="nav-item" href="#"><span class="icon">&#9679;</span>Profile</a>
+</nav>
+
+</body>
+</html>

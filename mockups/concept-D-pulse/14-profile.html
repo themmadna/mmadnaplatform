@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MMA DNA — Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --danger: #fb7185;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .concept-label {
+    position: fixed;
+    top: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: var(--text-3);
+    z-index: 999;
+    font-family: 'Inter', sans-serif;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .top-bar h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+  }
+  .gear-btn {
+    width: 34px; height: 34px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2);
+    border-radius: 8px;
+    color: var(--text-2);
+    border: none;
+    cursor: pointer;
+  }
+
+  .content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  .card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .card-inner { padding: 16px; }
+
+  /* Profile Header */
+  .profile-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 20px;
+  }
+  .avatar-large {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 26px;
+    color: #fff;
+    background: var(--surface-2);
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+  }
+  .avatar-large::before {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--red), #b91c1c, var(--red));
+    z-index: -1;
+  }
+  .profile-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    margin-top: 12px;
+  }
+  .profile-email {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
+  .profile-since {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 4px;
+  }
+
+  /* Stats Row */
+  .stats-row {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    padding: 16px;
+    border-top: 1px solid var(--border);
+  }
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .stat-num {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 22px;
+    color: var(--red);
+  }
+  .stat-label {
+    font-size: 10px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  /* Action Buttons */
+  .action-row {
+    display: flex;
+    gap: 10px;
+  }
+  .btn-outline-sm {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    text-align: center;
+    background: transparent;
+  }
+  .btn-outline-sm.default {
+    border: 1px solid var(--border);
+    color: var(--text-2);
+  }
+  .btn-outline-sm.danger {
+    border: 1px solid rgba(251,113,133,0.3);
+    color: var(--danger);
+  }
+
+  /* Tabs */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0 16px;
+  }
+  .tab-item {
+    flex: 1;
+    padding: 12px 0;
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-3);
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+  }
+  .tab-item.active {
+    color: var(--red);
+    border-bottom-color: var(--red);
+  }
+
+  /* Section Label */
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-2);
+    padding: 14px 16px 8px;
+  }
+
+  /* Favorite Events */
+  .fav-event-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    cursor: pointer;
+  }
+  .fav-event-row:last-child { border-bottom: none; }
+
+  .heart-icon {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: rgba(239,68,68,0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--red);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .fav-event-info { flex: 1; }
+  .fav-event-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .fav-event-date {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 1px;
+  }
+  .chevron {
+    color: var(--text-3);
+    font-size: 14px;
+  }
+
+  /* Favorite Fighters (horizontal scroll) */
+  .fighters-scroll {
+    display: flex;
+    gap: 8px;
+    padding: 8px 16px 16px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .fighters-scroll::-webkit-scrollbar { display: none; }
+
+  .fighter-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 8px 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .fighter-chip .chip-heart {
+    color: var(--red);
+    font-size: 12px;
+  }
+
+  /* Activity Rows */
+  .activity-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .activity-row:last-child { border-bottom: none; }
+
+  .activity-info { flex: 1; min-width: 0; }
+  .activity-fight {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .activity-meta {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  .match-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .match-pill.good { background: rgba(34,197,94,0.12); color: var(--green); }
+  .match-pill.partial { background: rgba(245,158,11,0.12); color: var(--amber); }
+
+  .view-all-link {
+    display: block;
+    text-align: center;
+    padding: 14px;
+    font-size: 13px;
+    color: var(--red);
+    font-weight: 600;
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  /* Footer */
+  .footer {
+    text-align: center;
+    padding: 24px 16px 8px;
+  }
+  .footer-version {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-bottom: 12px;
+  }
+  .delete-link {
+    font-size: 12px;
+    color: rgba(239,68,68,0.5);
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--text-3);
+    text-decoration: none;
+    padding: 4px 0;
+    min-width: 50px;
+  }
+  .nav-item.active { color: var(--red); }
+  .nav-item svg { width: 22px; height: 22px; }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · Profile</div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <h1>Profile</h1>
+  <button class="gear-btn">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09a1.65 1.65 0 00-1.08-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09a1.65 1.65 0 001.51-1.08 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001.08 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1.08z"/></svg>
+  </button>
+</div>
+
+<div class="content">
+
+  <!-- Profile Header Card -->
+  <div class="card">
+    <div class="profile-header">
+      <div class="avatar-large">JD</div>
+      <div class="profile-name">John Doe</div>
+      <div class="profile-email">john@example.com</div>
+      <div class="profile-since">Member since March 2025</div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-item">
+        <div class="stat-num">47</div>
+        <div class="stat-label">Fights Scored</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">76%</div>
+        <div class="stat-label">Accuracy</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-num">12</div>
+        <div class="stat-label">Events</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="action-row">
+    <button class="btn-outline-sm default">Edit Profile</button>
+    <button class="btn-outline-sm danger">Sign Out</button>
+  </div>
+
+  <!-- Tab Bar -->
+  <div class="card" style="padding: 0;">
+    <div class="tab-bar">
+      <div class="tab-item active">Favorites</div>
+      <div class="tab-item">Likes</div>
+      <div class="tab-item">Dislikes</div>
+    </div>
+
+    <!-- Favorite Events -->
+    <div class="section-label">Favorite Events</div>
+
+    <div class="fav-event-row">
+      <div class="heart-icon">&#9829;</div>
+      <div class="fav-event-info">
+        <div class="fav-event-name">UFC 313</div>
+        <div class="fav-event-date">Mar 22, 2026</div>
+      </div>
+      <div class="chevron">&#8250;</div>
+    </div>
+
+    <div class="fav-event-row">
+      <div class="heart-icon">&#9829;</div>
+      <div class="fav-event-info">
+        <div class="fav-event-name">UFC 300</div>
+        <div class="fav-event-date">Apr 13, 2024</div>
+      </div>
+      <div class="chevron">&#8250;</div>
+    </div>
+
+    <div class="fav-event-row">
+      <div class="heart-icon">&#9829;</div>
+      <div class="fav-event-info">
+        <div class="fav-event-name">UFC 294</div>
+        <div class="fav-event-date">Oct 21, 2023</div>
+      </div>
+      <div class="chevron">&#8250;</div>
+    </div>
+
+    <!-- Favorite Fighters -->
+    <div class="section-label">Favorite Fighters</div>
+    <div class="fighters-scroll">
+      <div class="fighter-chip"><span class="chip-heart">&#9829;</span> Alex Pereira</div>
+      <div class="fighter-chip"><span class="chip-heart">&#9829;</span> Islam Makhachev</div>
+      <div class="fighter-chip"><span class="chip-heart">&#9829;</span> Valentina Shevchenko</div>
+      <div class="fighter-chip"><span class="chip-heart">&#9829;</span> Max Holloway</div>
+    </div>
+  </div>
+
+  <!-- Recent Scoring Activity -->
+  <div class="card" style="padding: 0;">
+    <div class="section-label">Recent Scoring Activity</div>
+
+    <div class="activity-row">
+      <div class="activity-info">
+        <div class="activity-fight">Pereira vs Ankalaev</div>
+        <div class="activity-meta">49-46 &middot; UFC 313</div>
+      </div>
+      <div class="match-pill good">4/5 Matched</div>
+    </div>
+
+    <div class="activity-row">
+      <div class="activity-info">
+        <div class="activity-fight">du Plessis vs Strickland 2</div>
+        <div class="activity-meta">48-47 &middot; UFC 312</div>
+      </div>
+      <div class="match-pill partial">3/5 Matched</div>
+    </div>
+
+    <div class="activity-row">
+      <div class="activity-info">
+        <div class="activity-fight">Hill vs Moicano</div>
+        <div class="activity-meta">29-28 &middot; UFC 311</div>
+      </div>
+      <div class="match-pill good">3/3 Matched</div>
+    </div>
+
+    <div class="activity-row">
+      <div class="activity-info">
+        <div class="activity-fight">Nickal vs Craig</div>
+        <div class="activity-meta">30-27 &middot; UFC 311</div>
+      </div>
+      <div class="match-pill good">3/3 Matched</div>
+    </div>
+
+    <div class="activity-row">
+      <div class="activity-info">
+        <div class="activity-fight">Poirier vs Dariush</div>
+        <div class="activity-meta">29-28 &middot; UFC 310</div>
+      </div>
+      <div class="match-pill partial">2/3 Matched</div>
+    </div>
+
+    <a class="view-all-link" href="#">View All 47 Scorecards</a>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-version">MMA DNA v2.0</div>
+    <a class="delete-link" href="#">Delete Account</a>
+  </div>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 4v2m8-2v2"/></svg>
+    <span>Events</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a6 6 0 0112 0v2"/></svg>
+    <span>Fighters</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 16l4-6 4 4 5-8"/></svg>
+    <span>Analytics</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 2a7 7 0 017 7c0 1.57-.52 3.02-1.39 4.19l5.6 5.6a1 1 0 01-1.42 1.42l-5.6-5.6A7 7 0 119 2zm0 2a5 5 0 100 10A5 5 0 009 4z"/></svg>
+    <span>Scores</span>
+  </a>
+  <a class="nav-item active" href="#">
+    <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>
+    <span>Profile</span>
+  </a>
+</nav>
+
+</body>
+</html>

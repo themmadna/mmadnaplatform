@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Scorecard Comparison — MMA DNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0e0e12; --surface: #1a1a22; --surface-2: #24242e;
+    --red: #ef4444; --blue: #3b82f6; --green: #22c55e; --amber: #f59e0b;
+    --text: #f5f5f7; --text-2: #9898a8; --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+  html, body { height: 100%; }
+  body {
+    font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text);
+    -webkit-font-smoothing: antialiased; overflow-x: hidden;
+    padding-bottom: 80px;
+  }
+  h1,h2,h3,h4,h5 { font-family: 'Barlow Condensed', sans-serif; }
+
+  /* Concept label */
+  .concept-label {
+    position: fixed; top: 12px; right: 12px; z-index: 999;
+    font-family: 'Inter', sans-serif; font-size: 10px; color: var(--text-3);
+    background: rgba(14,14,18,0.85); padding: 4px 8px; border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+
+  /* Top bar */
+  .top-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 16px 20px 12px; background: var(--bg);
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 1px solid var(--border);
+  }
+  .top-bar .back { color: var(--text); font-size: 20px; cursor: pointer; text-decoration: none; line-height: 1; }
+  .top-bar h1 { font-size: 20px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+
+  /* Story progress */
+  .story-progress {
+    display: flex; gap: 3px; padding: 8px 20px 4px;
+  }
+  .story-progress .bar {
+    flex: 1; height: 2px; border-radius: 1px; background: var(--surface-2);
+  }
+  .story-progress .bar.active { background: var(--red); }
+  .story-progress .bar.done { background: var(--text-3); }
+
+  /* Fight header mini */
+  .fight-header {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    padding: 16px 20px; border-bottom: 1px solid var(--border);
+  }
+  .fighter-circle {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 13px;
+    color: #fff;
+  }
+  .fighter-circle.red { background: var(--red); }
+  .fighter-circle.blue { background: var(--blue); }
+  .fight-header .vs-info { text-align: center; }
+  .fight-header .vs-info .names { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 16px; letter-spacing: 0.5px; }
+  .fight-header .vs-info .meta { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+
+  /* Content container */
+  .content { padding: 16px 16px 24px; }
+
+  /* Scorecard grid */
+  .scorecard-card {
+    background: var(--surface); border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--border); margin-bottom: 16px;
+  }
+  .scorecard-header {
+    display: grid; grid-template-columns: 52px 1fr 1fr 1fr 36px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 600;
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+    color: var(--text-2);
+  }
+  .scorecard-row {
+    display: grid; grid-template-columns: 52px 1fr 1fr 1fr 36px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    align-items: center; font-size: 14px; transition: background 0.2s;
+  }
+  .scorecard-row:last-child { border-bottom: none; }
+  .scorecard-row.disagreement { background: rgba(245,158,11,0.06); }
+  .scorecard-row.total-row {
+    background: var(--surface-2); font-weight: 600;
+    font-family: 'Barlow Condensed', sans-serif; font-size: 16px;
+  }
+  .scorecard-row .round-label {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 600;
+    color: var(--text-2); font-size: 13px;
+  }
+  .scorecard-row .score { text-align: center; }
+  .scorecard-row .score.you { color: var(--red); font-weight: 600; }
+  .scorecard-row .score.judges { color: var(--text); }
+  .scorecard-row .score.community { color: var(--blue); font-size: 12px; }
+  .scorecard-row .match-icon { text-align: center; font-size: 14px; }
+  .match-green { color: var(--green); }
+  .match-amber { color: var(--amber); }
+
+  /* Match summary */
+  .match-summary {
+    background: var(--surface); border-radius: 14px; padding: 24px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 20px;
+  }
+  .accuracy-ring {
+    width: 80px; height: 80px; position: relative; flex-shrink: 0;
+  }
+  .accuracy-ring svg { width: 80px; height: 80px; transform: rotate(-90deg); }
+  .accuracy-ring .ring-bg { fill: none; stroke: var(--surface-2); stroke-width: 6; }
+  .accuracy-ring .ring-fill { fill: none; stroke: var(--green); stroke-width: 6; stroke-linecap: round; stroke-dasharray: 226; stroke-dashoffset: 45; transition: stroke-dashoffset 1s ease; }
+  .accuracy-ring .ring-text {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 22px; color: var(--green);
+  }
+  .match-summary .info h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .match-summary .info p { font-size: 13px; color: var(--text-2); line-height: 1.4; }
+
+  /* Result card */
+  .result-card {
+    background: var(--surface); border-radius: 14px; padding: 20px;
+    border: 1px solid var(--border); margin-bottom: 16px;
+    text-align: center;
+  }
+  .result-card .label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .result-card .result-text {
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px;
+    color: var(--red); margin-bottom: 4px;
+  }
+  .result-card .result-method { font-size: 13px; color: var(--text-2); }
+
+  /* Share button */
+  .share-btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; padding: 14px; border: none; border-radius: 12px;
+    background: var(--red); color: #fff; font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;
+    cursor: pointer; margin-bottom: 16px; transition: opacity 0.2s;
+  }
+  .share-btn:active { opacity: 0.8; }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around; padding: 8px 0 env(safe-area-inset-bottom, 12px);
+    z-index: 200;
+  }
+  .bottom-nav .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; color: var(--text-3); text-decoration: none; padding: 4px 12px;
+    font-family: 'Inter', sans-serif; font-weight: 500;
+  }
+  .bottom-nav .nav-item.active { color: var(--red); }
+  .bottom-nav .nav-item .icon { font-size: 20px; line-height: 1; }
+
+  /* Responsive */
+  @media (min-width: 480px) {
+    body { max-width: 430px; margin: 0 auto; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+    .bottom-nav { max-width: 430px; left: 50%; transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · ScorecardComparison</div>
+
+<div class="top-bar">
+  <a class="back" href="#">&#8592;</a>
+  <h1>Scorecard Comparison</h1>
+</div>
+
+<div class="story-progress">
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar active"></div>
+  <div class="bar"></div>
+</div>
+
+<div class="fight-header">
+  <div class="fighter-circle red">AP</div>
+  <div class="vs-info">
+    <div class="names">Pereira vs Ankalaev</div>
+    <div class="meta">LHW Title &middot; UFC 313 &middot; 5 Rounds</div>
+  </div>
+  <div class="fighter-circle blue">MA</div>
+</div>
+
+<div class="content">
+
+  <!-- Scorecard Grid -->
+  <div class="scorecard-card">
+    <div class="scorecard-header">
+      <span></span>
+      <span style="text-align:center">You</span>
+      <span style="text-align:center">Judges</span>
+      <span style="text-align:center">Community</span>
+      <span></span>
+    </div>
+    <!-- R1 — match -->
+    <div class="scorecard-row">
+      <span class="round-label">R1</span>
+      <span class="score you">10–9</span>
+      <span class="score judges">10–9</span>
+      <span class="score community">72% Per</span>
+      <span class="match-icon match-green">&#10003;</span>
+    </div>
+    <!-- R2 — match -->
+    <div class="scorecard-row">
+      <span class="round-label">R2</span>
+      <span class="score you">10–9</span>
+      <span class="score judges">10–9</span>
+      <span class="score community">65% Per</span>
+      <span class="match-icon match-green">&#10003;</span>
+    </div>
+    <!-- R3 — disagreement -->
+    <div class="scorecard-row disagreement">
+      <span class="round-label">R3</span>
+      <span class="score you">10–9</span>
+      <span class="score judges">9–10</span>
+      <span class="score community">53% Ank</span>
+      <span class="match-icon match-amber">&#9679;</span>
+    </div>
+    <!-- R4 — match -->
+    <div class="scorecard-row">
+      <span class="round-label">R4</span>
+      <span class="score you">10–9</span>
+      <span class="score judges">10–9</span>
+      <span class="score community">78% Per</span>
+      <span class="match-icon match-green">&#10003;</span>
+    </div>
+    <!-- R5 — match -->
+    <div class="scorecard-row">
+      <span class="round-label">R5</span>
+      <span class="score you">9–10</span>
+      <span class="score judges">9–10</span>
+      <span class="score community">61% Ank</span>
+      <span class="match-icon match-green">&#10003;</span>
+    </div>
+    <!-- Total -->
+    <div class="scorecard-row total-row">
+      <span class="round-label">TOT</span>
+      <span class="score you">49–46</span>
+      <span class="score judges">48–47</span>
+      <span class="score community">Maj 49–46</span>
+      <span></span>
+    </div>
+  </div>
+
+  <!-- Match Summary -->
+  <div class="match-summary">
+    <div class="accuracy-ring">
+      <svg viewBox="0 0 80 80">
+        <circle class="ring-bg" cx="40" cy="40" r="36"/>
+        <circle class="ring-fill" cx="40" cy="40" r="36"/>
+      </svg>
+      <div class="ring-text">80%</div>
+    </div>
+    <div class="info">
+      <h3>4 of 5 Rounds Matched</h3>
+      <p>You matched the official judges on 4 out of 5 rounds. Your only disagreement was Round 3.</p>
+    </div>
+  </div>
+
+  <!-- Official Result -->
+  <div class="result-card">
+    <div class="label">Official Result</div>
+    <div class="result-text">Alex Pereira Wins</div>
+    <div class="result-method">Decision (Unanimous) &middot; 48-47, 49-46, 49-46</div>
+  </div>
+
+  <!-- Share Button -->
+  <button class="share-btn">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+    Share Scorecard
+  </button>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="#"><span class="icon">&#9783;</span>Events</a>
+  <a class="nav-item" href="#"><span class="icon">&#9935;</span>Fighters</a>
+  <a class="nav-item" href="#"><span class="icon">&#9636;</span>Analytics</a>
+  <a class="nav-item active" href="#"><span class="icon">&#9733;</span>Scores</a>
+  <a class="nav-item" href="#"><span class="icon">&#9679;</span>Profile</a>
+</nav>
+
+</body>
+</html>

@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge Profile — Sal D'Amato — MMA DNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --charcoal: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --danger: #fb7185;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--charcoal);
+    color: var(--text);
+    min-height: 100vh; min-height: 100dvh;
+    padding-bottom: 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .concept-label {
+    position: fixed; top: 8px; right: 12px;
+    font-size: 10px; color: var(--text-3);
+    z-index: 999; pointer-events: none;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* Top bar */
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .back-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--surface-2); border: none;
+    color: var(--text); display: flex; align-items: center;
+    justify-content: center; cursor: pointer;
+  }
+  .topbar-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600; font-size: 16px;
+  }
+
+  /* Judge header */
+  .judge-header {
+    padding: 24px 16px 20px;
+    background: linear-gradient(180deg, var(--surface) 0%, var(--charcoal) 100%);
+    text-align: center;
+  }
+  .judge-header .avatar {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--surface-2); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 22px; color: var(--text-2);
+    margin: 0 auto 12px;
+  }
+  .judge-header h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 30px; text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .judge-header .meta {
+    color: var(--text-2); font-size: 13px; margin-top: 4px;
+  }
+  .judge-header .meta span { margin: 0 6px; color: var(--text-3); }
+
+  /* Key stats */
+  .key-stats {
+    display: flex; gap: 8px; padding: 0 16px 20px;
+    justify-content: center; flex-wrap: wrap;
+  }
+  .stat-pill {
+    padding: 8px 14px; border-radius: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    text-align: center;
+  }
+  .stat-pill .val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 18px;
+  }
+  .stat-pill .label {
+    font-size: 10px; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: 0.5px; margin-top: 2px;
+  }
+
+  /* Section card */
+  .section-card {
+    margin: 0 16px 14px; padding: 16px;
+    background: var(--surface); border-radius: 14px;
+    border: 1px solid var(--border);
+  }
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-bottom: 14px;
+  }
+
+  /* Activity timeline */
+  .activity-item {
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px;
+  }
+  .activity-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .activity-item:first-of-type { padding-top: 0; }
+  .activity-fight { font-size: 13px; font-weight: 500; }
+  .activity-date { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .activity-scores { font-size: 12px; color: var(--text-2); margin-top: 3px; }
+  .activity-right { text-align: right; flex-shrink: 0; }
+  .outlier-badge {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 6px;
+    background: rgba(245,158,11,0.15); color: var(--amber);
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .majority-badge {
+    display: inline-block; font-size: 10px; font-weight: 600;
+    padding: 2px 8px; border-radius: 6px;
+    background: rgba(34,197,94,0.12); color: var(--green);
+    text-transform: uppercase;
+  }
+
+  /* Bar chart mockup */
+  .bar-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-label {
+    width: 44px; font-size: 12px; font-weight: 500;
+    color: var(--text-2); text-align: right; flex-shrink: 0;
+  }
+  .bar-track {
+    flex: 1; height: 24px; background: var(--surface-2);
+    border-radius: 6px; overflow: hidden; position: relative;
+  }
+  .bar-fill {
+    height: 100%; border-radius: 6px;
+    background: var(--red); transition: width .4s ease;
+  }
+  .bar-val {
+    width: 42px; font-size: 12px; color: var(--text-2);
+    text-align: left; flex-shrink: 0;
+  }
+
+  /* Bias indicators */
+  .bias-row {
+    display: flex; gap: 10px; margin-bottom: 12px;
+  }
+  .bias-card {
+    flex: 1; padding: 12px; border-radius: 10px;
+    background: var(--surface-2); text-align: center;
+  }
+  .bias-card .corner-label {
+    font-size: 10px; text-transform: uppercase;
+    font-weight: 600; letter-spacing: 0.5px; margin-bottom: 4px;
+  }
+  .bias-card .corner-label.red { color: var(--red); }
+  .bias-card .corner-label.blue { color: var(--blue); }
+  .bias-card .bias-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 24px;
+  }
+  .bias-card .bias-note {
+    font-size: 10px; color: var(--text-3); margin-top: 2px;
+  }
+
+  /* Weight class scroll */
+  .wc-scroll {
+    display: flex; gap: 8px; overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px; scrollbar-width: none;
+  }
+  .wc-scroll::-webkit-scrollbar { display: none; }
+  .wc-card {
+    flex-shrink: 0; width: 110px; padding: 12px;
+    border-radius: 10px; background: var(--surface-2);
+    text-align: center;
+  }
+  .wc-card .wc-name {
+    font-size: 11px; font-weight: 600; color: var(--text-2);
+    text-transform: uppercase; margin-bottom: 6px;
+  }
+  .wc-card .wc-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 20px;
+  }
+  .wc-card .wc-label {
+    font-size: 10px; color: var(--text-3); margin-top: 2px;
+  }
+
+  /* Compare input */
+  .compare-section { padding: 12px 0 0; }
+  .compare-row { display: flex; gap: 8px; }
+  .compare-input {
+    flex: 1; padding: 10px 12px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 13px;
+    font-family: 'Inter', sans-serif; outline: none;
+  }
+  .compare-input:focus { border-color: var(--red); }
+  .compare-input::placeholder { color: var(--text-3); }
+  .compare-btn {
+    padding: 10px 18px; border-radius: 10px;
+    background: var(--red); color: #fff; border: none;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 14px; cursor: pointer;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    white-space: nowrap;
+  }
+
+  /* Bottom nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 2px;
+    padding: 8px 0 6px; font-size: 10px;
+    color: var(--text-3); text-decoration: none;
+  }
+  .nav-tab.active { color: var(--red); }
+  .nav-tab svg { width: 22px; height: 22px; }
+
+  @media (min-width: 1024px) {
+    body { max-width: 900px; margin: 0 auto; }
+    .key-stats { gap: 12px; }
+    .bottom-nav { max-width: 900px; left: 50%; transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D &mdash; Pulse</strong> &middot; JudgeProfile</div>
+
+<!-- Top bar -->
+<header class="topbar">
+  <button class="back-btn">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <span class="topbar-title">Judge Profile</span>
+</header>
+
+<!-- Judge header -->
+<section class="judge-header">
+  <div class="avatar">SD</div>
+  <h1>Sal D'Amato</h1>
+  <p class="meta">Active since 2001<span>&bull;</span>Las Vegas, NV</p>
+</section>
+
+<!-- Key stats -->
+<div class="key-stats">
+  <div class="stat-pill">
+    <div class="val">1,247</div>
+    <div class="label">Rounds</div>
+  </div>
+  <div class="stat-pill">
+    <div class="val">4.2%</div>
+    <div class="label">Outlier</div>
+  </div>
+  <div class="stat-pill">
+    <div class="val">2.1%</div>
+    <div class="label">10-8 Usage</div>
+  </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="section-card">
+  <div class="section-title">Recent Activity</div>
+
+  <div class="activity-item">
+    <div>
+      <div class="activity-fight">Adesanya vs. Strickland II</div>
+      <div class="activity-date">Mar 8, 2026 &mdash; UFC 312</div>
+      <div class="activity-scores">48-47 Adesanya</div>
+    </div>
+    <div class="activity-right">
+      <span class="majority-badge">Majority</span>
+    </div>
+  </div>
+
+  <div class="activity-item">
+    <div>
+      <div class="activity-fight">Volkanovski vs. Topuria II</div>
+      <div class="activity-date">Mar 8, 2026 &mdash; UFC 312</div>
+      <div class="activity-scores">49-46 Topuria</div>
+    </div>
+    <div class="activity-right">
+      <span class="majority-badge">Majority</span>
+    </div>
+  </div>
+
+  <div class="activity-item">
+    <div>
+      <div class="activity-fight">Dvalishvili vs. O'Malley II</div>
+      <div class="activity-date">Feb 22, 2026 &mdash; UFC 311</div>
+      <div class="activity-scores">48-47 O'Malley</div>
+    </div>
+    <div class="activity-right">
+      <span class="outlier-badge">Outlier</span>
+    </div>
+  </div>
+
+  <div class="activity-item">
+    <div>
+      <div class="activity-fight">Moreno vs. Pantoja III</div>
+      <div class="activity-date">Feb 22, 2026 &mdash; UFC 311</div>
+      <div class="activity-scores">29-28 Pantoja</div>
+    </div>
+    <div class="activity-right">
+      <span class="majority-badge">Majority</span>
+    </div>
+  </div>
+
+  <div class="activity-item">
+    <div>
+      <div class="activity-fight">Edwards vs. Belal II</div>
+      <div class="activity-date">Feb 8, 2026 &mdash; UFC FN 248</div>
+      <div class="activity-scores">48-47 Edwards</div>
+    </div>
+    <div class="activity-right">
+      <span class="majority-badge">Majority</span>
+    </div>
+  </div>
+</div>
+
+<!-- Scoring Distribution -->
+<div class="section-card">
+  <div class="section-title">Scoring Distribution</div>
+
+  <div class="bar-row">
+    <span class="bar-label">10-9</span>
+    <div class="bar-track"><div class="bar-fill" style="width:89%"></div></div>
+    <span class="bar-val">89.0%</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">10-8</span>
+    <div class="bar-track"><div class="bar-fill" style="width:12%; background:var(--amber)"></div></div>
+    <span class="bar-val">2.1%</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">9-9</span>
+    <div class="bar-track"><div class="bar-fill" style="width:8%; background:var(--blue)"></div></div>
+    <span class="bar-val">0.6%</span>
+  </div>
+  <div class="bar-row">
+    <span class="bar-label">10-10</span>
+    <div class="bar-track"><div class="bar-fill" style="width:5%; background:var(--text-3)"></div></div>
+    <span class="bar-val">0.3%</span>
+  </div>
+</div>
+
+<!-- Fighter Corner Bias -->
+<div class="section-card">
+  <div class="section-title">Fighter Corner Bias</div>
+  <div class="bias-row">
+    <div class="bias-card">
+      <div class="corner-label red">Red Corner</div>
+      <div class="bias-val">51%</div>
+      <div class="bias-note">rounds won</div>
+    </div>
+    <div class="bias-card">
+      <div class="corner-label blue">Blue Corner</div>
+      <div class="bias-val">49%</div>
+      <div class="bias-note">rounds won</div>
+    </div>
+  </div>
+  <div style="text-align:center;font-size:11px;color:var(--text-3);">Near neutral &mdash; no significant corner bias detected</div>
+</div>
+
+<!-- Weight Class Accuracy -->
+<div class="section-card">
+  <div class="section-title">Weight Class Accuracy</div>
+  <div class="wc-scroll">
+    <div class="wc-card">
+      <div class="wc-name">LHW</div>
+      <div class="wc-val" style="color:var(--green)">3.1%</div>
+      <div class="wc-label">outlier</div>
+    </div>
+    <div class="wc-card">
+      <div class="wc-name">MW</div>
+      <div class="wc-val" style="color:var(--amber)">5.2%</div>
+      <div class="wc-label">outlier</div>
+    </div>
+    <div class="wc-card">
+      <div class="wc-name">WW</div>
+      <div class="wc-val">4.8%</div>
+      <div class="wc-label">outlier</div>
+    </div>
+    <div class="wc-card">
+      <div class="wc-name">LW</div>
+      <div class="wc-val" style="color:var(--green)">3.4%</div>
+      <div class="wc-label">outlier</div>
+    </div>
+    <div class="wc-card">
+      <div class="wc-name">BW</div>
+      <div class="wc-val">4.0%</div>
+      <div class="wc-label">outlier</div>
+    </div>
+    <div class="wc-card">
+      <div class="wc-name">HW</div>
+      <div class="wc-val" style="color:var(--amber)">6.1%</div>
+      <div class="wc-label">outlier</div>
+    </div>
+  </div>
+</div>
+
+<!-- Compare section -->
+<div class="section-card">
+  <div class="section-title">Compare With Another Judge</div>
+  <div class="compare-row">
+    <input class="compare-input" type="text" placeholder="Search judge name...">
+    <button class="compare-btn">Compare</button>
+  </div>
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
+    <span>Events</span>
+  </a>
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+    <span>Fighters</span>
+  </a>
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-6 4 4 5-8"/></svg>
+    <span>Analytics</span>
+  </a>
+  <a class="nav-tab active" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+    <span>Scores</span>
+  </a>
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+    <span>Profile</span>
+  </a>
+</nav>
+
+</body>
+</html>

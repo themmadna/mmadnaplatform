@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pulse — Fight Detail</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .concept-label {
+    position: fixed; top: 8px; right: 8px;
+    font-size: 10px; color: var(--text-3);
+    font-family: 'Inter', sans-serif; z-index: 999;
+    background: rgba(14,14,18,0.8); padding: 3px 8px; border-radius: 4px;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* Story progress */
+  .story-progress {
+    display: flex; gap: 3px; padding: 8px 16px 0;
+    position: sticky; top: 0; z-index: 50; background: var(--bg);
+  }
+  .story-progress .bar { flex: 1; height: 2px; background: var(--text-3); border-radius: 2px; }
+  .story-progress .bar.active { background: var(--red); }
+  .story-progress .bar.done { background: var(--text-2); }
+
+  /* Top bar */
+  .top-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; position: sticky; top: 10px;
+    z-index: 50; background: var(--bg);
+  }
+  .back {
+    width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border-radius: 10px; color: var(--text);
+    font-size: 18px; cursor: pointer; border: 1px solid var(--border); flex-shrink: 0;
+  }
+  .top-bar .title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 17px;
+    letter-spacing: 0.5px; text-transform: uppercase;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Fight Header */
+  .fight-header {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin: 8px 16px;
+    padding: 20px 16px;
+  }
+  .fight-header .fighters {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .fighter-side {
+    display: flex; flex-direction: column; align-items: center; flex: 1;
+  }
+  .fighter-avatar {
+    width: 60px; height: 60px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 20px; color: var(--text);
+    margin-bottom: 8px;
+  }
+  .fighter-avatar.red { border: 3px solid var(--red); background: rgba(239,68,68,0.08); }
+  .fighter-avatar.blue { border: 3px solid var(--blue); background: rgba(59,130,246,0.08); }
+
+  .fighter-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px; text-transform: uppercase;
+    letter-spacing: 0.5px; text-align: center; line-height: 1.2;
+  }
+  .fighter-record { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .fighter-flag { font-size: 14px; margin-top: 4px; }
+
+  .vs-divider {
+    display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 0 6px;
+  }
+  .vs-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 16px; color: var(--text-3); letter-spacing: 1px;
+  }
+  .weight-pill {
+    font-size: 9px; color: var(--text-2); background: var(--surface-2);
+    padding: 3px 8px; border-radius: 10px; white-space: nowrap; text-align: center;
+    line-height: 1.3;
+  }
+
+  /* Result Banner */
+  .result-banner {
+    margin: 10px 16px;
+    background: rgba(34,197,94,0.08);
+    border: 1px solid rgba(34,197,94,0.2);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .result-banner .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0;
+  }
+  .result-banner .text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600; font-size: 15px; color: var(--green);
+    letter-spacing: 0.5px;
+  }
+
+  /* ML Bar */
+  .ml-bar {
+    margin: 10px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+  }
+  .ml-bar .label {
+    font-size: 11px; color: var(--text-2); margin-bottom: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .ml-bar .label .badge {
+    font-size: 9px; background: var(--surface-2); color: var(--text-3);
+    padding: 2px 6px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .ml-track {
+    height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden;
+    position: relative;
+  }
+  .ml-fill {
+    height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--red), #f97316);
+    width: 72%;
+  }
+  .ml-labels {
+    display: flex; justify-content: space-between; margin-top: 6px;
+    font-size: 11px;
+  }
+  .ml-labels .red { color: var(--red); font-weight: 600; }
+  .ml-labels .blue { color: var(--blue); }
+
+  /* Tab bar */
+  .tab-bar {
+    display: flex; gap: 4px; padding: 12px 16px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600; font-size: 13px;
+    padding: 7px 14px; border-radius: 20px;
+    white-space: nowrap; cursor: pointer;
+    color: var(--text-3); background: var(--surface);
+    border: 1px solid var(--border);
+    letter-spacing: 0.5px; text-transform: uppercase;
+  }
+  .tab.active {
+    background: var(--red); color: #fff; border-color: var(--red);
+  }
+
+  /* Stats Section */
+  .stats-section {
+    padding: 4px 16px 8px;
+  }
+  .stats-section .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 14px; text-transform: uppercase;
+    color: var(--text-2); letter-spacing: 1px; margin-bottom: 12px;
+  }
+
+  .stat-row {
+    display: flex; align-items: center; margin-bottom: 14px;
+  }
+  .stat-row .val {
+    width: 48px; font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 15px; text-align: center;
+  }
+  .stat-row .val.red { color: var(--red); }
+  .stat-row .val.blue { color: var(--blue); }
+  .stat-row .mid {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 0 6px;
+  }
+  .stat-row .mid .name {
+    font-size: 10px; color: var(--text-3); text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .dual-bar {
+    display: flex; width: 100%; height: 5px; border-radius: 3px; overflow: hidden; gap: 2px;
+  }
+  .dual-bar .left {
+    background: var(--red); border-radius: 3px 0 0 3px;
+    height: 100%;
+  }
+  .dual-bar .right {
+    background: var(--blue); border-radius: 0 3px 3px 0;
+    height: 100%; margin-left: auto;
+  }
+
+  /* Round Breakdown */
+  .round-breakdown {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin: 8px 16px 16px;
+    padding: 14px;
+  }
+  .round-breakdown .title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 14px; text-transform: uppercase;
+    color: var(--text-2); letter-spacing: 1px; margin-bottom: 12px;
+  }
+  .round-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .round-row .round-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600; font-size: 12px; color: var(--text-3);
+    width: 24px; text-align: center;
+  }
+  .round-track {
+    flex: 1; height: 8px; background: var(--surface-2);
+    border-radius: 4px; overflow: hidden; position: relative;
+  }
+  .round-fill-red {
+    position: absolute; left: 0; top: 0; height: 100%;
+    background: var(--red); border-radius: 4px;
+  }
+  .round-fill-blue {
+    position: absolute; right: 0; top: 0; height: 100%;
+    background: var(--blue); border-radius: 4px;
+  }
+  .round-winner {
+    font-size: 10px; font-weight: 600; width: 24px; text-align: center;
+  }
+  .round-winner.red { color: var(--red); }
+  .round-winner.blue { color: var(--blue); }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 430px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; justify-content: space-around;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom)); z-index: 100;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    font-size: 10px; color: var(--text-3); cursor: pointer; padding: 4px 12px;
+  }
+  .nav-item.active { color: var(--red); }
+  .nav-item .icon { font-size: 20px; }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · FightDetail</div>
+
+<!-- Story Progress -->
+<div class="story-progress">
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar active"></div>
+  <div class="bar"></div>
+</div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="back">&#8592;</div>
+  <div class="title">Pereira vs Ankalaev</div>
+</div>
+
+<!-- Fight Header -->
+<div class="fight-header">
+  <div class="fighters">
+    <div class="fighter-side">
+      <div class="fighter-avatar red">AP</div>
+      <div class="fighter-name">Alex<br>Pereira</div>
+      <div class="fighter-record">11-2-0</div>
+      <div class="fighter-flag">&#127463;&#127479;</div>
+    </div>
+    <div class="vs-divider">
+      <div class="vs-text">VS</div>
+      <div class="weight-pill">Light Heavyweight<br>5 Rounds &middot; Main Event</div>
+    </div>
+    <div class="fighter-side">
+      <div class="fighter-avatar blue">MA</div>
+      <div class="fighter-name">Magomed<br>Ankalaev</div>
+      <div class="fighter-record">19-1-1</div>
+      <div class="fighter-flag">&#127479;&#127482;</div>
+    </div>
+  </div>
+</div>
+
+<!-- Result Banner -->
+<div class="result-banner">
+  <div class="dot"></div>
+  <div class="text">Pereira wins via KO/TKO (R4, 3:42)</div>
+</div>
+
+<!-- ML Confidence -->
+<div class="ml-bar">
+  <div class="label">
+    ML Confidence
+    <span class="badge">Model v3</span>
+  </div>
+  <div class="ml-track">
+    <div class="ml-fill"></div>
+  </div>
+  <div class="ml-labels">
+    <span class="red">72% Pereira</span>
+    <span class="blue">28% Ankalaev</span>
+  </div>
+</div>
+
+<!-- Tab Bar -->
+<div class="tab-bar">
+  <div class="tab active">Overview</div>
+  <div class="tab">By Round</div>
+  <div class="tab">Scoring</div>
+  <div class="tab">Judges</div>
+  <div class="tab">Combat DNA</div>
+</div>
+
+<!-- Stats -->
+<div class="stats-section">
+  <div class="section-title">Fight Statistics</div>
+
+  <!-- Sig. Strikes -->
+  <div class="stat-row">
+    <div class="val red">142</div>
+    <div class="mid">
+      <div class="name">Sig. Strikes</div>
+      <div class="dual-bar">
+        <div class="left" style="width:59%"></div>
+        <div class="right" style="width:41%"></div>
+      </div>
+    </div>
+    <div class="val blue">98</div>
+  </div>
+
+  <!-- Total Strikes -->
+  <div class="stat-row">
+    <div class="val red">218</div>
+    <div class="mid">
+      <div class="name">Total Strikes</div>
+      <div class="dual-bar">
+        <div class="left" style="width:58%"></div>
+        <div class="right" style="width:42%"></div>
+      </div>
+    </div>
+    <div class="val blue">156</div>
+  </div>
+
+  <!-- Takedowns -->
+  <div class="stat-row">
+    <div class="val red">4</div>
+    <div class="mid">
+      <div class="name">Takedowns</div>
+      <div class="dual-bar">
+        <div class="left" style="width:33%"></div>
+        <div class="right" style="width:67%"></div>
+      </div>
+    </div>
+    <div class="val blue">8</div>
+  </div>
+
+  <!-- Accuracy -->
+  <div class="stat-row">
+    <div class="val red">52%</div>
+    <div class="mid">
+      <div class="name">Accuracy</div>
+      <div class="dual-bar">
+        <div class="left" style="width:54%"></div>
+        <div class="right" style="width:46%"></div>
+      </div>
+    </div>
+    <div class="val blue">44%</div>
+  </div>
+
+  <!-- Ctrl Time -->
+  <div class="stat-row">
+    <div class="val red" style="font-size:13px">12:45</div>
+    <div class="mid">
+      <div class="name">Ctrl Time</div>
+      <div class="dual-bar">
+        <div class="left" style="width:66%"></div>
+        <div class="right" style="width:34%"></div>
+      </div>
+    </div>
+    <div class="val blue" style="font-size:13px">6:32</div>
+  </div>
+
+  <!-- Head Strikes -->
+  <div class="stat-row">
+    <div class="val red">89</div>
+    <div class="mid">
+      <div class="name">Head Strikes</div>
+      <div class="dual-bar">
+        <div class="left" style="width:59%"></div>
+        <div class="right" style="width:41%"></div>
+      </div>
+    </div>
+    <div class="val blue">62</div>
+  </div>
+
+  <!-- Body Strikes -->
+  <div class="stat-row">
+    <div class="val red">31</div>
+    <div class="mid">
+      <div class="name">Body Strikes</div>
+      <div class="dual-bar">
+        <div class="left" style="width:63%"></div>
+        <div class="right" style="width:37%"></div>
+      </div>
+    </div>
+    <div class="val blue">18</div>
+  </div>
+
+  <!-- Leg Strikes -->
+  <div class="stat-row">
+    <div class="val red">22</div>
+    <div class="mid">
+      <div class="name">Leg Strikes</div>
+      <div class="dual-bar">
+        <div class="left" style="width:55%"></div>
+        <div class="right" style="width:45%"></div>
+      </div>
+    </div>
+    <div class="val blue">18</div>
+  </div>
+</div>
+
+<!-- Round Breakdown -->
+<div class="round-breakdown">
+  <div class="title">Round Breakdown</div>
+
+  <div class="round-row">
+    <div class="round-label">R1</div>
+    <div class="round-track">
+      <div class="round-fill-red" style="width:62%"></div>
+    </div>
+    <div class="round-winner red">AP</div>
+  </div>
+
+  <div class="round-row">
+    <div class="round-label">R2</div>
+    <div class="round-track">
+      <div class="round-fill-blue" style="width:58%"></div>
+    </div>
+    <div class="round-winner blue">MA</div>
+  </div>
+
+  <div class="round-row">
+    <div class="round-label">R3</div>
+    <div class="round-track">
+      <div class="round-fill-red" style="width:55%"></div>
+    </div>
+    <div class="round-winner red">AP</div>
+  </div>
+
+  <div class="round-row">
+    <div class="round-label">R4</div>
+    <div class="round-track">
+      <div class="round-fill-red" style="width:78%"></div>
+    </div>
+    <div class="round-winner red">AP</div>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-item active">
+    <div class="icon">&#9670;</div>
+    <div>Events</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9899;</div>
+    <div>Fighters</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9636;</div>
+    <div>Analytics</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9733;</div>
+    <div>Scores</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9786;</div>
+    <div>Profile</div>
+  </div>
+</div>
+
+</body>
+</html>

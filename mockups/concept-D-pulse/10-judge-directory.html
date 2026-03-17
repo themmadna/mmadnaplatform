@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Judge Directory — MMA DNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --charcoal: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --danger: #fb7185;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--charcoal);
+    color: var(--text);
+    min-height: 100vh;
+    min-height: 100dvh;
+    padding-bottom: 72px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* --- Concept label --- */
+  .concept-label {
+    position: fixed; top: 8px; right: 12px;
+    font-size: 10px; color: var(--text-3);
+    z-index: 999; pointer-events: none;
+    font-family: 'Inter', sans-serif;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* --- Top bar --- */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 16px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .topbar-logo {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 20px; letter-spacing: 1px;
+    color: var(--text);
+  }
+  .topbar-logo span { color: var(--red); }
+  .topbar-profile {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-2); font-size: 14px;
+  }
+
+  /* --- Hero --- */
+  .hero { padding: 24px 16px 16px; }
+  .hero h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800; font-size: 28px; line-height: 1.1;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .hero .subtitle {
+    color: var(--text-2); font-size: 13px; margin-top: 6px;
+  }
+
+  /* --- Search --- */
+  .search-wrap {
+    padding: 0 16px 12px; position: relative;
+  }
+  .search-wrap input {
+    width: 100%; padding: 10px 12px 10px 38px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 14px;
+    font-family: 'Inter', sans-serif; outline: none;
+    transition: border-color .2s;
+  }
+  .search-wrap input:focus { border-color: var(--red); }
+  .search-wrap input::placeholder { color: var(--text-3); }
+  .search-icon {
+    position: absolute; left: 28px; top: 50%; transform: translateY(-50%);
+    color: var(--text-3); font-size: 14px; pointer-events: none;
+  }
+
+  /* --- Sort pills --- */
+  .pills-row {
+    display: flex; gap: 8px; padding: 0 16px 14px;
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .pills-row::-webkit-scrollbar { display: none; }
+  .pill {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 500;
+    background: var(--surface); color: var(--text-2);
+    border: 1px solid var(--border); cursor: pointer;
+    white-space: nowrap; transition: all .2s;
+  }
+  .pill.active {
+    background: var(--red); color: #fff; border-color: var(--red);
+  }
+
+  /* --- Results count --- */
+  .results-count {
+    padding: 0 16px 10px;
+    font-size: 12px; color: var(--text-3);
+  }
+
+  /* --- Judge cards (mobile) --- */
+  .judge-list { padding: 0 16px; display: flex; flex-direction: column; gap: 8px; }
+
+  .judge-card {
+    background: var(--surface); border-radius: 12px;
+    padding: 14px 12px; display: flex; align-items: center;
+    gap: 12px; border: 1px solid var(--border);
+    cursor: pointer; transition: background .15s;
+  }
+  .judge-card:active { background: var(--surface-2); }
+
+  .judge-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--surface-2); display: flex;
+    align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 15px; color: var(--text-2);
+    flex-shrink: 0;
+  }
+
+  .judge-info { flex: 1; min-width: 0; }
+  .judge-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 16px;
+  }
+  .judge-last-active {
+    font-size: 11px; color: var(--text-3); margin-top: 1px;
+  }
+  .judge-chips { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11px; font-weight: 500; padding: 3px 8px;
+    border-radius: 6px; background: var(--surface-2);
+    color: var(--text-2); white-space: nowrap;
+  }
+  .chip.amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .chip.danger { background: rgba(251,113,133,0.15); color: var(--danger); }
+
+  .judge-chevron {
+    color: var(--text-3); font-size: 18px; flex-shrink: 0;
+  }
+
+  /* --- Desktop table --- */
+  .judge-table-wrap {
+    display: none; padding: 0 16px;
+  }
+  .judge-table {
+    width: 100%; border-collapse: collapse;
+    background: var(--surface); border-radius: 12px;
+    overflow: hidden;
+  }
+  .judge-table th {
+    text-align: left; padding: 12px 14px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    color: var(--text-3); border-bottom: 1px solid var(--border);
+    cursor: pointer; user-select: none;
+  }
+  .judge-table th:hover { color: var(--text-2); }
+  .judge-table th .sort-arrow { font-size: 10px; margin-left: 4px; }
+  .judge-table td {
+    padding: 12px 14px; font-size: 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .judge-table tr:last-child td { border-bottom: none; }
+  .judge-table tr:hover td { background: var(--surface-2); }
+  .judge-table .name-cell {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 15px;
+  }
+  .table-chip {
+    display: inline-block; font-size: 11px; font-weight: 500;
+    padding: 2px 8px; border-radius: 6px;
+  }
+  .table-chip.amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .table-chip.danger { background: rgba(251,113,133,0.15); color: var(--danger); }
+
+  /* --- Load more --- */
+  .load-more-wrap { padding: 20px 16px 24px; }
+  .load-more {
+    width: 100%; padding: 12px;
+    border: 2px dashed var(--border); border-radius: 12px;
+    background: transparent; color: var(--text-3);
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: border-color .2s, color .2s;
+  }
+  .load-more:hover { border-color: var(--text-3); color: var(--text-2); }
+
+  /* --- Bottom nav --- */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface); border-top: 1px solid var(--border);
+    display: flex; z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .nav-tab {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 2px;
+    padding: 8px 0 6px; font-size: 10px;
+    color: var(--text-3); text-decoration: none;
+    transition: color .15s;
+  }
+  .nav-tab.active { color: var(--red); }
+  .nav-tab svg { width: 22px; height: 22px; }
+
+  /* --- Desktop responsive --- */
+  @media (min-width: 1024px) {
+    body { max-width: 900px; margin: 0 auto; }
+    .judge-list { display: none; }
+    .judge-table-wrap { display: block; }
+    .hero h1 { font-size: 36px; }
+    .bottom-nav { max-width: 900px; left: 50%; transform: translateX(-50%); }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D &mdash; Pulse</strong> &middot; JudgeDirectory</div>
+
+<!-- Top bar -->
+<header class="topbar">
+  <div class="topbar-logo">MMA<span>DNA</span></div>
+  <div class="topbar-profile">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <h1>Judge Directory</h1>
+  <p class="subtitle">All UFC judges ranked by activity and accuracy</p>
+</section>
+
+<!-- Search -->
+<div class="search-wrap">
+  <span class="search-icon">
+    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+  </span>
+  <input type="text" placeholder="Search judges...">
+</div>
+
+<!-- Sort pills -->
+<div class="pills-row">
+  <span class="pill active">Most Active</span>
+  <span class="pill">Highest Outlier %</span>
+  <span class="pill">Most 10-8s</span>
+  <span class="pill">Last Active</span>
+</div>
+
+<!-- Results count -->
+<div class="results-count">Showing 8 of 142 judges</div>
+
+<!-- Mobile: Judge card list -->
+<div class="judge-list">
+
+  <div class="judge-card">
+    <div class="judge-avatar">SD</div>
+    <div class="judge-info">
+      <div class="judge-name">Sal D'Amato</div>
+      <div class="judge-last-active">Last active: Mar 8, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">1,247 rds</span>
+        <span class="chip">4.2% outlier</span>
+        <span class="chip">2.1% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+  <div class="judge-card">
+    <div class="judge-avatar">CL</div>
+    <div class="judge-info">
+      <div class="judge-name">Chris Lee</div>
+      <div class="judge-last-active">Last active: Mar 8, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">1,189 rds</span>
+        <span class="chip">5.8% outlier</span>
+        <span class="chip">1.8% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+  <div class="judge-card">
+    <div class="judge-avatar">DC</div>
+    <div class="judge-info">
+      <div class="judge-name">Derek Cleary</div>
+      <div class="judge-last-active">Last active: Mar 1, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">1,102 rds</span>
+        <span class="chip">3.1% outlier</span>
+        <span class="chip">2.4% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+  <div class="judge-card">
+    <div class="judge-avatar">MB</div>
+    <div class="judge-info">
+      <div class="judge-name">Mike Bell</div>
+      <div class="judge-last-active">Last active: Feb 22, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">987 rds</span>
+        <span class="chip">6.2% outlier</span>
+        <span class="chip">1.5% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+  <div class="judge-card">
+    <div class="judge-avatar">JK</div>
+    <div class="judge-info">
+      <div class="judge-name">Junichiro Kamijo</div>
+      <div class="judge-last-active">Last active: Feb 22, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">876 rds</span>
+        <span class="chip amber">7.1% outlier</span>
+        <span class="chip">3.2% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+  <div class="judge-card">
+    <div class="judge-avatar">AB</div>
+    <div class="judge-info">
+      <div class="judge-name">Adalaide Byrd</div>
+      <div class="judge-last-active">Last active: Feb 15, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">834 rds</span>
+        <span class="chip danger">9.4% outlier</span>
+        <span class="chip">1.2% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+  <div class="judge-card">
+    <div class="judge-avatar">MH</div>
+    <div class="judge-info">
+      <div class="judge-name">Mark Henry</div>
+      <div class="judge-last-active">Last active: Feb 15, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">756 rds</span>
+        <span class="chip">4.8% outlier</span>
+        <span class="chip">2.8% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+  <div class="judge-card">
+    <div class="judge-avatar">TW</div>
+    <div class="judge-info">
+      <div class="judge-name">Tony Weeks</div>
+      <div class="judge-last-active">Last active: Feb 8, 2026</div>
+      <div class="judge-chips">
+        <span class="chip">698 rds</span>
+        <span class="chip">5.1% outlier</span>
+        <span class="chip">1.9% 10-8</span>
+      </div>
+    </div>
+    <div class="judge-chevron">&rsaquo;</div>
+  </div>
+
+</div>
+
+<!-- Desktop: Sortable table -->
+<div class="judge-table-wrap">
+  <table class="judge-table">
+    <thead>
+      <tr>
+        <th>Judge <span class="sort-arrow">&darr;</span></th>
+        <th>Rounds</th>
+        <th>Outlier % <span class="sort-arrow">&darr;</span></th>
+        <th>10-8 %</th>
+        <th>Last Active</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="name-cell">Sal D'Amato</td>
+        <td>1,247</td>
+        <td>4.2%</td>
+        <td>2.1%</td>
+        <td>Mar 8, 2026</td>
+      </tr>
+      <tr>
+        <td class="name-cell">Chris Lee</td>
+        <td>1,189</td>
+        <td>5.8%</td>
+        <td>1.8%</td>
+        <td>Mar 8, 2026</td>
+      </tr>
+      <tr>
+        <td class="name-cell">Derek Cleary</td>
+        <td>1,102</td>
+        <td>3.1%</td>
+        <td>2.4%</td>
+        <td>Mar 1, 2026</td>
+      </tr>
+      <tr>
+        <td class="name-cell">Mike Bell</td>
+        <td>987</td>
+        <td>6.2%</td>
+        <td>1.5%</td>
+        <td>Feb 22, 2026</td>
+      </tr>
+      <tr>
+        <td class="name-cell">Junichiro Kamijo</td>
+        <td>876</td>
+        <td><span class="table-chip amber">7.1%</span></td>
+        <td>3.2%</td>
+        <td>Feb 22, 2026</td>
+      </tr>
+      <tr>
+        <td class="name-cell">Adalaide Byrd</td>
+        <td>834</td>
+        <td><span class="table-chip danger">9.4%</span></td>
+        <td>1.2%</td>
+        <td>Feb 15, 2026</td>
+      </tr>
+      <tr>
+        <td class="name-cell">Mark Henry</td>
+        <td>756</td>
+        <td>4.8%</td>
+        <td>2.8%</td>
+        <td>Feb 15, 2026</td>
+      </tr>
+      <tr>
+        <td class="name-cell">Tony Weeks</td>
+        <td>698</td>
+        <td>5.1%</td>
+        <td>1.9%</td>
+        <td>Feb 8, 2026</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Load more -->
+<div class="load-more-wrap">
+  <button class="load-more">Load More Judges</button>
+</div>
+
+<!-- Bottom nav -->
+<nav class="bottom-nav">
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg>
+    <span>Events</span>
+  </a>
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+    <span>Fighters</span>
+  </a>
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 16l4-6 4 4 5-8"/></svg>
+    <span>Analytics</span>
+  </a>
+  <a class="nav-tab active" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+    <span>Scores</span>
+  </a>
+  <a class="nav-tab" href="#">
+    <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+    <span>Profile</span>
+  </a>
+</nav>
+
+</body>
+</html>

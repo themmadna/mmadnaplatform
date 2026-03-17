@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Judging DNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --teal: #2dd4bf;
+    --success: #34d399;
+    --danger: #fb7185;
+    --amber: #f59e0b;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 350px; height: 350px;
+    background: #818cf8;
+    top: -80px; right: -60px;
+  }
+  body::after {
+    width: 300px; height: 300px;
+    background: #c084fc;
+    bottom: -50px; left: -80px;
+  }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+    border-radius: 16px;
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .top-bar .back-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .top-bar .back-btn svg { width: 20px; height: 20px; }
+  .top-bar .title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  /* ─── MAIN CONTENT ─── */
+  .page-content {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ─── PROFILE HEADER ─── */
+  .profile-header {
+    text-align: center;
+    padding: 28px 16px 24px;
+  }
+  .profile-header h1 {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .profile-header .subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* ─── ACCURACY STATS ROW ─── */
+  .stats-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .stats-scroll::-webkit-scrollbar { display: none; }
+  .stat-pill {
+    flex: 0 0 auto;
+    min-width: 140px;
+    padding: 16px;
+    border-radius: 14px;
+    text-align: center;
+  }
+  .stat-pill .stat-value {
+    font-size: 24px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 4px;
+  }
+  .stat-pill .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── SECTION CARDS ─── */
+  .card {
+    padding: 20px 16px;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    letter-spacing: -0.2px;
+  }
+
+  /* ─── BIAS ANALYSIS ─── */
+  .bias-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .bias-row:last-child { margin-bottom: 0; }
+  .bias-label {
+    width: 100px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+  }
+  .bias-bar-track {
+    flex: 1;
+    height: 8px;
+    border-radius: 4px;
+    background: rgba(255,255,255,0.06);
+    position: relative;
+    overflow: hidden;
+  }
+  .bias-bar-center {
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 50%;
+    width: 1px;
+    background: rgba(255,255,255,0.15);
+  }
+  .bias-bar-fill {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    border-radius: 4px;
+  }
+  /* Left-leaning bars: fill from center leftward */
+  .bias-bar-fill.left {
+    right: 50%;
+    background: linear-gradient(90deg, var(--accent-1), var(--accent-2));
+  }
+  /* Right-leaning bars: fill from center rightward */
+  .bias-bar-fill.right {
+    left: 50%;
+    background: linear-gradient(90deg, var(--accent-2), var(--accent-1));
+  }
+  .bias-bar-fill.center-fill {
+    left: 48%;
+    width: 4% !important;
+    background: var(--text-muted);
+  }
+  .bias-value {
+    width: 44px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .bias-value.left-val { color: var(--accent-1); }
+  .bias-value.right-val { color: var(--accent-2); }
+  .bias-value.neutral-val { color: var(--text-muted); }
+
+  /* ─── JUDGE AGREEMENT ─── */
+  .judge-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .judge-row:last-of-type { border-bottom: none; }
+  .judge-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .judge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .judge-dot.green { background: var(--success); box-shadow: 0 0 6px rgba(52,211,153,0.4); }
+  .judge-dot.amber { background: var(--amber); box-shadow: 0 0 6px rgba(245,158,11,0.4); }
+  .judge-name {
+    font-size: 14px;
+    font-weight: 600;
+  }
+  .judge-match {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+  .judge-match .pct { color: var(--text-primary); }
+  .view-all-link {
+    display: block;
+    text-align: center;
+    margin-top: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent-1);
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  /* ─── WEIGHT CLASS TABLE ─── */
+  .wc-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .wc-row:last-child { border-bottom: none; }
+  .wc-name {
+    width: 130px;
+    font-size: 13px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  .wc-bar-track {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255,255,255,0.06);
+    overflow: hidden;
+  }
+  .wc-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: var(--accent-gradient);
+    transition: width 0.4s ease;
+  }
+  .wc-pct {
+    width: 36px;
+    font-size: 13px;
+    font-weight: 700;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ─── RECENT SCORECARDS ─── */
+  .fight-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 12px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .fight-row:last-child { margin-bottom: 0; }
+  .fight-row:active {
+    background: var(--bg-glass-hover);
+    border-color: var(--border-glass-hover);
+  }
+  .fight-left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .fight-bout {
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fight-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .fight-score {
+    font-weight: 700;
+    color: var(--accent-1);
+  }
+  .fight-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .fight-match-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: rgba(52,211,153,0.12);
+    color: var(--success);
+  }
+  .fight-match-badge.partial {
+    background: rgba(245,158,11,0.12);
+    color: var(--amber);
+  }
+  .fight-date {
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0; right: 0;
+    z-index: 50;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 4px 12px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .tab-item svg { width: 22px; height: 22px; }
+  .tab-item .tab-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+  .tab-item { color: var(--text-muted); }
+  .tab-item.active { color: var(--accent-1); }
+  .tab-item.active svg { filter: drop-shadow(0 0 6px rgba(129,140,248,0.4)); }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 16px;
+    right: 12px;
+    backdrop-filter: blur(16px);
+    padding: 8px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    z-index: 100;
+    border: 1px solid var(--border-glass);
+    background: rgba(5,5,16,0.8);
+  }
+  .concept-label strong {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── DESKTOP ─── */
+  @media (min-width: 640px) {
+    .page-content { padding: 28px 24px 120px; gap: 24px; }
+    .profile-header h1 { font-size: 30px; }
+    .stat-pill { min-width: 160px; padding: 20px; }
+    .stat-pill .stat-value { font-size: 28px; }
+    .card { padding: 24px 20px; }
+    .wc-name { width: 160px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <button class="back-btn">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </button>
+  <span class="title">Judging DNA</span>
+</div>
+
+<!-- PAGE CONTENT -->
+<div class="page-content">
+
+  <!-- 1. PROFILE HEADER -->
+  <div class="profile-header">
+    <h1>Your Judging DNA</h1>
+    <p class="subtitle">Based on 47 scored fights</p>
+  </div>
+
+  <!-- 2. ACCURACY STATS ROW -->
+  <div class="stats-scroll">
+    <div class="stat-pill glass">
+      <div class="stat-value">76%</div>
+      <div class="stat-label">Overall Accuracy</div>
+    </div>
+    <div class="stat-pill glass">
+      <div class="stat-value">72%</div>
+      <div class="stat-label">Judge Agreement</div>
+    </div>
+    <div class="stat-pill glass">
+      <div class="stat-value">84%</div>
+      <div class="stat-label">Community Match</div>
+    </div>
+    <div class="stat-pill glass">
+      <div class="stat-value">8.2%</div>
+      <div class="stat-label">10-8 Rate</div>
+    </div>
+  </div>
+
+  <!-- 3. BIAS ANALYSIS -->
+  <div class="card glass">
+    <div class="card-title">Your Scoring Tendencies</div>
+
+    <div class="bias-row">
+      <div class="bias-label">Striker Bias</div>
+      <div class="bias-bar-track">
+        <div class="bias-bar-center"></div>
+        <div class="bias-bar-fill left" style="width: 34%"></div>
+      </div>
+      <div class="bias-value left-val">+68%</div>
+    </div>
+
+    <div class="bias-row">
+      <div class="bias-label">Grappler Bias</div>
+      <div class="bias-bar-track">
+        <div class="bias-bar-center"></div>
+        <div class="bias-bar-fill right" style="width: 12%"></div>
+      </div>
+      <div class="bias-value right-val">+24%</div>
+    </div>
+
+    <div class="bias-row">
+      <div class="bias-label">Aggression Bias</div>
+      <div class="bias-bar-track">
+        <div class="bias-bar-center"></div>
+        <div class="bias-bar-fill left" style="width: 22%"></div>
+      </div>
+      <div class="bias-value left-val">+44%</div>
+    </div>
+
+    <div class="bias-row">
+      <div class="bias-label">Activity Bias</div>
+      <div class="bias-bar-track">
+        <div class="bias-bar-center"></div>
+        <div class="bias-bar-fill center-fill"></div>
+      </div>
+      <div class="bias-value neutral-val">0%</div>
+    </div>
+  </div>
+
+  <!-- 4. JUDGE AGREEMENT -->
+  <div class="card glass">
+    <div class="card-title">Which Judges Think Like You?</div>
+
+    <div class="judge-row">
+      <div class="judge-info">
+        <div class="judge-dot green"></div>
+        <span class="judge-name">Sal D'Amato</span>
+      </div>
+      <div class="judge-match"><span class="pct">82%</span> match</div>
+    </div>
+
+    <div class="judge-row">
+      <div class="judge-info">
+        <div class="judge-dot green"></div>
+        <span class="judge-name">Derek Cleary</span>
+      </div>
+      <div class="judge-match"><span class="pct">78%</span> match</div>
+    </div>
+
+    <div class="judge-row">
+      <div class="judge-info">
+        <div class="judge-dot amber"></div>
+        <span class="judge-name">Adalaide Byrd</span>
+      </div>
+      <div class="judge-match"><span class="pct">54%</span> match</div>
+    </div>
+
+    <a class="view-all-link">View All</a>
+  </div>
+
+  <!-- 5. ACCURACY BY WEIGHT CLASS -->
+  <div class="card glass">
+    <div class="card-title">Accuracy by Weight Class</div>
+
+    <div class="wc-row">
+      <div class="wc-name">Lightweight</div>
+      <div class="wc-bar-track"><div class="wc-bar-fill" style="width: 82%"></div></div>
+      <div class="wc-pct">82%</div>
+    </div>
+
+    <div class="wc-row">
+      <div class="wc-name">Heavyweight</div>
+      <div class="wc-bar-track"><div class="wc-bar-fill" style="width: 80%"></div></div>
+      <div class="wc-pct">80%</div>
+    </div>
+
+    <div class="wc-row">
+      <div class="wc-name">Light Heavyweight</div>
+      <div class="wc-bar-track"><div class="wc-bar-fill" style="width: 76%"></div></div>
+      <div class="wc-pct">76%</div>
+    </div>
+
+    <div class="wc-row">
+      <div class="wc-name">Featherweight</div>
+      <div class="wc-bar-track"><div class="wc-bar-fill" style="width: 74%"></div></div>
+      <div class="wc-pct">74%</div>
+    </div>
+
+    <div class="wc-row">
+      <div class="wc-name">Middleweight</div>
+      <div class="wc-bar-track"><div class="wc-bar-fill" style="width: 72%"></div></div>
+      <div class="wc-pct">72%</div>
+    </div>
+
+    <div class="wc-row">
+      <div class="wc-name">Welterweight</div>
+      <div class="wc-bar-track"><div class="wc-bar-fill" style="width: 68%"></div></div>
+      <div class="wc-pct">68%</div>
+    </div>
+  </div>
+
+  <!-- 6. RECENT SCORECARDS -->
+  <div class="card glass">
+    <div class="card-title">Recent Scorecards</div>
+
+    <div class="fight-row">
+      <div class="fight-left">
+        <div class="fight-bout">Pereira vs Ankalaev</div>
+        <div class="fight-meta">
+          <span class="fight-score">49-46</span>
+          <span>Matched 4/5 rounds</span>
+        </div>
+      </div>
+      <div class="fight-right">
+        <div class="fight-match-badge">4/5</div>
+        <div class="fight-date">Mar 8, 2026</div>
+      </div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-left">
+        <div class="fight-bout">Dvalishvili vs O'Malley</div>
+        <div class="fight-meta">
+          <span class="fight-score">48-47</span>
+          <span>Matched 3/5 rounds</span>
+        </div>
+      </div>
+      <div class="fight-right">
+        <div class="fight-match-badge partial">3/5</div>
+        <div class="fight-date">Feb 22, 2026</div>
+      </div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-left">
+        <div class="fight-bout">Strickland vs Du Plessis</div>
+        <div class="fight-meta">
+          <span class="fight-score">48-47</span>
+          <span>Matched 5/5 rounds</span>
+        </div>
+      </div>
+      <div class="fight-right">
+        <div class="fight-match-badge">5/5</div>
+        <div class="fight-date">Feb 8, 2026</div>
+      </div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-left">
+        <div class="fight-bout">Topuria vs Holloway</div>
+        <div class="fight-meta">
+          <span class="fight-score">49-46</span>
+          <span>Matched 4/5 rounds</span>
+        </div>
+      </div>
+      <div class="fight-right">
+        <div class="fight-match-badge">4/5</div>
+        <div class="fight-date">Jan 18, 2026</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<div class="tab-bar">
+  <a class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span class="tab-label">Home</span>
+  </a>
+  <a class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <span class="tab-label">Explore</span>
+  </a>
+  <a class="tab-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <span class="tab-label">Scores</span>
+  </a>
+  <a class="tab-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+    <span class="tab-label">Profile</span>
+  </a>
+</div>
+
+<!-- CONCEPT LABEL -->
+<div class="concept-label">
+  <strong>B — Midnight Glass</strong> · Judging DNA
+</div>
+
+</body>
+</html>

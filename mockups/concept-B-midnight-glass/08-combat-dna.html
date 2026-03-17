@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Combat DNA</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --teal: #2dd4bf;
+    --success: #34d399;
+    --danger: #fb7185;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 350px; height: 350px;
+    background: #818cf8;
+    top: -80px; right: -60px;
+  }
+  body::after {
+    width: 300px; height: 300px;
+    background: #c084fc;
+    bottom: -50px; left: -80px;
+  }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .back-arrow {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .back-arrow:hover { background: var(--bg-glass-hover); }
+  .back-arrow svg { width: 18px; height: 18px; }
+  .top-bar-title {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  /* ─── PAGE CONTENT ─── */
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px 16px 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  /* ─── FIGHTER HEADER ─── */
+  .fighter-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    border-radius: 16px;
+  }
+  .fighter-avatar {
+    width: 56px; height: 56px;
+    border-radius: 14px;
+    background: var(--accent-gradient);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800;
+    font-size: 20px;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 4px 20px rgba(129,140,248,0.2);
+  }
+  .fighter-info { display: flex; flex-direction: column; gap: 4px; }
+  .fighter-name {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(180deg, #fff 30%, var(--text-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .fighter-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .fighter-meta .divider {
+    width: 3px; height: 3px;
+    border-radius: 50%;
+    background: var(--text-muted);
+  }
+  .fighter-record { font-weight: 600; }
+  .fighter-weight-class { color: var(--accent-1); font-weight: 500; }
+
+  /* ─── DNA METRICS GRID ─── */
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    margin-bottom: 12px;
+    color: var(--text-primary);
+  }
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  @media (min-width: 600px) {
+    .metrics-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+  .metric-cell {
+    border-radius: 14px;
+    padding: 16px 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    transition: border-color 0.2s, background 0.2s;
+  }
+  .metric-cell:hover {
+    border-color: var(--border-glass-hover);
+    background: var(--bg-glass-hover);
+  }
+  .metric-value {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1;
+  }
+  .metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-secondary);
+  }
+  .metric-bar {
+    width: 100%;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+    margin-top: 4px;
+    overflow: hidden;
+  }
+  .metric-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent-gradient);
+    transition: width 0.6s ease;
+  }
+
+  /* ─── SCATTER PLOT ─── */
+  .scatter-card {
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .scatter-controls {
+    display: flex;
+    gap: 10px;
+    margin: 14px 0;
+    flex-wrap: wrap;
+  }
+  .axis-select {
+    flex: 1;
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .axis-select label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+  }
+  .axis-select select {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+    outline: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%238888a0' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 32px;
+    transition: border-color 0.2s;
+  }
+  .axis-select select:focus {
+    border-color: var(--accent-1);
+  }
+  .scatter-plot-area {
+    width: 100%;
+    aspect-ratio: 4/3;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.04);
+    position: relative;
+    overflow: hidden;
+  }
+  /* Grid lines */
+  .scatter-plot-area svg {
+    width: 100%; height: 100%;
+  }
+  .scatter-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 14px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .legend-dot.pereira { background: var(--accent-1); box-shadow: 0 0 8px rgba(129,140,248,0.5); }
+  .legend-dot.izzy { background: var(--teal); }
+  .legend-dot.jan { background: var(--danger); }
+  .legend-dot.jiri { background: var(--success); }
+  .legend-dot.other { background: var(--text-muted); }
+
+  /* ─── BODY HEAT MAP ─── */
+  .heatmap-card {
+    border-radius: 16px;
+    padding: 20px;
+  }
+  .body-map-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 24px 0;
+  }
+  .body-map {
+    position: relative;
+    width: 160px;
+  }
+  .body-zone {
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: #fff;
+    position: relative;
+  }
+  .zone-head {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(251,113,133,0.55);
+    border: 2px solid rgba(251,113,133,0.4);
+    margin: 0 auto 6px;
+    box-shadow: 0 0 24px rgba(251,113,133,0.3);
+  }
+  .zone-torso {
+    width: 100px; height: 90px;
+    border-radius: 14px;
+    background: rgba(251,113,133,0.3);
+    border: 2px solid rgba(251,113,133,0.2);
+    margin: 0 auto 6px;
+    box-shadow: 0 0 16px rgba(251,113,133,0.15);
+  }
+  .zone-legs {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .zone-leg {
+    width: 36px; height: 100px;
+    border-radius: 10px;
+    background: rgba(251,113,133,0.15);
+    border: 2px solid rgba(251,113,133,0.1);
+    box-shadow: 0 0 10px rgba(251,113,133,0.08);
+  }
+  .zone-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
+  }
+  .zone-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 20px;
+    width: 100%;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .zone-label-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .zone-indicator {
+    width: 12px; height: 12px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+  .zone-indicator.head-ind { background: rgba(251,113,133,0.7); }
+  .zone-indicator.body-ind { background: rgba(251,113,133,0.4); }
+  .zone-indicator.legs-ind { background: rgba(251,113,133,0.2); }
+  .zone-label-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+  .zone-label-stat {
+    margin-left: auto;
+    font-size: 14px;
+    font-weight: 700;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .zone-label-bar {
+    width: 100%;
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+    margin-top: 6px;
+  }
+  .zone-label-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    background: var(--accent-gradient);
+  }
+
+  /* ─── COMPARE PROMPT ─── */
+  .compare-card {
+    border-radius: 16px;
+    padding: 20px;
+    border: 1px solid transparent;
+    background:
+      linear-gradient(var(--bg-glass), var(--bg-glass)) padding-box,
+      linear-gradient(135deg, rgba(129,140,248,0.3), rgba(192,132,252,0.3)) border-box;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+  .compare-card .section-title { margin-bottom: 14px; }
+  .compare-input-row {
+    display: flex;
+    gap: 10px;
+  }
+  .compare-input {
+    flex: 1;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-glass);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .compare-input::placeholder { color: var(--text-muted); }
+  .compare-input:focus { border-color: var(--accent-1); }
+  .compare-btn {
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent-gradient);
+    color: #fff;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 4px 16px rgba(129,140,248,0.25);
+  }
+  .compare-btn:hover { opacity: 0.9; }
+  .compare-btn:active { transform: scale(0.97); }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .tab-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 0 calc(10px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+    padding: 4px 12px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .tab-item svg { width: 22px; height: 22px; }
+  .tab-item span {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .tab-item.inactive svg { color: var(--text-muted); }
+  .tab-item.inactive span { color: var(--text-muted); }
+  .tab-item.active svg { color: var(--accent-1); }
+  .tab-item.active span {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 200;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    background: rgba(5,5,16,0.8);
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-glass);
+    pointer-events: none;
+    letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label">B — Midnight Glass · Combat DNA</div>
+
+<!-- ─── TOP BAR ─── -->
+<div class="top-bar">
+  <div class="back-arrow">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </div>
+  <span class="top-bar-title">Combat DNA</span>
+</div>
+
+<!-- ─── PAGE ─── -->
+<div class="page">
+
+  <!-- Fighter Header -->
+  <div class="fighter-header glass">
+    <div class="fighter-avatar">AP</div>
+    <div class="fighter-info">
+      <div class="fighter-name">Alex Pereira</div>
+      <div class="fighter-meta">
+        <span class="fighter-record">11-2-0</span>
+        <span class="divider"></span>
+        <span class="fighter-weight-class">Light Heavyweight</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- DNA Metrics Grid -->
+  <div>
+    <div class="section-title">DNA Metrics</div>
+    <div class="metrics-grid">
+      <div class="metric-cell glass">
+        <div class="metric-value">8.4</div>
+        <div class="metric-label">Volume</div>
+        <div class="metric-bar"><div class="metric-bar-fill" style="width:84%"></div></div>
+      </div>
+      <div class="metric-cell glass">
+        <div class="metric-value">6.2</div>
+        <div class="metric-label">Grappling</div>
+        <div class="metric-bar"><div class="metric-bar-fill" style="width:62%"></div></div>
+      </div>
+      <div class="metric-cell glass">
+        <div class="metric-value">7.8</div>
+        <div class="metric-label">Accuracy</div>
+        <div class="metric-bar"><div class="metric-bar-fill" style="width:78%"></div></div>
+      </div>
+      <div class="metric-cell glass">
+        <div class="metric-value">9.1</div>
+        <div class="metric-label">Finishing</div>
+        <div class="metric-bar"><div class="metric-bar-fill" style="width:91%"></div></div>
+      </div>
+      <div class="metric-cell glass">
+        <div class="metric-value">5.5</div>
+        <div class="metric-label">Defense</div>
+        <div class="metric-bar"><div class="metric-bar-fill" style="width:55%"></div></div>
+      </div>
+      <div class="metric-cell glass">
+        <div class="metric-value">7.3</div>
+        <div class="metric-label">Cardio</div>
+        <div class="metric-bar"><div class="metric-bar-fill" style="width:73%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scatter Plot -->
+  <div class="scatter-card glass">
+    <div class="section-title">Fighter Comparison</div>
+    <div class="scatter-controls">
+      <div class="axis-select">
+        <label>X-Axis</label>
+        <select>
+          <option selected>Volume</option>
+          <option>Grappling</option>
+          <option>Accuracy</option>
+          <option>Finishing</option>
+          <option>Defense</option>
+          <option>Cardio</option>
+        </select>
+      </div>
+      <div class="axis-select">
+        <label>Y-Axis</label>
+        <select>
+          <option>Volume</option>
+          <option>Grappling</option>
+          <option>Accuracy</option>
+          <option selected>Finishing</option>
+          <option>Defense</option>
+          <option>Cardio</option>
+        </select>
+      </div>
+    </div>
+    <div class="scatter-plot-area">
+      <svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
+        <!-- Grid lines -->
+        <line x1="50" y1="20" x2="50" y2="270" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="120" y1="20" x2="120" y2="270" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="190" y1="20" x2="190" y2="270" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="260" y1="20" x2="260" y2="270" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="330" y1="20" x2="330" y2="270" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="50" y1="60" x2="380" y2="60" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="50" y1="120" x2="380" y2="120" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="50" y1="180" x2="380" y2="180" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <line x1="50" y1="240" x2="380" y2="240" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+        <!-- Axis labels -->
+        <text x="215" y="295" text-anchor="middle" fill="#55556a" font-size="11" font-family="Plus Jakarta Sans">Volume</text>
+        <text x="16" y="150" text-anchor="middle" fill="#55556a" font-size="11" font-family="Plus Jakarta Sans" transform="rotate(-90, 16, 150)">Finishing</text>
+        <!-- Other fighter dots -->
+        <circle cx="150" cy="170" r="5" fill="#55556a" opacity="0.5"/>
+        <circle cx="200" cy="200" r="5" fill="#55556a" opacity="0.5"/>
+        <circle cx="100" cy="130" r="5" fill="#55556a" opacity="0.5"/>
+        <circle cx="270" cy="190" r="5" fill="#55556a" opacity="0.5"/>
+        <circle cx="180" cy="90" r="5" fill="#55556a" opacity="0.5"/>
+        <circle cx="240" cy="230" r="5" fill="#55556a" opacity="0.5"/>
+        <circle cx="310" cy="160" r="5" fill="#55556a" opacity="0.5"/>
+        <circle cx="130" cy="210" r="5" fill="#55556a" opacity="0.5"/>
+        <!-- Named fighters -->
+        <circle cx="220" cy="100" r="5" fill="#2dd4bf"/>
+        <text x="230" y="96" fill="#2dd4bf" font-size="9" font-family="Plus Jakarta Sans" font-weight="600">Adesanya</text>
+        <circle cx="160" cy="80" r="5" fill="#fb7185"/>
+        <text x="170" y="76" fill="#fb7185" font-size="9" font-family="Plus Jakarta Sans" font-weight="600">Blachowicz</text>
+        <circle cx="280" cy="70" r="5" fill="#34d399"/>
+        <text x="290" y="66" fill="#34d399" font-size="9" font-family="Plus Jakarta Sans" font-weight="600">Prochazka</text>
+        <!-- Pereira — highlighted -->
+        <circle cx="310" cy="45" r="12" fill="rgba(129,140,248,0.15)" stroke="none"/>
+        <circle cx="310" cy="45" r="6" fill="#818cf8">
+          <animate attributeName="r" values="6;8;6" dur="2s" repeatCount="indefinite"/>
+        </circle>
+        <text x="288" y="32" fill="#818cf8" font-size="10" font-family="Plus Jakarta Sans" font-weight="700">Pereira</text>
+      </svg>
+    </div>
+    <div class="scatter-legend">
+      <div class="legend-item"><div class="legend-dot pereira"></div>Pereira</div>
+      <div class="legend-item"><div class="legend-dot izzy"></div>Adesanya</div>
+      <div class="legend-item"><div class="legend-dot jan"></div>Blachowicz</div>
+      <div class="legend-item"><div class="legend-dot jiri"></div>Prochazka</div>
+      <div class="legend-item"><div class="legend-dot other"></div>Other LHW</div>
+    </div>
+  </div>
+
+  <!-- Body Heat Map -->
+  <div class="heatmap-card glass">
+    <div class="section-title">Strike Distribution</div>
+    <div class="body-map-container">
+      <div class="body-map">
+        <!-- Head -->
+        <div class="body-zone zone-head"></div>
+        <!-- Torso -->
+        <div class="body-zone zone-torso"></div>
+        <!-- Legs -->
+        <div class="zone-legs">
+          <div class="body-zone zone-leg"></div>
+          <div class="body-zone zone-leg"></div>
+        </div>
+      </div>
+    </div>
+    <div class="zone-labels">
+      <div>
+        <div class="zone-label-item">
+          <div class="zone-indicator head-ind"></div>
+          <span class="zone-label-text">Head</span>
+          <span class="zone-label-stat">4.2 / fight</span>
+        </div>
+        <div class="zone-label-bar"><div class="zone-label-bar-fill" style="width:58%"></div></div>
+      </div>
+      <div>
+        <div class="zone-label-item">
+          <div class="zone-indicator body-ind"></div>
+          <span class="zone-label-text">Body</span>
+          <span class="zone-label-stat">1.8 / fight</span>
+        </div>
+        <div class="zone-label-bar"><div class="zone-label-bar-fill" style="width:25%"></div></div>
+      </div>
+      <div>
+        <div class="zone-label-item">
+          <div class="zone-indicator legs-ind"></div>
+          <span class="zone-label-text">Legs</span>
+          <span class="zone-label-stat">1.3 / fight</span>
+        </div>
+        <div class="zone-label-bar"><div class="zone-label-bar-fill" style="width:18%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compare Prompt -->
+  <div class="compare-card">
+    <div class="section-title">Compare with another fighter</div>
+    <div class="compare-input-row">
+      <input class="compare-input" type="text" placeholder="Search fighter name...">
+      <button class="compare-btn">Compare</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ─── BOTTOM TAB BAR ─── -->
+<div class="tab-bar">
+  <div class="tab-item inactive">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    <span>Home</span>
+  </div>
+  <div class="tab-item inactive">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+    </svg>
+    <span>Events</span>
+  </div>
+  <div class="tab-item active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+    <span>Analytics</span>
+  </div>
+  <div class="tab-item inactive">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+    <span>Profile</span>
+  </div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Pulse — Fights List</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Concept Label */
+  .concept-label {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    font-size: 10px;
+    color: var(--text-3);
+    font-family: 'Inter', sans-serif;
+    z-index: 999;
+    background: rgba(14,14,18,0.8);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* Story progress bars */
+  .story-progress {
+    display: flex;
+    gap: 3px;
+    padding: 8px 16px 0;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--bg);
+  }
+  .story-progress .bar {
+    flex: 1;
+    height: 2px;
+    background: var(--text-3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .story-progress .bar.active { background: var(--red); }
+  .story-progress .bar.done { background: var(--text-2); }
+
+  /* Top bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    position: sticky;
+    top: 10px;
+    z-index: 50;
+    background: var(--bg);
+  }
+  .top-bar .back {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface);
+    border-radius: 10px;
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .top-bar .title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .top-bar .share {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface);
+    border-radius: 10px;
+    color: var(--text-2);
+    font-size: 16px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+  }
+
+  /* Event Hero */
+  .event-hero {
+    text-align: center;
+    padding: 20px 16px 24px;
+  }
+  .event-hero .event-number {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 52px;
+    color: var(--red);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    line-height: 1;
+  }
+  .event-hero .matchup {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 20px;
+    color: var(--text);
+    margin-top: 4px;
+    letter-spacing: 1px;
+  }
+  .event-hero .meta {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 6px;
+  }
+
+  /* Stat pills */
+  .stat-pills {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 20px;
+    justify-content: center;
+  }
+  .stat-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 6px 14px;
+    font-size: 12px;
+    color: var(--text-2);
+    white-space: nowrap;
+  }
+  .stat-pill span { color: var(--red); font-weight: 600; }
+
+  /* Section */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 16px 10px;
+  }
+  .section-header .accent-bar {
+    width: 3px;
+    height: 18px;
+    background: var(--red);
+    border-radius: 2px;
+  }
+  .section-header .label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-2);
+  }
+
+  /* Fight Card */
+  .fight-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin: 0 16px 12px;
+    overflow: hidden;
+  }
+  .fight-card .badge-row {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px 0;
+  }
+  .fight-card .badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--surface-2);
+    color: var(--text-2);
+  }
+  .fight-card .badge.main-event {
+    background: rgba(239,68,68,0.15);
+    color: var(--red);
+  }
+  .fight-card .badge.title {
+    background: rgba(239,68,68,0.1);
+    color: var(--red);
+  }
+
+  .fight-card .fighters {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px;
+  }
+
+  .fighter-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+  }
+  .fighter-avatar {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+  .fighter-avatar.red {
+    border: 2.5px solid var(--red);
+    background: rgba(239,68,68,0.08);
+  }
+  .fighter-avatar.blue {
+    border: 2.5px solid var(--blue);
+    background: rgba(59,130,246,0.08);
+  }
+  .fighter-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-align: center;
+    line-height: 1.2;
+  }
+  .fighter-record {
+    font-size: 11px;
+    color: var(--text-3);
+    margin-top: 2px;
+  }
+
+  .vs-divider {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 0 8px;
+  }
+  .vs-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    color: var(--text-3);
+    letter-spacing: 1px;
+  }
+  .weight-pill {
+    font-size: 10px;
+    color: var(--text-2);
+    background: var(--surface-2);
+    padding: 3px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+  }
+
+  .fight-card .footer {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .fight-card .footer .rounds {
+    font-size: 11px;
+    color: var(--text-3);
+  }
+  .fight-card .footer .score-link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--red);
+    cursor: pointer;
+    letter-spacing: 0.3px;
+  }
+  .fight-card .footer .score-link.scored {
+    color: var(--green);
+  }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--text-3);
+    cursor: pointer;
+    padding: 4px 12px;
+  }
+  .nav-item.active { color: var(--red); }
+  .nav-item .icon { font-size: 20px; }
+
+  /* Swipe hint */
+  .swipe-hint {
+    text-align: center;
+    padding: 16px;
+    font-size: 11px;
+    color: var(--text-3);
+    letter-spacing: 0.5px;
+  }
+  .swipe-hint span {
+    display: inline-block;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · FightsList</div>
+
+<!-- Story Progress -->
+<div class="story-progress">
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar done"></div>
+  <div class="bar active"></div>
+  <div class="bar"></div>
+  <div class="bar"></div>
+</div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="back">&#8592;</div>
+  <div class="title">UFC 313</div>
+  <div class="share">&#8599;</div>
+</div>
+
+<!-- Event Hero -->
+<div class="event-hero">
+  <div class="event-number">UFC 313</div>
+  <div class="matchup">Pereira vs Ankalaev</div>
+  <div class="meta">March 22, 2026 &middot; T-Mobile Arena, Las Vegas</div>
+</div>
+
+<!-- Stat Pills -->
+<div class="stat-pills">
+  <div class="stat-pill"><span>6</span> Fights</div>
+  <div class="stat-pill"><span>2</span> Titles</div>
+  <div class="stat-pill"><span>73%</span> Finish Rate</div>
+</div>
+
+<!-- Main Card -->
+<div class="section-header">
+  <div class="accent-bar"></div>
+  <div class="label">Main Card</div>
+</div>
+
+<!-- Fight 1: Pereira vs Ankalaev -->
+<div class="fight-card">
+  <div class="badge-row">
+    <div class="badge main-event">Main Event</div>
+    <div class="badge title">LHW Title</div>
+  </div>
+  <div class="fighters">
+    <div class="fighter-side">
+      <div class="fighter-avatar red">AP</div>
+      <div class="fighter-name">Alex<br>Pereira</div>
+      <div class="fighter-record">11-2-0</div>
+    </div>
+    <div class="vs-divider">
+      <div class="vs-text">VS</div>
+      <div class="weight-pill">Light Heavyweight</div>
+    </div>
+    <div class="fighter-side">
+      <div class="fighter-avatar blue">MA</div>
+      <div class="fighter-name">Magomed<br>Ankalaev</div>
+      <div class="fighter-record">19-1-1</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="rounds">5 Rounds</div>
+    <div class="score-link">Score this fight &rarr;</div>
+  </div>
+</div>
+
+<!-- Fight 2: Hill vs Moicano -->
+<div class="fight-card">
+  <div class="badge-row">
+    <div class="badge">Co-Main</div>
+  </div>
+  <div class="fighters">
+    <div class="fighter-side">
+      <div class="fighter-avatar red">JH</div>
+      <div class="fighter-name">Jamahal<br>Hill</div>
+      <div class="fighter-record">12-2-0</div>
+    </div>
+    <div class="vs-divider">
+      <div class="vs-text">VS</div>
+      <div class="weight-pill">Light Heavyweight</div>
+    </div>
+    <div class="fighter-side">
+      <div class="fighter-avatar blue">RM</div>
+      <div class="fighter-name">Renato<br>Moicano</div>
+      <div class="fighter-record">20-5-1</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="rounds">5 Rounds</div>
+    <div class="score-link">Score this fight &rarr;</div>
+  </div>
+</div>
+
+<!-- Fight 3: Nickal vs Craig -->
+<div class="fight-card">
+  <div class="fighters">
+    <div class="fighter-side">
+      <div class="fighter-avatar red">BN</div>
+      <div class="fighter-name">Bo<br>Nickal</div>
+      <div class="fighter-record">7-0-0</div>
+    </div>
+    <div class="vs-divider">
+      <div class="vs-text">VS</div>
+      <div class="weight-pill">Middleweight</div>
+    </div>
+    <div class="fighter-side">
+      <div class="fighter-avatar blue">PC</div>
+      <div class="fighter-name">Paul<br>Craig</div>
+      <div class="fighter-record">17-8-1</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="rounds">3 Rounds</div>
+    <div class="score-link scored">Scored &#10003;</div>
+  </div>
+</div>
+
+<!-- Prelims -->
+<div class="section-header">
+  <div class="accent-bar"></div>
+  <div class="label">Prelims</div>
+</div>
+
+<!-- Fight 4: Poirier vs Dariush -->
+<div class="fight-card">
+  <div class="fighters">
+    <div class="fighter-side">
+      <div class="fighter-avatar red">DP</div>
+      <div class="fighter-name">Dustin<br>Poirier</div>
+      <div class="fighter-record">30-9-0</div>
+    </div>
+    <div class="vs-divider">
+      <div class="vs-text">VS</div>
+      <div class="weight-pill">Lightweight</div>
+    </div>
+    <div class="fighter-side">
+      <div class="fighter-avatar blue">BD</div>
+      <div class="fighter-name">Beneil<br>Dariush</div>
+      <div class="fighter-record">22-6-1</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="rounds">3 Rounds</div>
+    <div class="score-link">Score this fight &rarr;</div>
+  </div>
+</div>
+
+<!-- Fight 5: Fiorot vs Pennington -->
+<div class="fight-card">
+  <div class="fighters">
+    <div class="fighter-side">
+      <div class="fighter-avatar red">MF</div>
+      <div class="fighter-name">Manon<br>Fiorot</div>
+      <div class="fighter-record">12-1-0</div>
+    </div>
+    <div class="vs-divider">
+      <div class="vs-text">VS</div>
+      <div class="weight-pill">W. Flyweight</div>
+    </div>
+    <div class="fighter-side">
+      <div class="fighter-avatar blue">RP</div>
+      <div class="fighter-name">Raquel<br>Pennington</div>
+      <div class="fighter-record">15-9-0</div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="rounds">3 Rounds</div>
+    <div class="score-link scored">Scored &#10003;</div>
+  </div>
+</div>
+
+<!-- Swipe hint -->
+<div class="swipe-hint">
+  <span>&#8593; Tap a fight to view details</span>
+</div>
+
+<!-- Bottom Nav -->
+<div class="bottom-nav">
+  <div class="nav-item active">
+    <div class="icon">&#9670;</div>
+    <div>Events</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9899;</div>
+    <div>Fighters</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9636;</div>
+    <div>Analytics</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9733;</div>
+    <div>Scores</div>
+  </div>
+  <div class="nav-item">
+    <div class="icon">&#9786;</div>
+    <div>Profile</div>
+  </div>
+</div>
+
+</body>
+</html>

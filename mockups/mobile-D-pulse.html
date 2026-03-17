@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Concept D — Pulse (Swipe Stories)</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --border: rgba(255,255,255,0.06);
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.25);
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:16px; -webkit-text-size-adjust:100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* ─── STORIES PROGRESS BAR ─── */
+  .story-progress {
+    display: flex;
+    gap: 4px;
+    padding: 12px 16px 8px;
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    background: linear-gradient(180deg, var(--bg) 60%, transparent);
+  }
+  .story-seg {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .story-seg.done { background: var(--red); }
+  .story-seg.active .story-fill {
+    width: 100%;
+    height: 100%;
+    background: var(--red);
+    border-radius: 3px;
+    animation: fillBar 5s linear forwards;
+  }
+  @keyframes fillBar { from { width: 0; } to { width: 100%; } }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 16px 12px;
+  }
+  .event-badge {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--red);
+  }
+  .event-date {
+    font-size: 12px;
+    color: var(--text-3);
+    font-weight: 500;
+  }
+  .live-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    background: var(--red);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--red-glow); }
+    50% { opacity: 0.7; box-shadow: 0 0 0 6px transparent; }
+  }
+
+  /* ─── FULL-VIEWPORT FIGHT CARD (the "story") ─── */
+  .fight-story {
+    min-height: calc(100vh - 160px);
+    min-height: calc(100dvh - 160px);
+    display: flex;
+    flex-direction: column;
+    padding: 0 16px;
+    position: relative;
+  }
+
+  /* Card type badge */
+  .card-type {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    color: var(--text-3);
+    text-align: center;
+    margin-bottom: 8px;
+  }
+  .card-type.main { color: var(--red); }
+
+  /* Fighter face-off */
+  .faceoff {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    padding: 16px 0;
+  }
+
+  .fighter-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .fighter-photo {
+    width: 96px; height: 96px;
+    border-radius: 50%;
+    background: var(--surface);
+    border: 3px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: var(--text-2);
+  }
+  .fighter-side.red .fighter-photo { border-color: var(--red); }
+  .fighter-side.blue .fighter-photo { border-color: var(--blue); }
+
+  .fighter-name-big {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 28px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    line-height: 1;
+  }
+  .fighter-record-big {
+    font-size: 13px;
+    color: var(--text-3);
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* VS separator */
+  .vs-stripe {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .vs-stripe::before, .vs-stripe::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+  .vs-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    color: var(--text-3);
+    letter-spacing: 4px;
+  }
+
+  /* Quick stat row under fighters */
+  .quick-stats {
+    display: flex;
+    gap: 2px;
+    width: 100%;
+    margin-top: 12px;
+  }
+  .quick-stat {
+    flex: 1;
+    background: var(--surface);
+    padding: 12px 6px;
+    text-align: center;
+  }
+  .quick-stat:first-child { border-radius: 10px 0 0 10px; }
+  .quick-stat:last-child { border-radius: 0 10px 10px 0; }
+  .qs-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 18px;
+  }
+  .qs-val.red { color: var(--red); }
+  .qs-val.blue { color: var(--blue); }
+  .qs-lbl {
+    font-size: 9px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  /* Weight class pill */
+  .weight-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin: 12px auto 0;
+  }
+  .weight-pill .rounds {
+    color: var(--text-3);
+    font-weight: 500;
+  }
+
+  /* ─── SWIPE HINT ─── */
+  .swipe-hint {
+    text-align: center;
+    padding: 16px;
+    color: var(--text-3);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+  }
+  .swipe-hint svg {
+    width: 16px; height: 16px;
+    vertical-align: middle;
+    margin-left: 4px;
+    opacity: 0.5;
+  }
+
+  /* ─── BOTTOM SHEET (fight detail) ─── */
+  .bottom-sheet {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    padding: 0 16px 16px;
+    margin-top: auto;
+  }
+  .sheet-handle {
+    width: 36px; height: 4px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 4px;
+    margin: 10px auto 14px;
+  }
+
+  .sheet-tabs {
+    display: flex;
+    background: var(--bg);
+    border-radius: 10px;
+    padding: 3px;
+    margin-bottom: 14px;
+  }
+  .sheet-tab {
+    flex: 1;
+    text-align: center;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-3);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  .sheet-tab.active {
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  /* Stat comparison rows */
+  .stat-row {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .sr-val {
+    width: 48px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    font-variant-numeric: tabular-nums;
+  }
+  .sr-val.l { text-align: right; color: var(--red); }
+  .sr-val.r { text-align: left; color: var(--blue); }
+  .sr-bar-wrap {
+    flex: 1;
+    display: flex;
+    gap: 3px;
+    margin: 0 10px;
+  }
+  .sr-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .sr-bar.left .sr-fill { float: right; }
+  .sr-fill {
+    height: 100%;
+    border-radius: 4px;
+  }
+  .sr-fill.red { background: var(--red); }
+  .sr-fill.blue { background: var(--blue); }
+  .sr-label {
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-3);
+    font-weight: 600;
+    white-space: nowrap;
+    width: 100%;
+    text-align: center;
+  }
+
+  /* ─── SCORING SECTION (inside sheet) ─── */
+  .score-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 14px 0 10px;
+  }
+  .score-header-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-2);
+  }
+  .score-total {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    color: var(--red);
+  }
+
+  .round-scores {
+    display: flex;
+    gap: 6px;
+  }
+  .round-btn {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 4px;
+    text-align: center;
+    cursor: pointer;
+    min-height: 52px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .round-btn:active { transform: scale(0.95); }
+  .round-btn.scored {
+    border-color: rgba(239,68,68,0.3);
+    background: rgba(239,68,68,0.06);
+  }
+  .rb-rd {
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-3);
+    margin-bottom: 4px;
+  }
+  .rb-score {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+  }
+
+  /* ─── DNA RINGS ─── */
+  .dna-strip {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 14px 0 4px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .dna-strip::-webkit-scrollbar { display: none; }
+  .dna-ring-card {
+    flex-shrink: 0;
+    width: 80px;
+    text-align: center;
+    background: var(--bg);
+    border-radius: 12px;
+    padding: 12px 6px;
+    border: 1px solid var(--border);
+  }
+  .ring-svg { width: 44px; height: 44px; margin: 0 auto 6px; }
+  .ring-track { fill: none; stroke: rgba(255,255,255,0.06); stroke-width: 4; }
+  .ring-fill { fill: none; stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 1s; }
+  .ring-fill.red { stroke: var(--red); }
+  .ring-fill.blue { stroke: var(--blue); }
+  .ring-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 800;
+    font-size: 15px;
+  }
+  .ring-lbl {
+    font-size: 8px;
+    color: var(--text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 48px;
+    right: 12px;
+    background: rgba(14,14,18,0.9);
+    backdrop-filter: blur(12px);
+    padding: 6px 12px;
+    border-radius: 100px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-3);
+    z-index: 100;
+    border: 1px solid var(--border);
+  }
+  .concept-label strong { color: var(--red); }
+</style>
+</head>
+<body>
+
+  <!-- STORIES PROGRESS BAR -->
+  <div class="story-progress">
+    <div class="story-seg done"></div>
+    <div class="story-seg active"><div class="story-fill"></div></div>
+    <div class="story-seg"></div>
+    <div class="story-seg"></div>
+    <div class="story-seg"></div>
+    <div class="story-seg"></div>
+  </div>
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div>
+      <div class="event-badge"><span class="live-dot"></span>UFC 313</div>
+    </div>
+    <div class="event-date">Mar 22, 2026 &middot; Las Vegas</div>
+  </div>
+
+  <!-- FULL VIEWPORT FIGHT CARD -->
+  <div class="fight-story">
+    <div class="card-type main">Main Event &middot; Title Fight</div>
+
+    <div class="faceoff">
+      <div class="fighter-side red">
+        <div class="fighter-photo">AP</div>
+        <div class="fighter-name-big">Alex Pereira</div>
+        <div class="fighter-record-big">11-2-0 &middot; 🇧🇷</div>
+      </div>
+
+      <div class="vs-stripe">
+        <span class="vs-text">VS</span>
+      </div>
+
+      <div class="fighter-side blue">
+        <div class="fighter-photo">MA</div>
+        <div class="fighter-name-big">Magomed Ankalaev</div>
+        <div class="fighter-record-big">19-1-1 &middot; 🇷🇺</div>
+      </div>
+
+      <div class="weight-pill">
+        Light Heavyweight
+        <span class="rounds">&middot; 5 Rounds</span>
+      </div>
+    </div>
+
+    <!-- Quick stats -->
+    <div class="quick-stats">
+      <div class="quick-stat">
+        <div class="qs-val red">4.8</div>
+        <div class="qs-lbl">SLpM</div>
+      </div>
+      <div class="quick-stat">
+        <div class="qs-val red">52%</div>
+        <div class="qs-lbl">Acc</div>
+      </div>
+      <div class="quick-stat">
+        <div class="qs-val blue">57%</div>
+        <div class="qs-lbl">Acc</div>
+      </div>
+      <div class="quick-stat">
+        <div class="qs-val blue">3.1</div>
+        <div class="qs-lbl">SLpM</div>
+      </div>
+    </div>
+
+    <!-- BOTTOM SHEET -->
+    <div class="bottom-sheet">
+      <div class="sheet-handle"></div>
+
+      <div class="sheet-tabs">
+        <div class="sheet-tab active">Stats</div>
+        <div class="sheet-tab">Scoring</div>
+        <div class="sheet-tab">DNA</div>
+        <div class="sheet-tab">Judges</div>
+      </div>
+
+      <!-- Stats tab content -->
+      <div class="stat-row" style="margin-top:8px">
+        <div class="sr-val l">142</div>
+        <div class="sr-bar-wrap">
+          <div class="sr-bar left"><div class="sr-fill red" style="width:62%"></div></div>
+          <div class="sr-bar" style="position:relative"><div class="sr-label">Sig. Strikes</div><div class="sr-fill blue" style="width:48%"></div></div>
+        </div>
+        <div class="sr-val r">98</div>
+      </div>
+      <div class="stat-row">
+        <div class="sr-val l">4</div>
+        <div class="sr-bar-wrap">
+          <div class="sr-bar left"><div class="sr-fill red" style="width:30%"></div></div>
+          <div class="sr-bar" style="position:relative"><div class="sr-label">Takedowns</div><div class="sr-fill blue" style="width:70%"></div></div>
+        </div>
+        <div class="sr-val r">8</div>
+      </div>
+      <div class="stat-row">
+        <div class="sr-val l">52%</div>
+        <div class="sr-bar-wrap">
+          <div class="sr-bar left"><div class="sr-fill red" style="width:54%"></div></div>
+          <div class="sr-bar" style="position:relative"><div class="sr-label">Accuracy</div><div class="sr-fill blue" style="width:46%"></div></div>
+        </div>
+        <div class="sr-val r">44%</div>
+      </div>
+      <div class="stat-row">
+        <div class="sr-val l">12:45</div>
+        <div class="sr-bar-wrap">
+          <div class="sr-bar left"><div class="sr-fill red" style="width:66%"></div></div>
+          <div class="sr-bar" style="position:relative"><div class="sr-label">Ctrl Time</div><div class="sr-fill blue" style="width:34%"></div></div>
+        </div>
+        <div class="sr-val r">6:32</div>
+      </div>
+
+      <!-- Scoring -->
+      <div class="score-header">
+        <div class="score-header-title">Your Scorecard</div>
+        <div class="score-total">49-46</div>
+      </div>
+      <div class="round-scores">
+        <div class="round-btn scored"><div class="rb-rd">R1</div><div class="rb-score">10-9</div></div>
+        <div class="round-btn scored"><div class="rb-rd">R2</div><div class="rb-score">9-10</div></div>
+        <div class="round-btn scored"><div class="rb-rd">R3</div><div class="rb-score">10-9</div></div>
+        <div class="round-btn"><div class="rb-rd">R4</div><div class="rb-score">10-9</div></div>
+        <div class="round-btn"><div class="rb-rd">R5</div><div class="rb-score">10-8</div></div>
+      </div>
+
+      <!-- DNA strip -->
+      <div class="dna-strip">
+        <div class="dna-ring-card">
+          <svg class="ring-svg" viewBox="0 0 44 44">
+            <circle class="ring-track" cx="22" cy="22" r="18"/>
+            <circle class="ring-fill red" cx="22" cy="22" r="18" stroke-dasharray="113" stroke-dashoffset="19" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div class="ring-val">8.4</div>
+          <div class="ring-lbl">Volume</div>
+        </div>
+        <div class="dna-ring-card">
+          <svg class="ring-svg" viewBox="0 0 44 44">
+            <circle class="ring-track" cx="22" cy="22" r="18"/>
+            <circle class="ring-fill blue" cx="22" cy="22" r="18" stroke-dasharray="113" stroke-dashoffset="43" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div class="ring-val">6.2</div>
+          <div class="ring-lbl">Grapple</div>
+        </div>
+        <div class="dna-ring-card">
+          <svg class="ring-svg" viewBox="0 0 44 44">
+            <circle class="ring-track" cx="22" cy="22" r="18"/>
+            <circle class="ring-fill red" cx="22" cy="22" r="18" stroke-dasharray="113" stroke-dashoffset="25" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div class="ring-val">7.8</div>
+          <div class="ring-lbl">Accuracy</div>
+        </div>
+        <div class="dna-ring-card">
+          <svg class="ring-svg" viewBox="0 0 44 44">
+            <circle class="ring-track" cx="22" cy="22" r="18"/>
+            <circle class="ring-fill red" cx="22" cy="22" r="18" stroke-dasharray="113" stroke-dashoffset="10" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div class="ring-val">9.1</div>
+          <div class="ring-lbl">Finishing</div>
+        </div>
+        <div class="dna-ring-card">
+          <svg class="ring-svg" viewBox="0 0 44 44">
+            <circle class="ring-track" cx="22" cy="22" r="18"/>
+            <circle class="ring-fill blue" cx="22" cy="22" r="18" stroke-dasharray="113" stroke-dashoffset="51" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div class="ring-val">5.5</div>
+          <div class="ring-lbl">Defense</div>
+        </div>
+        <div class="dna-ring-card">
+          <svg class="ring-svg" viewBox="0 0 44 44">
+            <circle class="ring-track" cx="22" cy="22" r="18"/>
+            <circle class="ring-fill blue" cx="22" cy="22" r="18" stroke-dasharray="113" stroke-dashoffset="30" transform="rotate(-90 22 22)"/>
+          </svg>
+          <div class="ring-val">7.3</div>
+          <div class="ring-lbl">Cardio</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="swipe-hint">
+      SWIPE FOR NEXT FIGHT
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </div>
+  </div>
+
+  <div class="concept-label">
+    <strong>Concept D</strong> — Pulse / Stories
+  </div>
+
+</body>
+</html>

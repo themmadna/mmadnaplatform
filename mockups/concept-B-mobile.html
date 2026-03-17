@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass (Mobile-First)</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --success: #34d399;
+    --danger: #fb7185;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-bottom: calc(64px + var(--safe-bottom));
+    /* Prevent tap highlight on mobile */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Ambient gradient orbs — smaller on mobile */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.12;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 300px; height: 300px;
+    background: #818cf8;
+    top: -100px; right: -80px;
+  }
+  body::after {
+    width: 250px; height: 250px;
+    background: #c084fc;
+    bottom: 100px; left: -100px;
+  }
+
+  .app { position: relative; z-index: 1; }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── MOBILE TOP BAR ─── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .logo {
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--accent-gradient);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 10px;
+    color: #fff;
+  }
+  .top-bar-actions { display: flex; gap: 8px; }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: var(--bg-glass);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 16px;
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-tabs {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 8px calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--border-glass);
+    z-index: 50;
+  }
+  .bottom-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    border-radius: 10px;
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s;
+    cursor: pointer;
+    min-width: 56px;
+  }
+  .bottom-tab.active { color: var(--accent-1); }
+  .bottom-tab svg { width: 22px; height: 22px; }
+  .bottom-tab.active svg { filter: drop-shadow(0 0 6px rgba(129,140,248,0.4)); }
+
+  /* ─── HERO (mobile) ─── */
+  .hero {
+    padding: 20px 16px 16px;
+  }
+  .hero-eyebrow {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent-1);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .hero-title {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -1px;
+    line-height: 1.1;
+    margin-bottom: 6px;
+    background: linear-gradient(180deg, #fff 30%, var(--text-secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .hero-sub { color: var(--text-secondary); font-size: 13px; }
+
+  /* Horizontal scroll stats */
+  .stat-scroll {
+    display: flex;
+    gap: 8px;
+    padding: 16px 16px 4px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .stat-scroll::-webkit-scrollbar { display: none; }
+  .stat-pill {
+    flex-shrink: 0;
+    padding: 12px 18px;
+    border-radius: 14px;
+    text-align: center;
+    min-width: 90px;
+  }
+  .stat-pill-val {
+    font-size: 22px;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .stat-pill-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-top: 2px; }
+
+  /* ─── SECTION ─── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 16px 10px;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .section-header::before {
+    content: '';
+    width: 3px; height: 16px;
+    background: var(--accent-gradient);
+    border-radius: 3px;
+  }
+
+  /* ─── FIGHT CARDS (mobile) ─── */
+  .fight-stack { display: flex; flex-direction: column; gap: 6px; padding: 0 12px; }
+
+  .fight-card {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    border-radius: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    /* Touch-friendly */
+    min-height: 44px;
+  }
+  .fight-card:active {
+    transform: scale(0.98);
+    background: var(--bg-glass-hover);
+  }
+  .fight-card.main-event {
+    padding: 18px 16px;
+    background: linear-gradient(135deg, rgba(129,140,248,0.06), rgba(192,132,252,0.04));
+    border-color: rgba(129,140,248,0.15);
+  }
+
+  .fight-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }
+  .fight-meta {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .fight-meta.main { color: var(--accent-1); }
+  .fight-round-info {
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .matchup {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .matchup-fighter {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0; /* prevent text overflow */
+  }
+  .matchup-fighter.right { flex-direction: row-reverse; text-align: right; }
+  .fighter-avatar {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(129,140,248,0.15), rgba(192,132,252,0.1));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+    color: var(--accent-1);
+    flex-shrink: 0;
+    border: 1px solid rgba(129,140,248,0.15);
+  }
+  .main-event .fighter-avatar { width: 46px; height: 46px; font-size: 14px; }
+  .fighter-info { min-width: 0; }
+  .fighter-name {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .main-event .fighter-name { font-size: 16px; }
+  .fighter-record { color: var(--text-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+  .vs-divider {
+    flex-shrink: 0;
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border-glass);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  /* ─── FIGHT DETAIL (mobile) ─── */
+  .detail-card {
+    margin: 16px 12px;
+    border-radius: 18px;
+    overflow: hidden;
+  }
+  .detail-header {
+    padding: 18px 16px;
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .detail-header h2 { font-size: 18px; font-weight: 800; letter-spacing: -0.3px; }
+  .detail-header p { color: var(--text-secondary); font-size: 12px; margin-top: 2px; }
+
+  /* Scrollable tabs */
+  .tabs-scroll {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--border-glass);
+    padding: 0 16px;
+  }
+  .tabs-scroll::-webkit-scrollbar { display: none; }
+  .tab-item {
+    flex-shrink: 0;
+    padding: 12px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    position: relative;
+    white-space: nowrap;
+  }
+  .tab-item.active { color: var(--text-primary); }
+  .tab-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 14px; right: 14px;
+    height: 2px;
+    background: var(--accent-gradient);
+    border-radius: 2px;
+  }
+
+  .detail-body { padding: 16px; }
+
+  /* ─── COMPARISON BARS (mobile — stacked) ─── */
+  .comp-stat {
+    margin-bottom: 18px;
+  }
+  .comp-stat:last-child { margin-bottom: 0; }
+  .comp-stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .comp-stat-val {
+    font-weight: 700;
+    font-size: 15px;
+    font-variant-numeric: tabular-nums;
+  }
+  .comp-stat-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+  .comp-dual-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 100px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.04);
+    gap: 2px;
+  }
+  .comp-bar-seg {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 1s ease;
+  }
+  .comp-bar-seg.indigo { background: var(--accent-gradient); }
+  .comp-bar-seg.teal { background: linear-gradient(135deg, #2dd4bf, #14b8a6); }
+
+  /* ─── SCORING (mobile) ─── */
+  .scoring-section { padding: 0 12px; margin-top: 8px; }
+  .scorecard {
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 10px;
+  }
+  .scorecard-title {
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .indicator {
+    width: 8px; height: 8px;
+    border-radius: 3px;
+  }
+  .indicator.purple { background: var(--accent-gradient); }
+  .indicator.teal { background: linear-gradient(135deg, #2dd4bf, #14b8a6); }
+
+  .rounds-row {
+    display: flex;
+    gap: 6px;
+  }
+  .round-chip {
+    flex: 1;
+    text-align: center;
+    padding: 10px 4px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border-glass);
+    cursor: pointer;
+    transition: all 0.15s;
+    /* Touch target */
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .round-chip:active { transform: scale(0.95); }
+  .round-chip.picked { border-color: rgba(129,140,248,0.4); background: rgba(129,140,248,0.08); }
+  .r-label { font-size: 9px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 4px; }
+  .r-score { font-size: 16px; font-weight: 800; }
+
+  /* Total score row */
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border-glass);
+  }
+  .total-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 2px; }
+  .total-val { font-size: 22px; font-weight: 800; }
+  .total-val.accent {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── DNA (mobile) ─── */
+  .dna-section {
+    margin: 16px 12px;
+    border-radius: 16px;
+    padding: 16px;
+  }
+  .dna-title { font-size: 15px; font-weight: 700; margin-bottom: 14px; }
+  .dna-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .dna-cell {
+    padding: 14px 8px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border-glass);
+    text-align: center;
+  }
+  .dna-val {
+    font-size: 22px;
+    font-weight: 800;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 2px;
+  }
+  .dna-lbl { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 60px;
+    right: 12px;
+    backdrop-filter: blur(16px);
+    padding: 8px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    z-index: 100;
+    border: 1px solid var(--border-glass);
+    background: rgba(5,5,16,0.8);
+  }
+  .concept-label strong {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── DESKTOP ENHANCEMENTS ─── */
+  @media (min-width: 640px) {
+    .hero { padding: 28px 24px 20px; }
+    .hero-title { font-size: 36px; }
+    .fight-stack { padding: 0 20px; gap: 8px; }
+    .fight-card { padding: 20px; }
+    .matchup { gap: 14px; }
+    .fighter-avatar { width: 48px; height: 48px; font-size: 15px; }
+    .fighter-name { font-size: 16px; }
+    .detail-card { margin: 20px 20px; }
+    .scoring-section { padding: 0 20px; }
+    .dna-section { margin: 20px 20px; }
+  }
+
+  @media (min-width: 768px) {
+    /* Tablet: side-by-side scorecards */
+    .score-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .score-pair .scorecard { margin-bottom: 0; }
+    .dna-grid { grid-template-columns: repeat(6, 1fr); }
+  }
+
+  @media (min-width: 1024px) {
+    /* Desktop: max-width container, bigger hero */
+    body { padding-bottom: 0; }
+    .bottom-tabs { display: none; }
+    .top-bar {
+      padding: 14px 32px;
+    }
+    .desktop-nav {
+      display: flex !important;
+      gap: 2px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 10px;
+      padding: 3px;
+    }
+    .desktop-nav-item {
+      padding: 7px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+    .desktop-nav-item.active { color: #fff; background: rgba(255,255,255,0.1); }
+    .content-wrap { max-width: 900px; margin: 0 auto; }
+    .hero { padding: 40px 32px 24px; }
+    .hero-title { font-size: 42px; }
+    .fight-card {
+      flex-direction: row;
+      align-items: center;
+    }
+    .fight-card .fight-top { display: none; }
+    .fight-card .matchup { flex: 1; }
+    .fight-card .fight-desktop-meta {
+      display: flex !important;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      min-width: 120px;
+    }
+  }
+
+  /* Hide desktop nav on mobile */
+  .desktop-nav { display: none; }
+  .fight-desktop-meta { display: none !important; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR (mobile) -->
+  <div class="top-bar">
+    <div class="logo">
+      <div class="logo-icon">DNA</div>
+      MMA DNA
+    </div>
+    <!-- Desktop nav (hidden on mobile) -->
+    <div class="desktop-nav">
+      <div class="desktop-nav-item active">Events</div>
+      <div class="desktop-nav-item">Fighters</div>
+      <div class="desktop-nav-item">Analytics</div>
+      <div class="desktop-nav-item">Scores</div>
+    </div>
+    <div class="top-bar-actions">
+      <div class="icon-btn">🔔</div>
+      <div class="icon-btn">👤</div>
+    </div>
+  </div>
+
+  <div class="content-wrap">
+
+    <!-- HERO -->
+    <div class="hero">
+      <div class="hero-eyebrow">Upcoming Event</div>
+      <h1 class="hero-title">UFC 313: Pereira vs Ankalaev</h1>
+      <p class="hero-sub">March 22, 2026 · T-Mobile Arena, Las Vegas</p>
+    </div>
+
+    <!-- STAT PILLS (horizontal scroll) -->
+    <div class="stat-scroll">
+      <div class="stat-pill glass">
+        <div class="stat-pill-val">6</div>
+        <div class="stat-pill-lbl">Fights</div>
+      </div>
+      <div class="stat-pill glass">
+        <div class="stat-pill-val">2</div>
+        <div class="stat-pill-lbl">Titles</div>
+      </div>
+      <div class="stat-pill glass">
+        <div class="stat-pill-val">73%</div>
+        <div class="stat-pill-lbl">Finish Rate</div>
+      </div>
+      <div class="stat-pill glass">
+        <div class="stat-pill-val">2.4</div>
+        <div class="stat-pill-lbl">Avg Rounds</div>
+      </div>
+      <div class="stat-pill glass">
+        <div class="stat-pill-val">4.2</div>
+        <div class="stat-pill-lbl">Avg KDs</div>
+      </div>
+    </div>
+
+    <!-- FIGHT CARD LIST -->
+    <div class="section-header">Fight Card</div>
+    <div class="fight-stack">
+
+      <div class="fight-card glass main-event">
+        <div class="fight-top">
+          <span class="fight-meta main">Main Event · LHW Title</span>
+          <span class="fight-round-info">5 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">AP</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Alex Pereira 🇧🇷</div>
+              <div class="fighter-record">11-2-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">MA</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Magomed Ankalaev 🇷🇺</div>
+              <div class="fighter-record">19-1-1</div>
+            </div>
+          </div>
+        </div>
+        <div class="fight-desktop-meta">
+          <span class="fight-meta main">Main Event</span>
+          <span style="font-size:11px; color:var(--text-muted)">Light Heavyweight · 5 Rds</span>
+        </div>
+      </div>
+
+      <div class="fight-card glass">
+        <div class="fight-top">
+          <span class="fight-meta">Co-Main · Welterweight</span>
+          <span class="fight-round-info">5 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">JH</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Justin Hill 🇺🇸</div>
+              <div class="fighter-record">22-2-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">RM</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Renato Moicano 🇧🇷</div>
+              <div class="fighter-record">19-5-1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fight-card glass">
+        <div class="fight-top">
+          <span class="fight-meta">Middleweight</span>
+          <span class="fight-round-info">3 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">BN</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Bo Nickal 🇺🇸</div>
+              <div class="fighter-record">6-0-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">PC</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Paul Craig 🇬🇧</div>
+              <div class="fighter-record">16-8-1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fight-card glass">
+        <div class="fight-top">
+          <span class="fight-meta">Lightweight</span>
+          <span class="fight-round-info">3 Rounds</span>
+        </div>
+        <div class="matchup">
+          <div class="matchup-fighter">
+            <div class="fighter-avatar">DP</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Dustin Poirier 🇺🇸</div>
+              <div class="fighter-record">30-8-0</div>
+            </div>
+          </div>
+          <div class="vs-divider">VS</div>
+          <div class="matchup-fighter right">
+            <div class="fighter-avatar">BM</div>
+            <div class="fighter-info">
+              <div class="fighter-name">Beneil Dariush 🇺🇸</div>
+              <div class="fighter-record">22-6-1</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- FIGHT DETAIL -->
+    <div class="detail-card glass">
+      <div class="detail-header">
+        <h2>Pereira vs Ankalaev</h2>
+        <p>Light Heavyweight Title · 5 Rounds · Main Event</p>
+      </div>
+      <div class="tabs-scroll">
+        <div class="tab-item active">Overview</div>
+        <div class="tab-item">By Round</div>
+        <div class="tab-item">Scoring</div>
+        <div class="tab-item">Judges</div>
+        <div class="tab-item">Combat DNA</div>
+      </div>
+      <div class="detail-body">
+        <div class="comp-stat">
+          <div class="comp-stat-header">
+            <span class="comp-stat-val">142</span>
+            <span class="comp-stat-label">Sig. Strikes</span>
+            <span class="comp-stat-val">98</span>
+          </div>
+          <div class="comp-dual-bar">
+            <div class="comp-bar-seg indigo" style="width:59%"></div>
+            <div class="comp-bar-seg teal" style="width:41%"></div>
+          </div>
+        </div>
+        <div class="comp-stat">
+          <div class="comp-stat-header">
+            <span class="comp-stat-val">4</span>
+            <span class="comp-stat-label">Takedowns</span>
+            <span class="comp-stat-val">8</span>
+          </div>
+          <div class="comp-dual-bar">
+            <div class="comp-bar-seg indigo" style="width:33%"></div>
+            <div class="comp-bar-seg teal" style="width:67%"></div>
+          </div>
+        </div>
+        <div class="comp-stat">
+          <div class="comp-stat-header">
+            <span class="comp-stat-val">52%</span>
+            <span class="comp-stat-label">Accuracy</span>
+            <span class="comp-stat-val">44%</span>
+          </div>
+          <div class="comp-dual-bar">
+            <div class="comp-bar-seg indigo" style="width:54%"></div>
+            <div class="comp-bar-seg teal" style="width:46%"></div>
+          </div>
+        </div>
+        <div class="comp-stat">
+          <div class="comp-stat-header">
+            <span class="comp-stat-val">12:45</span>
+            <span class="comp-stat-label">Ctrl Time</span>
+            <span class="comp-stat-val">6:32</span>
+          </div>
+          <div class="comp-dual-bar">
+            <div class="comp-bar-seg indigo" style="width:66%"></div>
+            <div class="comp-bar-seg teal" style="width:34%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SCORING -->
+    <div class="scoring-section">
+      <div class="section-header">Scorecards</div>
+      <div class="score-pair">
+        <div class="scorecard glass">
+          <div class="scorecard-title"><span class="indicator purple"></span> Your Score</div>
+          <div class="rounds-row">
+            <div class="round-chip picked"><div class="r-label">R1</div><div class="r-score">10-9</div></div>
+            <div class="round-chip"><div class="r-label">R2</div><div class="r-score">9-10</div></div>
+            <div class="round-chip picked"><div class="r-label">R3</div><div class="r-score">10-9</div></div>
+            <div class="round-chip"><div class="r-label">R4</div><div class="r-score">10-9</div></div>
+            <div class="round-chip"><div class="r-label">R5</div><div class="r-score">10-8</div></div>
+          </div>
+          <div class="total-row">
+            <div>
+              <div class="total-label">Your Total</div>
+              <div class="total-val accent">49-46</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="total-label">Pereira</div>
+              <div class="total-val" style="font-size:14px; color:var(--text-secondary);">Winner</div>
+            </div>
+          </div>
+        </div>
+        <div class="scorecard glass">
+          <div class="scorecard-title"><span class="indicator teal"></span> Judges</div>
+          <div class="rounds-row">
+            <div class="round-chip"><div class="r-label">R1</div><div class="r-score">10-9</div></div>
+            <div class="round-chip"><div class="r-label">R2</div><div class="r-score">10-9</div></div>
+            <div class="round-chip"><div class="r-label">R3</div><div class="r-score">9-10</div></div>
+            <div class="round-chip"><div class="r-label">R4</div><div class="r-score">10-9</div></div>
+            <div class="round-chip"><div class="r-label">R5</div><div class="r-score">10-9</div></div>
+          </div>
+          <div class="total-row">
+            <div>
+              <div class="total-label">Avg Total</div>
+              <div class="total-val">48-47</div>
+            </div>
+            <div style="text-align:right;">
+              <div class="total-label">Agreement</div>
+              <div class="total-val" style="font-size:14px; color:var(--success);">78%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DNA -->
+    <div class="dna-section glass">
+      <div class="dna-title">Combat DNA Profile</div>
+      <div class="dna-grid">
+        <div class="dna-cell">
+          <div class="dna-val">8.4</div>
+          <div class="dna-lbl">Volume</div>
+        </div>
+        <div class="dna-cell">
+          <div class="dna-val">6.2</div>
+          <div class="dna-lbl">Grappling</div>
+        </div>
+        <div class="dna-cell">
+          <div class="dna-val">7.8</div>
+          <div class="dna-lbl">Accuracy</div>
+        </div>
+        <div class="dna-cell">
+          <div class="dna-val">9.1</div>
+          <div class="dna-lbl">Finishing</div>
+        </div>
+        <div class="dna-cell">
+          <div class="dna-val">5.5</div>
+          <div class="dna-lbl">Defense</div>
+        </div>
+        <div class="dna-cell">
+          <div class="dna-val">7.3</div>
+          <div class="dna-lbl">Cardio</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content-wrap -->
+
+  <!-- BOTTOM TAB BAR -->
+  <div class="bottom-tabs">
+    <a class="bottom-tab active" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Events
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Fighters
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+      Analytics
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+      Scores
+    </a>
+    <a class="bottom-tab" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      Profile
+    </a>
+  </div>
+
+</div>
+
+<div class="concept-label">
+  <strong>Concept B</strong> — Mobile-First
+</div>
+
+</body>
+</html>

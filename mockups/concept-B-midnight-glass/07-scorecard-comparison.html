@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Midnight Glass — Scorecard Comparison</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-base: #050510;
+    --bg-glass: rgba(255,255,255,0.04);
+    --bg-glass-hover: rgba(255,255,255,0.07);
+    --border-glass: rgba(255,255,255,0.08);
+    --border-glass-hover: rgba(255,255,255,0.14);
+    --text-primary: #f0f0f5;
+    --text-secondary: #8888a0;
+    --text-muted: #55556a;
+    --accent-1: #818cf8;
+    --accent-2: #c084fc;
+    --accent-gradient: linear-gradient(135deg, #818cf8, #c084fc);
+    --teal: #2dd4bf;
+    --teal-dim: #14b8a6;
+    --success: #34d399;
+    --danger: #fb7185;
+    --amber: #f59e0b;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+    padding-bottom: 90px;
+  }
+
+  /* Ambient gradient orbs */
+  body::before, body::after {
+    content: '';
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::before {
+    width: 350px; height: 350px;
+    background: #818cf8;
+    top: -80px; right: -60px;
+  }
+  body::after {
+    width: 300px; height: 300px;
+    background: #c084fc;
+    bottom: -50px; left: -80px;
+  }
+
+  .glass {
+    background: var(--bg-glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── TOP BAR ─── */
+  .top-bar {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: rgba(5,5,16,0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border-glass);
+  }
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+  }
+  .top-bar-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    flex: 1;
+  }
+
+  /* ─── FIGHT HEADER ─── */
+  .fight-header {
+    padding: 16px;
+    text-align: center;
+  }
+  .fight-header .weight-class {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+  .fight-header .fighters {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+  }
+  .fight-header .result {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ─── TAB BAR (in-page) ─── */
+  .page-tabs {
+    display: flex;
+    gap: 2px;
+    padding: 0 16px;
+    margin-bottom: 20px;
+    overflow-x: auto;
+  }
+  .page-tab {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 8px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    color: var(--text-muted);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .page-tab.active {
+    background: var(--bg-glass);
+    color: var(--text-primary);
+    border: 1px solid var(--border-glass);
+  }
+
+  /* ─── MAIN CONTENT ─── */
+  .content {
+    position: relative;
+    z-index: 1;
+    padding: 0 16px;
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* ─── COMPARISON HEADER ─── */
+  .comparison-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .comparison-header h2 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    margin-bottom: 4px;
+  }
+  .comparison-header .accent-line {
+    width: 48px;
+    height: 3px;
+    background: var(--accent-gradient);
+    border-radius: 2px;
+    margin: 10px auto 0;
+  }
+
+  /* ─── SCORECARD TABLE ─── */
+  .scorecard-table {
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .sc-row {
+    display: grid;
+    grid-template-columns: 56px 1fr 1fr 1fr;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .sc-row:last-child {
+    border-bottom: none;
+  }
+  .sc-row.header {
+    background: rgba(255,255,255,0.02);
+  }
+  .sc-cell {
+    padding: 12px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .sc-cell.round-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-align: left;
+    padding-left: 14px;
+  }
+  .sc-row.header .sc-cell {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 14px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .sc-row.header .sc-cell.round-label {
+    justify-content: flex-start;
+    padding-left: 14px;
+  }
+  .col-you { color: var(--accent-1); }
+  .col-judges { color: var(--teal); }
+  .col-community { color: var(--amber); }
+
+  .col-icon {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    display: inline-block;
+    flex-shrink: 0;
+  }
+  .col-icon.you { background: var(--accent-1); }
+  .col-icon.judges { background: var(--teal); }
+  .col-icon.community { background: var(--amber); }
+
+  /* Score cell states */
+  .sc-cell.match {
+    background: rgba(52,211,153,0.08);
+    color: var(--success);
+  }
+  .sc-cell.disagree {
+    background: rgba(251,113,133,0.08);
+    color: var(--danger);
+  }
+  .sc-cell.neutral {
+    color: var(--text-primary);
+  }
+
+  /* Total row */
+  .sc-row.total {
+    background: rgba(255,255,255,0.03);
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+  .sc-row.total .sc-cell {
+    font-size: 15px;
+    font-weight: 800;
+    padding: 14px 8px;
+  }
+  .sc-row.total .round-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  /* ─── AGREEMENT STATS ─── */
+  .agreement-card {
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .agreement-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .agreement-main {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .circle-progress {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+  }
+  .circle-progress svg {
+    width: 72px;
+    height: 72px;
+    transform: rotate(-90deg);
+  }
+  .circle-progress .track {
+    fill: none;
+    stroke: rgba(255,255,255,0.06);
+    stroke-width: 6;
+  }
+  .circle-progress .fill {
+    fill: none;
+    stroke-width: 6;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 0.6s ease;
+  }
+  .circle-progress .fill.indigo { stroke: var(--accent-1); }
+  .circle-progress .fill.teal { stroke: var(--teal); }
+  .circle-progress .value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 800;
+  }
+  .agreement-detail {
+    flex: 1;
+  }
+  .agreement-detail .label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .agreement-detail .sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .agreement-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .agreement-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,0.06);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .agreement-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+  .agreement-bar.amber { background: var(--amber); }
+  .agreement-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+    min-width: 0;
+  }
+  .agreement-pct {
+    font-size: 14px;
+    font-weight: 700;
+    min-width: 40px;
+    text-align: right;
+  }
+
+  /* ─── JUDGE BREAKDOWN ─── */
+  .judge-card {
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .judge-card h3 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 14px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+  }
+  .judge-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .judge-row:last-child {
+    border-bottom: none;
+  }
+  .judge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .judge-dot.green { background: var(--success); }
+  .judge-dot.amber { background: var(--amber); }
+  .judge-dot.red { background: var(--danger); }
+  .judge-info {
+    flex: 1;
+    min-width: 0;
+  }
+  .judge-name {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+  .judge-score {
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .judge-agree {
+    font-size: 14px;
+    font-weight: 700;
+    text-align: right;
+    min-width: 44px;
+  }
+  .judge-agree.high { color: var(--success); }
+  .judge-agree.mid { color: var(--amber); }
+  .judge-agree.low { color: var(--danger); }
+
+  /* ─── INSIGHT CALLOUT ─── */
+  .insight-card {
+    border-radius: 16px;
+    padding: 16px 18px;
+    margin-bottom: 16px;
+    border-left: 3px solid var(--accent-1);
+    position: relative;
+    overflow: hidden;
+  }
+  .insight-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: var(--accent-gradient);
+  }
+  .insight-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+  .insight-text {
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+  }
+
+  /* ─── BOTTOM TAB BAR ─── */
+  .bottom-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: 8px 0 calc(8px + var(--safe-bottom));
+    background: rgba(5,5,16,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass);
+  }
+  .tab-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 12px;
+    text-decoration: none;
+  }
+  .tab-item.active {
+    color: var(--accent-1);
+  }
+  .tab-item svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* ─── CONCEPT LABEL ─── */
+  .concept-label {
+    position: fixed;
+    top: 16px;
+    right: 12px;
+    backdrop-filter: blur(16px);
+    padding: 8px 14px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    z-index: 100;
+    border: 1px solid var(--border-glass);
+    background: rgba(5,5,16,0.8);
+  }
+  .concept-label strong {
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ─── RESPONSIVE ─── */
+  @media (min-width: 768px) {
+    .content { padding: 0 24px; }
+    .scorecard-table {
+      border-radius: 20px;
+    }
+    .sc-row {
+      grid-template-columns: 72px 1fr 1fr 1fr;
+    }
+    .sc-cell { font-size: 14px; padding: 14px 12px; }
+    .sc-row.total .sc-cell { font-size: 16px; }
+    .agreement-card,
+    .judge-card {
+      padding: 24px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .content {
+      max-width: 900px;
+      padding: 0 32px;
+    }
+    .top-bar {
+      max-width: 900px;
+      margin: 0 auto;
+      left: 0; right: 0;
+    }
+    body { padding-bottom: 100px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <button class="back-btn" aria-label="Back">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 18l-6-6 6-6"/>
+    </svg>
+  </button>
+  <div class="top-bar-title">Pereira vs Ankalaev</div>
+</div>
+
+<!-- FIGHT HEADER -->
+<div class="fight-header">
+  <div class="weight-class">UFC 313 — Light Heavyweight Title</div>
+  <div class="fighters">Alex Pereira vs Magomed Ankalaev</div>
+  <div class="result">Decision (Unanimous) — Pereira def. Ankalaev</div>
+</div>
+
+<!-- IN-PAGE TABS -->
+<div class="page-tabs">
+  <div class="page-tab">Overview</div>
+  <div class="page-tab">Stats</div>
+  <div class="page-tab active">Scoring</div>
+  <div class="page-tab">DNA</div>
+</div>
+
+<div class="content">
+
+  <!-- COMPARISON HEADER -->
+  <div class="comparison-header">
+    <h2>Your Scorecard vs Official Judges</h2>
+    <div class="accent-line"></div>
+  </div>
+
+  <!-- SCORECARD COMPARISON TABLE -->
+  <div class="scorecard-table glass">
+    <!-- Header Row -->
+    <div class="sc-row header">
+      <div class="sc-cell round-label">Round</div>
+      <div class="sc-cell col-you"><span class="col-icon you"></span> You</div>
+      <div class="sc-cell col-judges"><span class="col-icon judges"></span> Judges</div>
+      <div class="sc-cell col-community"><span class="col-icon community"></span> Comm.</div>
+    </div>
+    <!-- R1 -->
+    <div class="sc-row">
+      <div class="sc-cell round-label">R1</div>
+      <div class="sc-cell match">10–9</div>
+      <div class="sc-cell match">10–9</div>
+      <div class="sc-cell neutral">10–9</div>
+    </div>
+    <!-- R2 -->
+    <div class="sc-row">
+      <div class="sc-cell round-label">R2</div>
+      <div class="sc-cell match">10–9</div>
+      <div class="sc-cell match">10–9</div>
+      <div class="sc-cell neutral">10–9</div>
+    </div>
+    <!-- R3 -->
+    <div class="sc-row">
+      <div class="sc-cell round-label">R3</div>
+      <div class="sc-cell disagree">10–8</div>
+      <div class="sc-cell disagree">10–9</div>
+      <div class="sc-cell neutral">10–9</div>
+    </div>
+    <!-- R4 -->
+    <div class="sc-row">
+      <div class="sc-cell round-label">R4</div>
+      <div class="sc-cell match">9–10</div>
+      <div class="sc-cell match">9–10</div>
+      <div class="sc-cell neutral">9–10</div>
+    </div>
+    <!-- R5 -->
+    <div class="sc-row">
+      <div class="sc-cell round-label">R5</div>
+      <div class="sc-cell match">10–9</div>
+      <div class="sc-cell match">10–9</div>
+      <div class="sc-cell neutral">10–9</div>
+    </div>
+    <!-- Total Row -->
+    <div class="sc-row total">
+      <div class="sc-cell round-label">Total</div>
+      <div class="sc-cell col-you">49–46</div>
+      <div class="sc-cell col-judges">48–47</div>
+      <div class="sc-cell col-community">49–46</div>
+    </div>
+  </div>
+
+  <!-- AGREEMENT STATS -->
+  <div class="agreement-card glass">
+    <h3>Agreement</h3>
+    <div class="agreement-main">
+      <!-- Circle: 78% -->
+      <div class="circle-progress">
+        <svg viewBox="0 0 72 72">
+          <circle class="track" cx="36" cy="36" r="30"/>
+          <!-- circumference = 2*pi*30 = 188.5; 78% = 147.03 shown, offset = 188.5 - 147.03 = 41.47 -->
+          <circle class="fill indigo" cx="36" cy="36" r="30" stroke-dasharray="188.5" stroke-dashoffset="41.47"/>
+        </svg>
+        <div class="value" style="color: var(--accent-1);">78%</div>
+      </div>
+      <div class="agreement-detail">
+        <div class="label">You vs Official Judges</div>
+        <div class="sub">Rounds Matched: 4 / 5</div>
+      </div>
+    </div>
+    <div class="agreement-row">
+      <div class="agreement-label">You vs Community</div>
+      <div class="agreement-bar-wrap">
+        <div class="agreement-bar amber" style="width: 92%;"></div>
+      </div>
+      <div class="agreement-pct" style="color: var(--amber);">92%</div>
+    </div>
+  </div>
+
+  <!-- INDIVIDUAL JUDGE BREAKDOWN -->
+  <div class="judge-card glass">
+    <h3>Judge Breakdown</h3>
+    <div class="judge-row">
+      <div class="judge-dot green"></div>
+      <div class="judge-info">
+        <div class="judge-name">Sal D'Amato</div>
+        <div class="judge-score">48–47 Pereira</div>
+      </div>
+      <div class="judge-agree high">80%</div>
+    </div>
+    <div class="judge-row">
+      <div class="judge-dot green"></div>
+      <div class="judge-info">
+        <div class="judge-name">Chris Lee</div>
+        <div class="judge-score">48–47 Pereira</div>
+      </div>
+      <div class="judge-agree high">80%</div>
+    </div>
+    <div class="judge-row">
+      <div class="judge-dot amber"></div>
+      <div class="judge-info">
+        <div class="judge-name">Derek Cleary</div>
+        <div class="judge-score">49–46 Pereira</div>
+      </div>
+      <div class="judge-agree mid">60%</div>
+    </div>
+  </div>
+
+  <!-- INSIGHT CALLOUT -->
+  <div class="insight-card glass">
+    <div class="insight-label">Scoring Insight</div>
+    <div class="insight-text">
+      You scored Round 3 as a 10–8, while all three judges scored it 10–9. Your scoring tends toward more decisive round assessments — you've given 10–8 rounds 3x more often than the average community member.
+    </div>
+  </div>
+
+</div>
+
+<!-- BOTTOM TAB BAR -->
+<div class="bottom-bar">
+  <a class="tab-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+    Home
+  </a>
+  <a class="tab-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+    Events
+  </a>
+  <a class="tab-item active" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+      <polyline points="10 9 9 9 8 9"/>
+    </svg>
+    Scoring
+  </a>
+  <a class="tab-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="2" y1="12" x2="22" y2="12"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+    DNA
+  </a>
+  <a class="tab-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <circle cx="12" cy="7" r="4"/>
+    </svg>
+    Profile
+  </a>
+</div>
+
+<!-- CONCEPT LABEL -->
+<div class="concept-label">
+  <strong>B — Midnight Glass</strong> · Scorecard
+</div>
+
+</body>
+</html>

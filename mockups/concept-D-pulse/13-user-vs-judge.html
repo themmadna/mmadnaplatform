@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>MMA DNA — You vs Judge</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e12;
+    --surface: #1a1a22;
+    --surface-2: #24242e;
+    --red: #ef4444;
+    --blue: #3b82f6;
+    --green: #22c55e;
+    --amber: #f59e0b;
+    --danger: #fb7185;
+    --text: #f5f5f7;
+    --text-2: #9898a8;
+    --text-3: #5a5a6e;
+    --border: rgba(255,255,255,0.06);
+  }
+
+  html { font-size: 16px; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    max-width: 430px;
+    margin: 0 auto;
+    padding-bottom: 80px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Concept Label */
+  .concept-label {
+    position: fixed;
+    top: 8px;
+    right: 12px;
+    font-size: 10px;
+    color: var(--text-3);
+    z-index: 999;
+    font-family: 'Inter', sans-serif;
+  }
+  .concept-label strong { color: var(--text-2); }
+
+  /* Top Bar */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .top-bar .back {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface-2);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 18px;
+    cursor: pointer;
+    border: none;
+  }
+  .top-bar h1 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+  }
+
+  /* Content */
+  .content { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+  .section-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: 0.01em;
+    color: var(--text);
+  }
+  .section-subtitle {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 2px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .card-inner { padding: 16px; }
+
+  /* Judge Picker */
+  .picker-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .picker-select {
+    flex: 1;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    padding: 12px 14px;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%239898a8' viewBox='0 0 16 16'%3E%3Cpath d='M1.5 5.5l6.5 6 6.5-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    cursor: pointer;
+  }
+  .picker-select:focus { outline: none; border-color: var(--red); }
+
+  .btn-compare {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 12px 20px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  /* Comparison Overview */
+  .comparison-overview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 20px 16px;
+  }
+  .comp-user {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .avatar-ring {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 18px;
+    color: #fff;
+  }
+  .avatar-ring.you {
+    background: linear-gradient(135deg, var(--red), #b91c1c);
+  }
+  .avatar-ring.judge {
+    background: linear-gradient(135deg, var(--blue), #1d4ed8);
+  }
+  .comp-user .name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .comp-vs {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .comp-vs .match-pct {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 36px;
+    color: var(--red);
+    line-height: 1;
+  }
+  .comp-vs .match-label {
+    font-size: 11px;
+    color: var(--text-2);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .shared-fights {
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-3);
+    padding: 0 16px 16px;
+  }
+
+  /* Agreement Breakdown */
+  .breakdown-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .breakdown-card {
+    background: var(--surface-2);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .breakdown-card .bc-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+  }
+  .breakdown-card .bc-label.agree { color: var(--green); }
+  .breakdown-card .bc-label.disagree { color: var(--amber); }
+
+  .bc-stat {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 22px;
+    margin-bottom: 2px;
+  }
+  .bc-stat.green { color: var(--green); }
+  .bc-stat.amber { color: var(--amber); }
+  .bc-desc {
+    font-size: 11px;
+    color: var(--text-2);
+    line-height: 1.4;
+  }
+  .bc-sub {
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--text-2);
+    line-height: 1.5;
+  }
+  .bc-sub span { color: var(--text); font-weight: 600; }
+
+  /* Fight List */
+  .fight-row {
+    display: flex;
+    align-items: center;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+  }
+  .fight-row:last-child { border-bottom: none; }
+
+  .fight-info { flex: 1; min-width: 0; }
+  .fight-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .fight-scores {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .fight-scores .you-score { color: var(--text); }
+  .fight-scores .judge-score { color: var(--text-2); }
+  .fight-scores .sep { color: var(--text-3); }
+
+  .match-badge {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+  .match-badge.good { background: rgba(34,197,94,0.12); color: var(--green); }
+  .match-badge.partial { background: rgba(245,158,11,0.12); color: var(--amber); }
+
+  .match-icon {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .match-icon.good { background: var(--green); color: #000; }
+  .match-icon.partial { background: var(--amber); color: #000; }
+
+  /* Heatmap */
+  .heatmap-section .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-2);
+    padding: 14px 16px 8px;
+  }
+  .heatmap-grid {
+    padding: 0 16px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .heatmap-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .heatmap-label {
+    width: 90px;
+    font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+  .heatmap-cells { display: flex; gap: 4px; }
+  .heatmap-cell {
+    width: 28px; height: 22px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+  }
+  .heatmap-cell.match { background: rgba(34,197,94,0.25); color: var(--green); }
+  .heatmap-cell.diff { background: rgba(245,158,11,0.25); color: var(--amber); }
+  .heatmap-header {
+    font-size: 9px;
+    color: var(--text-3);
+    text-align: center;
+    width: 28px;
+    flex-shrink: 0;
+  }
+
+  /* Try Another */
+  .btn-outline {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    border-radius: 12px;
+    color: var(--text-2);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    text-align: center;
+  }
+  .btn-outline:active { background: var(--surface); }
+
+  /* Bottom Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    max-width: 430px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-around;
+    padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    font-size: 10px;
+    color: var(--text-3);
+    text-decoration: none;
+    padding: 4px 0;
+    min-width: 50px;
+  }
+  .nav-item.active { color: var(--red); }
+  .nav-item svg { width: 22px; height: 22px; }
+</style>
+</head>
+<body>
+
+<div class="concept-label"><strong>D — Pulse</strong> · UserVsJudge</div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <button class="back">
+    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
+  </button>
+  <h1>You vs Judge</h1>
+</div>
+
+<div class="content">
+
+  <!-- Header -->
+  <div>
+    <div class="section-title">Compare Your Scores</div>
+    <div class="section-subtitle">See how your scoring stacks up against any UFC judge</div>
+  </div>
+
+  <!-- Judge Picker -->
+  <div class="card">
+    <div class="card-inner">
+      <div class="picker-row">
+        <select class="picker-select">
+          <option selected>Sal D'Amato</option>
+          <option>Chris Lee</option>
+          <option>Derek Cleary</option>
+          <option>Mike Bell</option>
+          <option>Junichiro Kamijo</option>
+          <option>Ron McCarthy</option>
+          <option>Eric Colon</option>
+        </select>
+        <button class="btn-compare">COMPARE</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison Overview -->
+  <div class="card">
+    <div class="comparison-overview">
+      <div class="comp-user">
+        <div class="avatar-ring you">JD</div>
+        <div class="name">You</div>
+      </div>
+      <div class="comp-vs">
+        <div class="match-pct">73%</div>
+        <div class="match-label">Match</div>
+      </div>
+      <div class="comp-user">
+        <div class="avatar-ring judge">SD</div>
+        <div class="name">Sal D'Amato</div>
+      </div>
+    </div>
+    <div class="shared-fights">Across 12 shared fights</div>
+  </div>
+
+  <!-- Agreement Breakdown -->
+  <div class="breakdown-grid">
+    <div class="breakdown-card">
+      <div class="bc-label agree">Where You Agree</div>
+      <div class="bc-stat green">73%</div>
+      <div class="bc-desc">of rounds match exactly</div>
+      <div class="bc-sub">
+        <span>38</span> of 52 rounds scored identically
+      </div>
+    </div>
+    <div class="breakdown-card">
+      <div class="bc-label disagree">Where You Disagree</div>
+      <div class="bc-stat amber">27%</div>
+      <div class="bc-desc">of rounds differ</div>
+      <div class="bc-sub">
+        You favor red corner more<br>
+        10-8s: <span>8.2%</span> vs <span>2.1%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Fights Comparison -->
+  <div class="card">
+    <div style="padding: 14px 16px 0;">
+      <div style="font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-2);">Recent Fights</div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-name">Pereira vs Ankalaev</div>
+        <div class="fight-scores">
+          <span class="you-score">You: 49-46</span>
+          <span class="sep">/</span>
+          <span class="judge-score">Sal: 48-47</span>
+        </div>
+      </div>
+      <div class="match-badge good">
+        <span class="match-icon good">&#10003;</span> 4/5
+      </div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-name">du Plessis vs Strickland 2</div>
+        <div class="fight-scores">
+          <span class="you-score">You: 48-47</span>
+          <span class="sep">/</span>
+          <span class="judge-score">Sal: 49-46</span>
+        </div>
+      </div>
+      <div class="match-badge partial">
+        <span class="match-icon partial">&#10007;</span> 3/5
+      </div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-name">Hill vs Moicano</div>
+        <div class="fight-scores">
+          <span class="you-score">You: 29-28</span>
+          <span class="sep">/</span>
+          <span class="judge-score">Sal: 29-28</span>
+        </div>
+      </div>
+      <div class="match-badge good">
+        <span class="match-icon good">&#10003;</span> 3/3
+      </div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-name">Makhachev vs Tsarukyan 2</div>
+        <div class="fight-scores">
+          <span class="you-score">You: 49-46</span>
+          <span class="sep">/</span>
+          <span class="judge-score">Sal: 48-47</span>
+        </div>
+      </div>
+      <div class="match-badge partial">
+        <span class="match-icon partial">&#10007;</span> 3/5
+      </div>
+    </div>
+
+    <div class="fight-row">
+      <div class="fight-info">
+        <div class="fight-name">Aspinall vs Blaydes 2</div>
+        <div class="fight-scores">
+          <span class="you-score">You: 50-45</span>
+          <span class="sep">/</span>
+          <span class="judge-score">Sal: 50-45</span>
+        </div>
+      </div>
+      <div class="match-badge good">
+        <span class="match-icon good">&#10003;</span> 5/5
+      </div>
+    </div>
+  </div>
+
+  <!-- Round-Level Heatmap -->
+  <div class="card heatmap-section">
+    <div class="section-label">Round-by-Round Agreement</div>
+    <div class="heatmap-grid">
+      <!-- Header row -->
+      <div class="heatmap-row">
+        <div class="heatmap-label" style="color: transparent;">—</div>
+        <div class="heatmap-cells">
+          <div class="heatmap-header">R1</div>
+          <div class="heatmap-header">R2</div>
+          <div class="heatmap-header">R3</div>
+          <div class="heatmap-header">R4</div>
+          <div class="heatmap-header">R5</div>
+        </div>
+      </div>
+      <div class="heatmap-row">
+        <div class="heatmap-label">Pereira/Ank.</div>
+        <div class="heatmap-cells">
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell diff">&#10007;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+        </div>
+      </div>
+      <div class="heatmap-row">
+        <div class="heatmap-label">duPlessis/Str.</div>
+        <div class="heatmap-cells">
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell diff">&#10007;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell diff">&#10007;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+        </div>
+      </div>
+      <div class="heatmap-row">
+        <div class="heatmap-label">Hill/Moicano</div>
+        <div class="heatmap-cells">
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell" style="background:var(--surface-2);color:var(--text-3);">—</div>
+          <div class="heatmap-cell" style="background:var(--surface-2);color:var(--text-3);">—</div>
+        </div>
+      </div>
+      <div class="heatmap-row">
+        <div class="heatmap-label">Makh./Tsar.</div>
+        <div class="heatmap-cells">
+          <div class="heatmap-cell diff">&#10007;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell diff">&#10007;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+        </div>
+      </div>
+      <div class="heatmap-row">
+        <div class="heatmap-label">Aspinall/Blay.</div>
+        <div class="heatmap-cells">
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+          <div class="heatmap-cell match">&#10003;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Try Another -->
+  <button class="btn-outline">Try Another Judge</button>
+
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 4v2m8-2v2"/></svg>
+    <span>Events</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a6 6 0 0112 0v2"/></svg>
+    <span>Fighters</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 16l4-6 4 4 5-8"/></svg>
+    <span>Analytics</span>
+  </a>
+  <a class="nav-item active" href="#">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 2a7 7 0 017 7c0 1.57-.52 3.02-1.39 4.19l5.6 5.6a1 1 0 01-1.42 1.42l-5.6-5.6A7 7 0 119 2zm0 2a5 5 0 100 10A5 5 0 009 4z"/></svg>
+    <span>Scores</span>
+  </a>
+  <a class="nav-item" href="#">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a8 8 0 0116 0v1"/></svg>
+    <span>Profile</span>
+  </a>
+</nav>
+
+</body>
+</html>
