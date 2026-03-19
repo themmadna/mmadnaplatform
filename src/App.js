@@ -414,6 +414,36 @@ export default function UFCFightRating() {
     prevViewRef.current = currentView;
   }, [currentView]);
 
+  // Push browser history entries so Android back button navigates within the app
+  const isInitialMount = useRef(true);
+  const isPopState = useRef(false);
+  useEffect(() => {
+    if (isPopState.current) {
+      isPopState.current = false;
+      return;
+    }
+    if (isInitialMount.current) {
+      window.history.replaceState({ view: currentView }, '');
+      isInitialMount.current = false;
+      return;
+    }
+    window.history.pushState({ view: currentView }, '');
+  }, [currentView]);
+
+  // Listen for popstate (Android back button / browser back) to restore previous view
+  useEffect(() => {
+    const handlePopState = (e) => {
+      isPopState.current = true;
+      if (e.state && e.state.view) {
+        setCurrentView(e.state.view);
+      } else {
+        setCurrentView('events');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   // Fetch judging profile once when user opens the DNA view (skip for guests)
   useEffect(() => {
     if (currentView !== 'dna' || judgingProfile || isGuest) return;

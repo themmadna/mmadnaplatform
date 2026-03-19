@@ -407,7 +407,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
             {/* Scoring differentials */}
             {scoring_differentials?.rounds > 0 && (
               <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mb-3">
+                <p className="text-[13px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mb-3">
                   Avg margin when awarding a round
                 </p>
                 <div className="grid grid-cols-3 gap-2 text-center">
