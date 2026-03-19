@@ -84,7 +84,7 @@ const AgreementBar = ({ breakdown }) => {
               <p className="text-[11px] font-heading font-bold text-pulse-text truncate">
                 {Math.round(s.pct * 100)}%
               </p>
-              <p className="text-[9px] uppercase tracking-wide text-pulse-text-3 truncate">{s.label}</p>
+              <p className="text-[11px] uppercase tracking-wide text-pulse-text-3 truncate">{s.label}</p>
             </div>
           ) : null
         )}
@@ -107,7 +107,7 @@ const SplitBar = ({ strikePct, grapplingPct }) => {
         {sBar > 0 && <div className="bg-pulse-red transition-all duration-700 rounded-l-full" style={{ width: `${sBar}%` }} />}
         {gBar > 0 && <div className="bg-pulse-blue transition-all duration-700 rounded-r-full" style={{ width: `${gBar}%` }} />}
       </div>
-      <div className="flex justify-between text-[10px]">
+      <div className="flex justify-between text-[12px]">
         <span className="text-pulse-red font-medium">{sBar}% striking</span>
         <span className="text-pulse-blue font-medium">{gBar}% grappling</span>
       </div>
@@ -120,7 +120,7 @@ const BiasTile = ({ value, label, sub }) => (
   <div className="bg-pulse-surface-2 rounded-card p-4 text-center">
     <PulsePct value={value} size="lg" color="text-pulse-text" />
     <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-2 mt-2">{label}</p>
-    <p className="text-[10px] text-pulse-text-3 mt-1 leading-tight">{sub}</p>
+    <p className="text-[12px] text-pulse-text-3 mt-1 leading-tight">{sub}</p>
   </div>
 );
 
@@ -232,15 +232,15 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
         <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/[0.06]">
           <div className="text-center">
             <PulsePct value={activeOutlierRate} size="md" color="text-pulse-amber" />
-            <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mt-1">Outlier Rate</p>
+            <p className="text-[12px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mt-1">Outlier Rate</p>
           </div>
           <div className="text-center">
             <span className="font-heading font-extrabold text-xl leading-none text-pulse-text">{activeRoundsMatched ?? '—'}</span>
-            <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mt-1">Rounds Matched</p>
+            <p className="text-[12px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mt-1">Rounds Matched</p>
           </div>
           <div className="text-center">
             <span className="font-heading font-extrabold text-xl leading-none text-pulse-text">{fights_scored ?? '—'}</span>
-            <p className="text-[10px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mt-1">Fights Scored</p>
+            <p className="text-[12px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mt-1">Fights Scored</p>
           </div>
         </div>
       </div>
@@ -249,7 +249,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
       <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5">
         <SectionTitle>Judge Agreement</SectionTitle>
         <AgreementBar breakdown={agreement_breakdown} />
-        <p className="text-[10px] text-pulse-text-3 mt-3 text-center">
+        <p className="text-[12px] text-pulse-text-3 mt-3 text-center">
           How many of the 3 judges agree with your pick per round
         </p>
       </div>
@@ -261,13 +261,13 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           <div className="text-center">
             <PulsePct value={activeTenEightRate} size="lg" color="text-pulse-red" />
             <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-2 mt-2">Your Rate</p>
-            <p className="text-[10px] text-pulse-text-3 mt-0.5">how often you give 10-8s</p>
+            <p className="text-[12px] text-pulse-text-3 mt-0.5">how often you give 10-8s</p>
           </div>
           <div className="w-px h-14 bg-white/[0.06]" />
           <div className="text-center">
             <PulsePct value={ten_eight_quality} size="lg" color="text-pulse-green" />
             <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-2 mt-2">10-8 Accuracy</p>
-            <p className="text-[10px] text-pulse-text-3 mt-0.5">judges also scored dominant</p>
+            <p className="text-[12px] text-pulse-text-3 mt-0.5">judges also scored dominant</p>
           </div>
         </div>
       </div>
@@ -346,7 +346,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
                       style={{ width: `${accPct}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-[10px] text-pulse-text-3">
+                  <div className="flex justify-between text-[12px] text-pulse-text-3">
                     <span>{wc.rounds}r</span>
                     <span>{wc.avg_loser_score != null ? wc.avg_loser_score.toFixed(1) : '—'} avg</span>
                   </div>
@@ -355,8 +355,8 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
             })}
           </div>
           <div className="pr-5 pt-3 space-y-0.5">
-            <p className="text-[9px] text-pulse-text-3">r — rounds with judge data available</p>
-            <p className="text-[9px] text-pulse-text-3">avg — your average score for the losing fighter (lower = stricter)</p>
+            <p className="text-[11px] text-pulse-text-3">r — rounds with judge data available</p>
+            <p className="text-[11px] text-pulse-text-3">avg — your average score for the losing fighter (lower = stricter)</p>
           </div>
         </div>
       )}
@@ -400,7 +400,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
                 ))}
               </div>
             )}
-            <p className="text-[10px] text-pulse-text-3 mt-2.5">
+            <p className="text-[12px] text-pulse-text-3 mt-2.5">
               Which factor was more dominant in rounds you awarded — striking (sig. strikes) or grappling (takedowns + control)?
             </p>
 
@@ -415,19 +415,19 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
                     <p className="font-heading font-extrabold text-lg leading-none text-pulse-red">
                       +{scoring_differentials.avg_strike_diff ?? '—'}
                     </p>
-                    <p className="text-[9px] font-heading uppercase tracking-wider text-pulse-text-3 mt-1.5">Sig Strikes</p>
+                    <p className="text-[11px] font-heading uppercase tracking-wider text-pulse-text-3 mt-1.5">Sig Strikes</p>
                   </div>
                   <div className="bg-pulse-surface-2 rounded-card p-3">
                     <p className="font-heading font-extrabold text-lg leading-none text-pulse-red">
                       +{scoring_differentials.avg_ctrl_diff ?? '—'}s
                     </p>
-                    <p className="text-[9px] font-heading uppercase tracking-wider text-pulse-text-3 mt-1.5">Control</p>
+                    <p className="text-[11px] font-heading uppercase tracking-wider text-pulse-text-3 mt-1.5">Control</p>
                   </div>
                   <div className="bg-pulse-surface-2 rounded-card p-3">
                     <p className="font-heading font-extrabold text-lg leading-none text-pulse-red">
                       +{scoring_differentials.avg_grd_diff ?? '—'}
                     </p>
-                    <p className="text-[9px] font-heading uppercase tracking-wider text-pulse-text-3 mt-1.5">Grd Strikes</p>
+                    <p className="text-[11px] font-heading uppercase tracking-wider text-pulse-text-3 mt-1.5">Grd Strikes</p>
                   </div>
                 </div>
               </div>
@@ -436,7 +436,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
 
           {/* Aggressor / Passive Control / Knockdown / Takedown — 2x2 grid */}
           {genderFilter !== 'all' && (
-            <p className="text-[10px] text-pulse-text-3 mb-2">Passive Control, KD Fighter, and TD Fighter shown overall only</p>
+            <p className="text-[12px] text-pulse-text-3 mb-2">Passive Control, KD Fighter, and TD Fighter shown overall only</p>
           )}
           <div className="grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-4">
             <BiasTile
@@ -517,7 +517,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
                           {lastName(f1Name)} <span className="text-pulse-text-3 font-normal text-xs">vs</span> {lastName(f2Name)}
                         </p>
                       </div>
-                      <p className="text-[10px] text-pulse-text-3 uppercase tracking-wider truncate">
+                      <p className="text-[12px] text-pulse-text-3 uppercase tracking-wider truncate">
                         {sf.weight_class_clean || sf.weight_class || ''}{sf.event_name ? ` · ${sf.event_name}` : ''}
                       </p>
                     </div>

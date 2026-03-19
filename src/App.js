@@ -50,13 +50,13 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
         <div className="bg-pulse-surface-2 rounded-card p-3.5 text-center border border-white/[0.06]">
           <p className="text-[11px] text-pulse-text-2 uppercase tracking-wider mb-1">Strike Pace</p>
           <div className="font-heading font-extrabold text-[28px] text-pulse-red leading-none mb-1">{dna.strikePace}</div>
-          <p className="text-[11px] text-pulse-text-3 mb-2">strikes / min</p>
+          <p className="text-[12px] text-pulse-text-3 mb-2">strikes / min</p>
           <Comparison userVal={dna.strikePace} baseVal={baselines.strikePace} />
         </div>
         <div className="bg-pulse-surface-2 rounded-card p-3.5 text-center border border-white/[0.06]">
           <p className="text-[11px] text-pulse-text-2 uppercase tracking-wider mb-1">Violence Index</p>
           <div className="font-heading font-extrabold text-[28px] text-pulse-red leading-none mb-1">{dna.violenceIndex}</div>
-          <p className="text-[11px] text-pulse-text-3 mb-2">(KD + Sub) / min</p>
+          <p className="text-[12px] text-pulse-text-3 mb-2">(KD + Sub) / min</p>
           <Comparison userVal={dna.violenceIndex} baseVal={baselines.violenceIndex} />
         </div>
       </div>
@@ -80,14 +80,14 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
         {/* Intensity */}
         <div className="flex items-center justify-between bg-pulse-surface-2 rounded-card p-3 border border-white/[0.06]">
           <div className="flex flex-col">
-            <span className="text-[10px] uppercase tracking-wider text-pulse-text-3">Grappling Intensity</span>
+            <span className="text-[12px] uppercase tracking-wider text-pulse-text-3">Grappling Intensity</span>
             <span className={`text-xs font-bold ${intensityLabel.color}`}>{intensityLabel.text}</span>
           </div>
           <div className="flex items-center gap-3">
             <Comparison userVal={intensityScore} baseVal={baselines.intensityScore} />
             <div className="text-right">
               <span className="font-heading font-extrabold text-lg">{intensityScore}</span>
-              <span className="text-[10px] text-pulse-text-3 ml-1">Work Rate</span>
+              <span className="text-[12px] text-pulse-text-3 ml-1">Work Rate</span>
             </div>
           </div>
         </div>
@@ -102,12 +102,12 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
         <div className="flex justify-between items-center text-center">
           <div className="flex-1 border-r border-white/[0.06]">
             <div className="font-heading font-extrabold text-2xl">{dna.finishRate}%</div>
-            <div className="text-[11px] text-pulse-text-2 mb-1">Finish Rate</div>
+            <div className="text-[12px] text-pulse-text-2 mb-1">Finish Rate</div>
             <Comparison userVal={dna.finishRate} baseVal={baselines.finishRate} suffix="%" />
           </div>
           <div className="flex-1">
             <div className="font-heading font-extrabold text-2xl">{dna.avgFightTime}m</div>
-            <div className="text-[11px] text-pulse-text-2 mb-1">Avg Duration</div>
+            <div className="text-[12px] text-pulse-text-2 mb-1">Avg Duration</div>
             <Comparison userVal={dna.avgFightTime} baseVal={baselines.avgFightTime} suffix="m" />
           </div>
         </div>
