@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Scale, AlertTriangle, Search } from 'lucide-react';
+import { ChevronLeft, Scale, AlertTriangle, Search, ChevronRight } from 'lucide-react';
 import { dataService } from '../dataService';
+import { supabase } from '../supabaseClient';
 
 const pct = (v) => v != null ? `${(v * 100).toFixed(1)}%` : '—';
 
@@ -34,7 +35,7 @@ const DualBar = ({ label, v1, v2 }) => {
   );
 };
 
-export default function JudgeComparison({ judge1Name, currentTheme, onBack, onViewProfile }) {
+export default function JudgeComparison({ judge1Name, currentTheme, onBack, onViewProfile, onFightClick }) {
   const [judge2Name, setJudge2Name] = useState(null);
   const [judgeList, setJudgeList] = useState([]);
   const [search, setSearch] = useState('');
@@ -251,16 +252,35 @@ export default function JudgeComparison({ judge1Name, currentTheme, onBack, onVi
           </div>
           <div className="space-y-3">
             {comparison.top_disagreements.map((fight, i) => (
-              <div key={i} className="flex items-center justify-between py-1 border-b border-white/5 last:border-0">
+              <div
+                key={i}
+                onClick={async () => {
+                  if (!onFightClick) return;
+                  const reversed = fight.bout.split(' vs ').reverse().join(' vs ');
+                  const { data } = await supabase
+                    .from('fights')
+                    .select('*')
+                    .or(`fight_url.is.null,fight_url.neq.placeholder`)
+                    .or(`bout.eq.${fight.bout},bout.eq.${reversed}`)
+                    .limit(1);
+                  if (data?.[0]) {
+                    onFightClick({ ...data[0], event_date: fight.fight_date });
+                  }
+                }}
+                className={`flex items-center justify-between py-1 border-b border-white/5 last:border-0 ${onFightClick ? 'cursor-pointer hover:bg-white/5 rounded-lg px-2 -mx-2 transition-colors' : ''}`}
+              >
                 <div>
                   <p className="text-sm font-semibold text-white/90">{fight.bout}</p>
                   <p className="text-xs text-white/30">
                     {new Date(fight.fight_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </p>
                 </div>
-                <div className="text-right shrink-0 ml-3">
-                  <p className="text-yellow-400 font-bold text-sm">{fight.disagreement_rounds} / {fight.scored_rounds}</p>
-                  <p className="text-white/30 text-xs">rounds disagreed</p>
+                <div className="flex items-center gap-2 shrink-0 ml-3">
+                  <div className="text-right">
+                    <p className="text-yellow-400 font-bold text-sm">{fight.disagreement_rounds} / {fight.scored_rounds}</p>
+                    <p className="text-white/30 text-xs">rounds disagreed</p>
+                  </div>
+                  {onFightClick && <ChevronRight size={14} className="text-white/20" />}
                 </div>
               </div>
             ))}

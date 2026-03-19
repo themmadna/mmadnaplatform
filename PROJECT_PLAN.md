@@ -128,11 +128,18 @@ Redesign the entire frontend from the current gold/black Oswald theme to Concept
 
 **Reference mockups:** `mockups/concept-D-pulse/` (14 pages, 01-login through 14-profile)
 
-- [ ] **8a. Design tokens & Tailwind config** — color palette, typography, spacing, breakpoints
-- [ ] **8b. Layout shell** — bottom nav, top bar, content wrapper, responsive behavior
-- [ ] **8c. Fight card redesign** — full-viewport cards, swipe interaction, story progress bar
-- [ ] **8d. Fight detail view** — stat bars, round breakdown, judge scores in Pulse style
-- [ ] **8e. Scoring & DNA panels** — RoundScoringPanel, ScorecardComparison, CombatDNA, JudgingDNA
+- [x] **8a. Design tokens & Tailwind config** — Pulse color palette, Barlow Condensed + Inter fonts, custom radii/spacing, CSS custom properties
+- [x] **8b. Layout shell** — bottom nav (4 tabs), slim top bar, story progress bar, content wrapper (430px), currentTheme rewritten to Pulse tokens
+- [x] **8c. Fight card redesign** — two-column fighter layout with red/blue avatars, badge row, VS divider + weight class pill, vote buttons restyled
+- [x] **8d. Fight detail view** — avatar header, green result banner, 4-tab bar (Overview/By Round/Scoring/Judges), red/blue dual stat bars, round breakdown with ML description, R1 stoppage empty state
+- [x] **8e. Scoring & DNA panels** — RoundScoringPanel, ScorecardComparison, CombatDNA, JudgingDNA
+  - [x] RoundScoringPanel — round selector, single-round scoring, 72px score buttons, scored summary, running total
+  - [x] ScorecardComparison — 5-col grid (Round/You/Judges/Model/Match), expandable judges, accuracy ring, result card
+  - [x] CombatDNACard — Pulse surface cards, red accent values, pulse token classes
+  - [x] CombatDNAVisual — Pulse card, stat bars + per-fight averages alongside body map
+  - [x] CombatScatterPlot — removed from Combat DNA page (data kept for "Apply My Stats" filter)
+  - [x] JudgingDNACard — Pulse surface cards, accuracy ring, horizontal-scroll weight class cards, judge avatars, bias tiles
+  - [ ] Deferred: CombatDNAVisual landed vs attempted strike data investigation
 - [ ] **8f. Polish** — animations, loading states, mobile audit, accessibility
 
 ---

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Brain } from 'lucide-react';
 import { dataService } from '../dataService';
 import { supabase } from '../supabaseClient';
 import RoundScoringPanel from './RoundScoringPanel';
@@ -192,6 +192,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
   const [meta, setMeta] = useState(null);
   const [rounds, setRounds] = useState([]);
   const [error, setError] = useState(null);
+  const [detailTab, setDetailTab] = useState('overview');
 
   // Whether the current user has submitted any scores for this fight
   // Gates the Final Scorecard and Scorecard Comparison reveal
@@ -458,172 +459,353 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
     },
   ];
 
+  // --- Helpers for overview tab ---
+  const f1Name = meta ? meta.fighter1_name : fight.bout?.split(' vs ')[0]?.trim() || 'Unknown';
+  const f2Name = meta ? meta.fighter2_name : fight.bout?.split(' vs ')[1]?.trim() || 'Fighter';
+  const f1Initials = f1Name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const f2Initials = f2Name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const f1Last = f1Name.split(' ').pop();
+  const f1First = f1Name.split(' ').slice(0, -1).join(' ');
+  const f2Last = f2Name.split(' ').pop();
+  const f2First = f2Name.split(' ').slice(0, -1).join(' ');
+  const weightClass = meta?.weight_class_clean || meta?.weight_class || fight.weight_class || '';
+
+  // Aggregate totals across all rounds for overview stats
+  const overviewStats = rounds.length > 0 ? (() => {
+    const sum = (key) => rounds.reduce((t, rd) => t + (rd.f1Stats?.[key] || 0), 0);
+    const sum2 = (key) => rounds.reduce((t, rd) => t + (rd.f2Stats?.[key] || 0), 0);
+    return [
+      { label: 'Sig. Strikes', f1: sum('sig_strikes_landed'), f2: sum2('sig_strikes_landed'), f1Disp: `${sum('sig_strikes_landed')}/${sum('sig_strikes_attempted')}`, f2Disp: `${sum2('sig_strikes_landed')}/${sum2('sig_strikes_attempted')}` },
+      { label: 'Knockdowns', f1: sum('kd'), f2: sum2('kd') },
+      { label: 'Takedowns', f1: sum('takedowns_landed'), f2: sum2('takedowns_landed'), f1Disp: `${sum('takedowns_landed')}/${sum('takedowns_attempted')}`, f2Disp: `${sum2('takedowns_landed')}/${sum2('takedowns_attempted')}` },
+      { label: 'Ctrl Time', f1: sum('control_time_sec'), f2: sum2('control_time_sec'), f1Disp: `${Math.floor(sum('control_time_sec') / 60)}:${(sum('control_time_sec') % 60).toString().padStart(2, '0')}`, f2Disp: `${Math.floor(sum2('control_time_sec') / 60)}:${(sum2('control_time_sec') % 60).toString().padStart(2, '0')}` },
+      { label: 'Head', f1: sum('sig_strikes_head_landed'), f2: sum2('sig_strikes_head_landed') },
+      { label: 'Body', f1: sum('sig_strikes_body_landed'), f2: sum2('sig_strikes_body_landed') },
+      { label: 'Legs', f1: sum('sig_strikes_leg_landed'), f2: sum2('sig_strikes_leg_landed') },
+      { label: 'Sub Attempts', f1: sum('sub_attempts'), f2: sum2('sub_attempts') },
+    ];
+  })() : [];
+
+  // Dual bar component
+  const DualBar = ({ f1Val, f2Val }) => {
+    const total = (f1Val || 0) + (f2Val || 0);
+    const f1Pct = total > 0 ? (f1Val / total) * 100 : 50;
+    const f2Pct = total > 0 ? (f2Val / total) * 100 : 50;
+    return (
+      <div className="flex w-full h-[5px] rounded-full overflow-hidden gap-[2px]">
+        <div className="bg-pulse-red rounded-l-full" style={{ width: `${f1Pct}%` }} />
+        <div className="bg-pulse-blue rounded-r-full" style={{ width: `${f2Pct}%` }} />
+      </div>
+    );
+  };
+
+  // Stat row component for overview
+  const StatRow = ({ label, f1Val, f2Val, f1Display, f2Display }) => (
+    <div className="flex items-center mb-3.5">
+      <div className={`w-12 text-center font-heading font-bold text-[15px] ${f1Val > f2Val ? 'text-pulse-red' : 'text-pulse-text-2'}`}>
+        {f1Display ?? f1Val}
+      </div>
+      <div className="flex-1 flex flex-col items-center gap-1 px-1.5">
+        <span className="text-[10px] text-pulse-text-3 uppercase tracking-wider">{label}</span>
+        <DualBar f1Val={f1Val} f2Val={f2Val} />
+      </div>
+      <div className={`w-12 text-center font-heading font-bold text-[15px] ${f2Val > f1Val ? 'text-pulse-blue' : 'text-pulse-text-2'}`}>
+        {f2Display ?? f2Val}
+      </div>
+    </div>
+  );
+
+  // Available tabs
+  const tabs = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'byRound', label: 'By Round' },
+    { key: 'scoring', label: 'Scoring' },
+    { key: 'judges', label: 'Judges' },
+  ];
+
   return (
-    <div className={`min-h-screen ${currentTheme.bg} p-4 md:p-8 animate-in fade-in`}>
-      <div className="max-w-3xl mx-auto">
+    <div className="animate-in fade-in">
 
-        {/* BACK BUTTON */}
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 mb-6 text-sm font-bold opacity-60 hover:opacity-100 transition-opacity uppercase tracking-widest"
-        >
-          <ChevronLeft size={16} />
-          {fight.event_name}
-        </button>
+      {/* BACK BUTTON */}
+      <button
+        onClick={onBack}
+        className="flex items-center gap-2 mb-4 text-xs font-semibold text-pulse-text-3 hover:text-pulse-red transition-colors uppercase tracking-wider"
+      >
+        <div className="w-9 h-9 rounded-btn bg-pulse-surface border border-white/[0.06] flex items-center justify-center">
+          <ChevronLeft size={18} />
+        </div>
+        <span>{fight.event_name}</span>
+      </button>
 
-        {/* LOADING */}
-        {loading && (
-          <div className="flex items-center justify-center py-24">
-            <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin opacity-50" />
-          </div>
-        )}
+      {/* LOADING */}
+      {loading && (
+        <div className="flex items-center justify-center py-24">
+          <div className="w-8 h-8 border-2 border-pulse-red border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
 
-        {/* ERROR */}
-        {!loading && error && (
-          <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
-            <p className="text-sm uppercase tracking-widest">{error}</p>
-          </div>
-        )}
+      {/* ERROR */}
+      {!loading && error && (
+        <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-6 text-center">
+          <p className="text-sm text-pulse-text-3 uppercase tracking-widest">{error}</p>
+        </div>
+      )}
 
-        {/* CONTENT — shown once data load completes, with or without meta */}
-        {!loading && !error && (
-          <>
-            {/* FIGHT HEADER — works with or without meta */}
-            <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} mb-6 shadow-lg text-center`}>
-              <div className="flex items-center justify-center gap-4 mb-3 flex-wrap">
-                <h1 className="text-lg sm:text-2xl font-black">
-                  {meta ? meta.fighter1_name : fight.bout?.split(' vs ')[0]?.trim()}
-                </h1>
-                <span className={`text-lg font-bold ${currentTheme.accent} opacity-60`}>VS</span>
-                <h1 className="text-lg sm:text-2xl font-black">
-                  {meta ? meta.fighter2_name : fight.bout?.split(' vs ')[1]?.trim()}
-                </h1>
-              </div>
-              <p className={`text-xs uppercase tracking-widest ${currentTheme.secondaryText}`}>
-                {meta?.weight_class_clean || meta?.weight_class || fight.weight_class || ''}
-                {meta?.method ? ` · ${meta.method}` : ''}
-                {meta?.round ? ` · R${meta.round}` : ''}
-                {meta?.time ? ` ${meta.time}` : ''}
-                {meta?.referee ? ` · Ref: ${meta.referee}` : ''}
-              </p>
-              {meta?.winner && fight.status === 'completed' && (
-                <div className={`mt-3 inline-block text-xs font-bold uppercase tracking-widest px-3 py-1 ${currentTheme.rounded} ${currentTheme.primary} text-white`}>
-                  W: {meta.winner}
+      {/* CONTENT */}
+      {!loading && !error && (
+        <>
+          {/* FIGHT HEADER — two-column avatar layout */}
+          <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5 mb-3">
+            <div className="flex items-center justify-between">
+              {/* Fighter 1 */}
+              <div className="flex flex-col items-center flex-1 min-w-0">
+                <div className="w-[60px] h-[60px] rounded-full border-[3px] border-pulse-red bg-pulse-red/[0.08] flex items-center justify-center font-heading font-bold text-xl text-pulse-text mb-2">
+                  {f1Initials}
                 </div>
-              )}
-            </div>
-
-            {/* UPCOMING — not started */}
-            {fight.status === 'upcoming' && !isLive && !isLocked && (
-              <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
-                <p className="text-sm uppercase tracking-widest">
-                  Fight has not yet started. Scoring opens when the fight begins.
-                </p>
+                <div className="font-heading font-bold text-base uppercase tracking-wider text-center leading-tight">
+                  {f1First && <span className="block text-[11px] font-medium text-pulse-text-2">{f1First}</span>}
+                  {f1Last}
+                </div>
               </div>
-            )}
 
-            {/* UPCOMING — live (scoring open, rounds unlock progressively) */}
-            {fight.status === 'upcoming' && isLive && (
-              <div className={`${currentTheme.card} p-4 ${currentTheme.rounded} mb-4 text-center`}>
-                <p className="text-xs font-black uppercase tracking-widest opacity-60">🔴 Fight In Progress</p>
-              </div>
-            )}
-            {fight.status === 'upcoming' && isLive && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
-            )}
-
-            {/* UPCOMING — ended, stats incoming */}
-            {fight.status === 'upcoming' && isLocked && (
-              <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60 mb-4`}>
-                <p className="text-sm uppercase tracking-widest">
-                  Fight finished. Official stats will be available shortly.
-                </p>
-              </div>
-            )}
-            {fight.status === 'upcoming' && isLocked && (
-              <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
-            )}
-
-            {/* COMPLETED — stats pending (meta not available yet) */}
-            {fight.status === 'completed' && !meta && (
-              <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
-                <p className="text-sm uppercase tracking-widest">Round stats not yet available for this fight.</p>
-              </div>
-            )}
-            {/* Still allow scoring if ESPN data was persisted (scorableRounds > 0) */}
-            {fight.status === 'completed' && !meta && scorableRounds > 0 && (
-              <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
-            )}
-
-            {/* COMPLETED — has meta */}
-            {fight.status === 'completed' && meta && (
-              <>
-                {/* NO STATS YET */}
-                {rounds.length === 0 && (
-                  <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} text-center opacity-60`}>
-                    <p className="text-sm uppercase tracking-widest">Round stats not yet available for this fight.</p>
-                  </div>
+              {/* VS divider */}
+              <div className="flex flex-col items-center gap-1.5 px-2 shrink-0">
+                <span className="font-heading font-extrabold text-base text-pulse-text-3 tracking-widest">VS</span>
+                {weightClass && (
+                  <span className="text-[9px] text-pulse-text-2 bg-pulse-surface-2 px-2 py-1 rounded-pill whitespace-nowrap text-center leading-tight">
+                    {weightClass}
+                    {meta?.round ? <><br />{meta.round} · {fight.bout?.includes('Title') ? 'Title' : 'Bout'}</> : ''}
+                  </span>
                 )}
+              </div>
 
-                {/* ROUND BREAKDOWN */}
-                {rounds.map(rd => (
-                  <div key={rd.round} className={`${currentTheme.card} ${currentTheme.rounded} mb-4 shadow-sm overflow-hidden`}>
-                    <div className="px-4 sm:px-6 py-3 bg-black/30 border-b border-white/10">
-                      <p className="text-xs font-black uppercase tracking-widest opacity-60">Round {rd.round}</p>
+              {/* Fighter 2 */}
+              <div className="flex flex-col items-center flex-1 min-w-0">
+                <div className="w-[60px] h-[60px] rounded-full border-[3px] border-pulse-blue bg-pulse-blue/[0.08] flex items-center justify-center font-heading font-bold text-xl text-pulse-text mb-2">
+                  {f2Initials}
+                </div>
+                <div className="font-heading font-bold text-base uppercase tracking-wider text-center leading-tight">
+                  {f2First && <span className="block text-[11px] font-medium text-pulse-text-2">{f2First}</span>}
+                  {f2Last}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* RESULT BANNER */}
+          {meta?.winner && fight.status === 'completed' && (
+            <div className="mx-0 mb-3 bg-pulse-green/[0.08] border border-pulse-green/20 rounded-card px-4 py-3 flex items-center gap-2.5">
+              <div className="w-2 h-2 rounded-full bg-pulse-green shrink-0" />
+              <span className="font-heading font-semibold text-[15px] text-pulse-green tracking-wider">
+                {meta.winner} wins{meta.method ? ` via ${meta.method}` : ''}
+                {meta.round ? ` (R${meta.round}` : ''}
+                {meta.time ? `, ${meta.time})` : meta.round ? ')' : ''}
+              </span>
+            </div>
+          )}
+
+          {/* LIVE / UPCOMING BANNERS */}
+          {fight.status === 'upcoming' && !isLive && !isLocked && (
+            <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center mb-3">
+              <p className="text-sm text-pulse-text-3 uppercase tracking-widest">
+                Fight has not yet started. Scoring opens when the fight begins.
+              </p>
+            </div>
+          )}
+          {fight.status === 'upcoming' && isLive && (
+            <div className="bg-pulse-red/10 border border-pulse-red/20 rounded-card px-4 py-3 mb-3 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-pulse-red animate-pulse" />
+              <span className="text-xs font-bold uppercase tracking-widest text-pulse-red">Fight In Progress</span>
+            </div>
+          )}
+          {fight.status === 'upcoming' && isLocked && (
+            <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-4 text-center mb-3">
+              <p className="text-sm text-pulse-text-3 uppercase tracking-widest">
+                Fight finished. Official stats will be available shortly.
+              </p>
+            </div>
+          )}
+
+          {/* LIVE / UPCOMING SCORING */}
+          {fight.status === 'upcoming' && (isLive || isLocked) && (
+            <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
+          )}
+
+          {/* COMPLETED — no meta yet */}
+          {fight.status === 'completed' && !meta && (
+            <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center mb-3">
+              <p className="text-sm text-pulse-text-3 uppercase tracking-widest">Round stats not yet available for this fight.</p>
+            </div>
+          )}
+          {fight.status === 'completed' && !meta && scorableRounds > 0 && (
+            <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
+          )}
+
+          {/* COMPLETED — has meta: TAB BAR + CONTENT */}
+          {fight.status === 'completed' && meta && (
+            <>
+              {/* Tab bar */}
+              <div className="flex gap-1 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+                {tabs.map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setDetailTab(key)}
+                    className={`font-heading font-semibold text-[13px] px-3.5 py-1.5 rounded-pill whitespace-nowrap uppercase tracking-wider border transition-all
+                      ${detailTab === key
+                        ? 'bg-pulse-red text-white border-pulse-red'
+                        : 'bg-pulse-surface text-pulse-text-3 border-white/[0.06] hover:text-pulse-text-2'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* === OVERVIEW TAB === */}
+              {detailTab === 'overview' && (
+                <div className="animate-in fade-in">
+                  {overviewStats.length > 0 ? (
+                    <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 mb-3">
+                      <h3 className="font-heading font-bold text-sm uppercase tracking-widest text-pulse-text-2 mb-4">Fight Statistics</h3>
+                      {overviewStats.map(row => (
+                        <StatRow key={row.label} label={row.label} f1Val={row.f1} f2Val={row.f2} f1Display={row.f1Disp} f2Display={row.f2Disp} />
+                      ))}
                     </div>
-                    <div className="p-4 sm:p-6">
-                      <div className="grid grid-cols-3 text-xs opacity-40 uppercase tracking-widest mb-3">
-                        <span className="font-bold">{meta.fighter1_name.split(' ').pop()}</span>
-                        <span className="text-center"></span>
-                        <span className="text-right font-bold">{meta.fighter2_name.split(' ').pop()}</span>
-                      </div>
-                      {(rd.f1Stats || rd.f2Stats) ? (
-                        <div className="space-y-2 mb-5">
-                          {STATS_ROWS(rd).map(row => (
-                            <div key={row.label} className="grid grid-cols-3 items-center text-xs sm:text-sm">
-                              <span className={`text-left font-bold ${row.f1Raw > row.f2Raw ? currentTheme.accent : 'opacity-80'}`}>
-                                {row.f1}
-                              </span>
-                              <span className="text-center text-xs opacity-40 uppercase tracking-wider">{row.label}</span>
-                              <span className={`text-right font-bold ${row.f2Raw > row.f1Raw ? currentTheme.accent : 'opacity-80'}`}>
-                                {row.f2}
+                  ) : (
+                    <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center mb-3">
+                      <p className="text-sm text-pulse-text-3 uppercase tracking-widest">Round stats not yet available for this fight.</p>
+                    </div>
+                  )}
+
+                  {/* Round Breakdown Summary */}
+                  {rounds.length > 0 && (
+                    <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 mb-3">
+                      <h3 className="font-heading font-bold text-sm uppercase tracking-widest text-pulse-text-2 mb-1">Round Breakdown</h3>
+                      <p className="text-[11px] text-pulse-text-3 mb-4 flex items-center gap-1.5">
+                        <Brain size={12} />
+                        ML model prediction of round dominance based on fight stats
+                      </p>
+                      {(() => {
+                        const isDecision = meta.method?.toLowerCase().includes('decision');
+                        const lastRound = rounds.length;
+                        return rounds.map(rd => {
+                          const isFinishRound = !isDecision && rd.round === lastRound;
+                          if (isFinishRound) {
+                            return (
+                              <div key={rd.round} className="flex items-center gap-2 mb-2">
+                                <span className="font-heading font-semibold text-xs text-pulse-text-3 w-6 text-center">R{rd.round}</span>
+                                <div className="flex-1 h-2 bg-pulse-surface-2 rounded-full overflow-hidden" />
+                                <span className="text-[10px] text-pulse-text-3 w-6 text-center">—</span>
+                              </div>
+                            );
+                          }
+                          const conf = rd.model.confidence || 0.5;
+                          const pct = Math.round(conf * 100);
+                          const isF1 = rd.model.winner === 'f1';
+                          return (
+                            <div key={rd.round} className="flex items-center gap-2 mb-2">
+                              <span className="font-heading font-semibold text-xs text-pulse-text-3 w-6 text-center">R{rd.round}</span>
+                              <div className="flex-1 h-2 bg-pulse-surface-2 rounded-full overflow-hidden relative">
+                                {isF1 ? (
+                                  <div className="absolute left-0 top-0 h-full bg-pulse-red rounded-full" style={{ width: `${pct}%` }} />
+                                ) : (
+                                  <div className="absolute right-0 top-0 h-full bg-pulse-blue rounded-full" style={{ width: `${pct}%` }} />
+                                )}
+                              </div>
+                              <span className={`text-[10px] font-semibold w-6 text-center ${isF1 ? 'text-pulse-red' : 'text-pulse-blue'}`}>
+                                {isF1 ? f1Initials : f2Initials}
                               </span>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs opacity-40 text-center mb-5 uppercase tracking-widest">No stats for this round</p>
-                      )}
+                          );
+                        });
+                      })()}
                     </div>
-                  </div>
-                ))}
+                  )}
 
-                {/* STOPPAGE NOTE */}
-                {meta.method && !meta.method.toLowerCase().includes('decision') && (
-                  <p className="text-xs opacity-40 text-center uppercase tracking-widest mb-6">
-                    Ended by {meta.method} — no judges' scorecard available
-                  </p>
-                )}
+                  {/* Stoppage note */}
+                  {meta.method && !meta.method.toLowerCase().includes('decision') && (
+                    <p className="text-[11px] text-pulse-text-3 text-center uppercase tracking-wider mb-3">
+                      Ended by {meta.method} — no judges' scorecard available
+                    </p>
+                  )}
+                </div>
+              )}
 
-                {/* YOUR SCORECARD */}
-                <RoundScoringPanel
-                  fight={fight}
-                  meta={meta}
-                  isLocked={false}
-                  currentTheme={currentTheme}
-                  onAllRoundsScored={() => setHasUserScores(true)}
-                  isGuest={isGuest}
-                />
+              {/* === BY ROUND TAB === */}
+              {detailTab === 'byRound' && (
+                <div className="animate-in fade-in">
+                  {rounds.length === 0 && (
+                    <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center">
+                      <p className="text-sm text-pulse-text-3 uppercase tracking-widest">Round stats not yet available for this fight.</p>
+                    </div>
+                  )}
+                  {rounds.map(rd => (
+                    <div key={rd.round} className="bg-pulse-surface border border-white/[0.06] rounded-fight mb-3 overflow-hidden">
+                      <div className="px-4 py-2.5 border-b border-white/[0.06]">
+                        <p className="text-xs font-heading font-bold uppercase tracking-widest text-pulse-text-2">Round {rd.round}</p>
+                      </div>
+                      <div className="p-4">
+                        {(rd.f1Stats || rd.f2Stats) ? (
+                          <>
+                            {STATS_ROWS(rd).map(row => (
+                              <StatRow key={row.label} label={row.label} f1Val={row.f1Raw} f2Val={row.f2Raw} f1Display={row.f1} f2Display={row.f2} />
+                            ))}
+                          </>
+                        ) : (
+                          <p className="text-xs text-pulse-text-3 text-center uppercase tracking-widest py-4">No stats for this round</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-                {/* SCORECARD COMPARISON */}
-                {rounds.length > 0 && (
-                  <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} isGuest={isGuest} />
-                )}
-              </>
-            )}
-          </>
-        )}
-      </div>
+              {/* === SCORING TAB === */}
+              {detailTab === 'scoring' && (
+                <div className="animate-in fade-in">
+                  {(() => {
+                    const isDecision = meta?.method?.toLowerCase().includes('decision');
+                    const roundsFought = parseInt((meta?.round || '').split(' ')[0]) || 0;
+                    const scoreableRounds = isDecision ? roundsFought : Math.max(0, roundsFought - 1);
+                    if (scoreableRounds === 0) {
+                      return (
+                        <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center">
+                          <p className="text-sm text-pulse-text-2 uppercase tracking-widest mb-1">No rounds to score</p>
+                          <p className="text-xs text-pulse-text-3">
+                            This fight ended in Round {roundsFought || 1} by {meta?.method || 'stoppage'} — only completed rounds can be scored.
+                          </p>
+                        </div>
+                      );
+                    }
+                    return (
+                      <RoundScoringPanel
+                        fight={fight}
+                        meta={meta}
+                        isLocked={false}
+                        currentTheme={currentTheme}
+                        onAllRoundsScored={() => setHasUserScores(true)}
+                        isGuest={isGuest}
+                      />
+                    );
+                  })()}
+                </div>
+              )}
+
+              {/* === JUDGES TAB === */}
+              {detailTab === 'judges' && (
+                <div className="animate-in fade-in">
+                  {rounds.length > 0 ? (
+                    <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} isGuest={isGuest} />
+                  ) : (
+                    <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center">
+                      <p className="text-sm text-pulse-text-3 uppercase tracking-widest">Judge data not yet available for this fight.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </>
+      )}
     </div>
   );
 };

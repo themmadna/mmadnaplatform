@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2 } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, MapPin, Search, X, Activity, Swords, Zap, Dna, Sparkles, Settings2, Calendar, BarChart3, Target, Scale } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
 import * as guestStorage from './guestStorage';
 import CombatDNAVisual from './CombatDNAVisual';
-import CombatScatterPlot from './components/CombatScatterPlot';
+
 import FightDetailView from './components/FightDetailView';
 import JudgingDNACard from './components/JudgingDNACard';
 import JudgeDirectory from './components/JudgeDirectory';
@@ -17,9 +17,9 @@ import UserJudgeComparison from './components/UserJudgeComparison';
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
 
   if (!dna) return (
-    <div className={`p-6 rounded-xl border border-dashed ${currentTheme.card} opacity-50 text-center animate-in fade-in`}>
+    <div className="bg-pulse-surface border border-dashed border-white/[0.06] rounded-fight p-6 text-center opacity-50">
       <Activity className="mx-auto mb-2 opacity-50" />
-      <p className="text-sm">Rate more fights to generate your Combat DNA</p>
+      <p className="text-sm text-pulse-text-2">Rate more fights to generate your Combat DNA</p>
     </div>
   );
 
@@ -28,97 +28,87 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
     const safeBase = Number(baseVal) || 0;
     const diff = (safeUser - safeBase).toFixed(1);
     const isHigher = parseFloat(diff) > 0;
-    
     return (
-      <span className={`text-xs font-bold ml-2 ${isHigher ? currentTheme.accent : 'opacity-40'}`}>
+      <span className={`text-xs font-bold ml-2 ${isHigher ? 'text-pulse-red' : 'text-pulse-text-3'}`}>
         {isHigher ? '↑' : '↓'} {isHigher ? '+' : ''}{diff}{suffix}
       </span>
     );
   };
 
-  const intensityScore = dna.intensityScore || 0; 
-  
+  const intensityScore = dna.intensityScore || 0;
   const getIntensityLabel = (score) => {
-      if (score > 12) return { text: "MAULER", color: "text-red-500" };
-      if (score > 7) return { text: "ACTIVE GRAPPLER", color: "text-yellow-400" };
-      return { text: "CONTROL FOCUSED", color: "text-blue-400" };
+      if (score > 12) return { text: "MAULER", color: "text-pulse-red" };
+      if (score > 7) return { text: "ACTIVE GRAPPLER", color: "text-pulse-amber" };
+      return { text: "CONTROL FOCUSED", color: "text-pulse-blue" };
   };
   const intensityLabel = getIntensityLabel(intensityScore);
 
   return (
-    <div className={`${currentTheme.card} p-6 ${currentTheme.rounded} mb-8 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-700`}>
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
-          <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Strike Pace</p>
-          <div className="text-2xl sm:text-3xl font-black mb-1">{dna.strikePace}</div>
-          <p className="text-xs opacity-50 mb-2">combined strikes / min</p>
-          <div className="bg-black/20 py-1 px-2 rounded-lg inline-block">
-            <Comparison userVal={dna.strikePace} baseVal={baselines.strikePace} />
+    <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5 mb-4">
+      {/* Hero metrics */}
+      <div className="grid grid-cols-2 gap-3 mb-5">
+        <div className="bg-pulse-surface-2 rounded-card p-3.5 text-center border border-white/[0.06]">
+          <p className="text-[11px] text-pulse-text-2 uppercase tracking-wider mb-1">Strike Pace</p>
+          <div className="font-heading font-extrabold text-[28px] text-pulse-red leading-none mb-1">{dna.strikePace}</div>
+          <p className="text-[11px] text-pulse-text-3 mb-2">strikes / min</p>
+          <Comparison userVal={dna.strikePace} baseVal={baselines.strikePace} />
+        </div>
+        <div className="bg-pulse-surface-2 rounded-card p-3.5 text-center border border-white/[0.06]">
+          <p className="text-[11px] text-pulse-text-2 uppercase tracking-wider mb-1">Violence Index</p>
+          <div className="font-heading font-extrabold text-[28px] text-pulse-red leading-none mb-1">{dna.violenceIndex}</div>
+          <p className="text-[11px] text-pulse-text-3 mb-2">(KD + Sub) / min</p>
+          <Comparison userVal={dna.violenceIndex} baseVal={baselines.violenceIndex} />
+        </div>
+      </div>
+
+      {/* Engagement Style */}
+      <div className="mb-5">
+        <div className="flex justify-between text-sm mb-2 font-bold">
+          <span className="flex items-center gap-2 font-heading font-bold text-sm uppercase tracking-wide">
+            <Swords size={14} className="text-pulse-red" /> Engagement Style
+          </span>
+          <div className="flex items-center">
+            <span className="text-sm">{dna.engagementStyle}% Control</span>
+            <Comparison userVal={dna.engagementStyle} baseVal={baselines.engagementStyle} suffix="%" />
           </div>
         </div>
-        <div className="p-4 rounded-xl bg-white/5 border border-white/5 text-center">
-          <p className="text-xs opacity-50 uppercase tracking-widest mb-1">Violence Index</p>
-          <div className="text-2xl sm:text-3xl font-black mb-1">{dna.violenceIndex}</div>
-          <p className="text-xs opacity-50 mb-2">(Kd + Sub Att) / min</p>
-          <div className="bg-black/20 py-1 px-2 rounded-lg inline-block">
-            <Comparison userVal={dna.violenceIndex} baseVal={baselines.violenceIndex} />
+        <div className="h-1.5 bg-pulse-surface-2 rounded-full overflow-hidden relative mb-3" title="0% = Standup War, 100% = Grappling Clinic">
+          <div className="absolute top-0 bottom-0 w-0.5 bg-white/20 z-10" style={{ left: `${baselines.engagementStyle}%` }} />
+          <div className="h-full bg-pulse-red rounded-full transition-all duration-1000" style={{ width: `${dna.engagementStyle}%` }} />
+        </div>
+
+        {/* Intensity */}
+        <div className="flex items-center justify-between bg-pulse-surface-2 rounded-card p-3 border border-white/[0.06]">
+          <div className="flex flex-col">
+            <span className="text-[10px] uppercase tracking-wider text-pulse-text-3">Grappling Intensity</span>
+            <span className={`text-xs font-bold ${intensityLabel.color}`}>{intensityLabel.text}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Comparison userVal={intensityScore} baseVal={baselines.intensityScore} />
+            <div className="text-right">
+              <span className="font-heading font-extrabold text-lg">{intensityScore}</span>
+              <span className="text-[10px] text-pulse-text-3 ml-1">Work Rate</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="space-y-6">
-        {/* ENGAGEMENT STYLE + INTENSITY */}
-        <div>
-          <div className="flex justify-between text-sm mb-2 font-bold">
-            <span className="flex items-center gap-2"><Swords size={14} /> Engagement Style</span>
-            <div className="flex items-center">
-              <span>{dna.engagementStyle}% Control</span>
-              <Comparison userVal={dna.engagementStyle} baseVal={baselines.engagementStyle} suffix="%" />
-            </div>
-          </div>
-          
-          <div className="h-2 bg-gray-700 rounded-full overflow-hidden relative mb-3" title="0% = Standup War, 100% = Grappling Clinic">
-            <div className="absolute top-0 bottom-0 w-0.5 bg-white/30 z-10" style={{ left: `${baselines.engagementStyle}%` }}></div>
-            <div className={`h-full ${currentTheme.primary} transition-all duration-1000`} style={{ width: `${dna.engagementStyle}%` }}></div>
-          </div>
-
-          {/* INTENSITY METRIC WITH COMPARISON */}
-          <div className="flex items-center justify-between bg-white/5 rounded-lg p-2 px-3 border border-white/5">
-             <div className="flex flex-col">
-                 <span className="text-[10px] uppercase tracking-widest opacity-50">Grappling Intensity</span>
-                 <span className={`text-xs font-bold ${intensityLabel.color}`}>{intensityLabel.text}</span>
-             </div>
-             
-             <div className="flex items-center gap-3">
-                 {/* The Comparison Badge */}
-                 <div className="bg-black/20 py-1 px-2 rounded-lg">
-                    <Comparison userVal={intensityScore} baseVal={baselines.intensityScore} />
-                 </div>
-
-                 <div className="text-right">
-                     <span className="text-lg font-black">{intensityScore}</span>
-                     <span className="text-[10px] opacity-40 ml-1">Work Rate</span>
-                 </div>
-             </div>
-          </div>
+      {/* Finish Profile */}
+      <div className="bg-pulse-surface-2 p-4 rounded-card border border-white/[0.06]">
+        <div className="flex items-center gap-2 mb-4">
+          <Zap size={16} className="text-pulse-red" />
+          <span className="font-heading font-bold text-sm uppercase tracking-wider">Finish Profile</span>
         </div>
-
-        <div className="bg-white/5 p-4 rounded-xl border border-white/5">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap size={16} className={currentTheme.accent} />
-            <span className="text-sm font-bold uppercase tracking-widest">Finish Profile</span>
+        <div className="flex justify-between items-center text-center">
+          <div className="flex-1 border-r border-white/[0.06]">
+            <div className="font-heading font-extrabold text-2xl">{dna.finishRate}%</div>
+            <div className="text-[11px] text-pulse-text-2 mb-1">Finish Rate</div>
+            <Comparison userVal={dna.finishRate} baseVal={baselines.finishRate} suffix="%" />
           </div>
-          <div className="flex justify-between items-center text-center">
-            <div className="flex-1 border-r border-white/10">
-              <div className="text-xl sm:text-2xl font-black">{dna.finishRate}%</div>
-              <div className="text-xs opacity-50 mb-1">Finish Rate</div>
-              <Comparison userVal={dna.finishRate} baseVal={baselines.finishRate} suffix="%" />
-            </div>
-            <div className="flex-1">
-              <div className="text-xl sm:text-2xl font-black">{dna.avgFightTime}m</div>
-              <div className="text-xs opacity-50 mb-1">Avg Duration</div>
-              <Comparison userVal={dna.avgFightTime} baseVal={baselines.avgFightTime} suffix="m" />
-            </div>
+          <div className="flex-1">
+            <div className="font-heading font-extrabold text-2xl">{dna.avgFightTime}m</div>
+            <div className="text-[11px] text-pulse-text-2 mb-1">Avg Duration</div>
+            <Comparison userVal={dna.avgFightTime} baseVal={baselines.avgFightTime} suffix="m" />
           </div>
         </div>
       </div>
@@ -171,113 +161,147 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
-  
-  // Visual logic
+
   const isFav = fight.userVote === 'favorite';
   const isLike = fight.userVote === 'like';
   const isDislike = fight.userVote === 'dislike';
 
   const fighters = fight.bout ? fight.bout.split(/ vs /i) : ["Unknown", "Fighter"];
+  const f1 = fighters[0]?.trim() || 'Unknown';
+  const f2 = fighters[1]?.trim() || 'Fighter';
+  const f1Initials = f1.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const f2Initials = f2.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  const f1Last = f1.split(' ').pop();
+  const f1First = f1.split(' ').slice(0, -1).join(' ');
+  const f2Last = f2.split(' ').pop();
+  const f2First = f2.split(' ').slice(0, -1).join(' ');
+
+  // Status logic
+  const isLiveFight = fight.fight_started_at && !fight.fight_ended_at;
+  const isCompleted = fight.status === 'completed' || !!fight.fight_ended_at;
+  const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at;
 
   return (
     <div
-      className={`${currentTheme.card} ${currentTheme.rounded} overflow-hidden mb-6 shadow-sm transition-all relative group${onClick ? ' cursor-pointer hover:scale-[1.01]' : ''}`}
+      className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 transition-all relative group${onClick ? ' cursor-pointer' : ''}`}
       onClick={onClick ? () => onClick(fight) : undefined}
     >
-      
-      <div className="p-4 bg-black/20 text-center relative">
-        {/* Status badge */}
-        {(() => {
-          const isLiveFight = fight.fight_started_at && !fight.fight_ended_at;
-          // ESPN poll sets fight_ended_at before scraper updates status to 'completed'
-          const isCompleted = fight.status === 'completed' || !!fight.fight_ended_at;
-          const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at;
-          if (isLiveFight) return (
-            <div className="flex justify-center mb-2">
-              <span className="flex items-center gap-1.5 bg-red-600/20 text-red-400 text-[10px] px-2.5 py-1 border border-red-500/40 uppercase tracking-widest font-bold">
-                <span className="w-1.5 h-1.5 bg-red-500 animate-pulse" />
-                Live
-              </span>
-            </div>
-          );
-          if (isCompleted) return (
-            <div className="flex justify-center mb-2">
-              <span className="flex items-center gap-1 text-[10px] px-2 py-0.5 border border-white/10 text-white/30 uppercase tracking-widest font-bold">
-                ✓ Final
-              </span>
-            </div>
-          );
-          if (isUpcomingFight) return (
-            <div className="flex justify-center mb-2">
-              <span className="text-[10px] px-2 py-0.5 border border-[#D4AF37]/30 text-[#D4AF37]/60 uppercase tracking-widest font-bold">
-                Upcoming
-              </span>
-            </div>
-          );
-          return null;
-        })()}
-        <h2 className="text-base sm:text-xl font-bold uppercase tracking-wide text-white">
-          {fighters[0]} <span className="text-[#D4AF37]">VS</span> {fighters[1]}
-        </h2>
-        <p className={`text-xs uppercase tracking-widest mt-1 ${currentTheme.secondaryText}`}>
-          {showEvent ? (
-            <span>{fight.event_name} {fight.event_date ? `• ${fight.event_date}` : ''}</span>
-          ) : (
-            fight.weight_class || 'MAIN CARD'
-          )}
-        </p>
-        {onClick && (
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-25 group-hover:opacity-60">
-            <span className="text-[9px] uppercase tracking-widest font-bold hidden sm:block">Details</span>
-            <ChevronRight size={14} />
-          </div>
+      {/* Badge row */}
+      <div className="flex gap-1.5 px-3.5 pt-2.5 flex-wrap items-center">
+        {isLiveFight && (
+          <span className="flex items-center gap-1.5 bg-pulse-red/15 text-pulse-red text-[10px] px-2 py-0.5 rounded-badge uppercase tracking-wider font-semibold">
+            <span className="w-1.5 h-1.5 rounded-full bg-pulse-red animate-pulse" />
+            Live
+          </span>
+        )}
+        {isCompleted && (
+          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-green/10 text-pulse-green uppercase tracking-wider font-semibold">
+            ✓ Final
+          </span>
+        )}
+        {isUpcomingFight && (
+          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-wider font-semibold">
+            Upcoming
+          </span>
+        )}
+        {showEvent && (
+          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold truncate max-w-[200px]">
+            {fight.event_name}
+          </span>
+        )}
+        {fight.weight_class && !showEvent && (
+          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold">
+            {fight.weight_class}
+          </span>
         )}
       </div>
 
-      <div className="p-6">
-        {/* BUTTONS ROW (Fav -> Like -> Dislike) */}
+      {/* Fighters layout */}
+      <div className="flex items-center justify-between px-3.5 py-3">
+        {/* Fighter 1 (Red corner) */}
+        <div className="flex flex-col items-center flex-1 min-w-0">
+          <div className="w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-red bg-pulse-red/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2">
+            {f1Initials}
+          </div>
+          <div className="font-heading font-bold text-[15px] uppercase tracking-wider text-center leading-tight">
+            {f1First && <span className="block text-[11px] font-medium text-pulse-text-2">{f1First}</span>}
+            {f1Last}
+          </div>
+        </div>
+
+        {/* VS divider */}
+        <div className="flex flex-col items-center gap-1 px-2 shrink-0">
+          <span className="font-heading font-extrabold text-sm text-pulse-text-3 tracking-widest">VS</span>
+          {fight.weight_class && (
+            <span className="text-[10px] text-pulse-text-2 bg-pulse-surface-2 px-2 py-0.5 rounded-pill whitespace-nowrap">
+              {fight.weight_class}
+            </span>
+          )}
+        </div>
+
+        {/* Fighter 2 (Blue corner) */}
+        <div className="flex flex-col items-center flex-1 min-w-0">
+          <div className="w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-blue bg-pulse-blue/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2">
+            {f2Initials}
+          </div>
+          <div className="font-heading font-bold text-[15px] uppercase tracking-wider text-center leading-tight">
+            {f2First && <span className="block text-[11px] font-medium text-pulse-text-2">{f2First}</span>}
+            {f2Last}
+          </div>
+        </div>
+      </div>
+
+      {/* Footer: score link */}
+      <div className="border-t border-white/[0.06] px-3.5 py-2.5 flex items-center justify-between">
+        <span className="text-[11px] text-pulse-text-3">
+          {showEvent && fight.event_date ? fight.event_date : ''}
+        </span>
+        {onClick && (
+          <span className="text-xs font-semibold text-pulse-red flex items-center gap-1">
+            Details <ChevronRight size={14} />
+          </span>
+        )}
+      </div>
+
+      {/* Vote buttons */}
+      <div className="border-t border-white/[0.06] px-3.5 py-2.5">
         <div className="flex gap-2">
-          
-          {/* 1. FAVORITE */}
-          <button 
+          <button
             disabled={locked}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'favorite'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 ${currentTheme.rounded} transition-all border border-transparent
-                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
-                  (isFav ? 'bg-yellow-500 text-black border-yellow-400' : 'bg-white/5 hover:bg-yellow-500/20 hover:text-yellow-400')}`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
+                ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
+                  (isFav ? 'bg-yellow-500 text-black' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-yellow-500/20 hover:text-yellow-400')}`}
           >
-             <Star size={18} className={isFav ? 'fill-current' : ''} />
-             <span className="text-sm font-bold">{favorites}</span>
+             <Star size={16} className={isFav ? 'fill-current' : ''} />
+             <span className="font-semibold">{favorites}</span>
           </button>
 
-          {/* 2. LIKE */}
           <button
             disabled={locked}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'like'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 ${currentTheme.rounded} transition-all border border-transparent
-                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
-                  (isLike ? 'bg-blue-600 text-white' : 'bg-white/5 hover:bg-white/10')}`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
+                ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
+                  (isLike ? 'bg-pulse-blue text-white' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-pulse-blue/20 hover:text-pulse-blue')}`}
           >
-             <ThumbsUp size={18} className={isLike ? 'fill-current' : ''} />
-             <span className="text-sm font-bold">{likes}</span>
+             <ThumbsUp size={16} className={isLike ? 'fill-current' : ''} />
+             <span className="font-semibold">{likes}</span>
           </button>
 
-          {/* 3. DISLIKE */}
           <button
             disabled={locked}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'dislike'); }}
-            className={`flex-1 flex items-center justify-center gap-2 py-3 ${currentTheme.rounded} transition-all border border-transparent
-                ${locked ? 'opacity-40 cursor-not-allowed bg-gray-800' :
-                  (isDislike ? 'bg-red-900/50 border-red-600 text-red-500' : 'bg-white/5 hover:bg-white/10')}`}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
+                ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
+                  (isDislike ? 'bg-red-900/60 text-pulse-red' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-red-900/20 hover:text-pulse-red')}`}
           >
-             <ThumbsDown size={18} className={isDislike ? 'fill-current' : ''} />
-             <span className="text-sm font-bold">{dislikes}</span>
+             <ThumbsDown size={16} className={isDislike ? 'fill-current' : ''} />
+             <span className="font-semibold">{dislikes}</span>
           </button>
-
         </div>
-        
+
         {locked && (
-            <div className="text-center text-xs opacity-40 mt-2 uppercase tracking-widest">
+            <div className="text-center text-[11px] text-pulse-text-3 mt-2 uppercase tracking-wider">
                 Voting opens at event start
             </div>
         )}
@@ -337,21 +361,21 @@ export default function UFCFightRating() {
   const [searchResults, setSearchResults] = useState([]);
 
   const currentTheme = {
-    bg: 'bg-[#0A0A0A]',
-    card: 'bg-[#141414] border-l-4 border-[#D4AF37]',
-    primary: 'bg-[#D4AF37]',
-    text: 'text-white',
-    accent: 'text-[#D4AF37]',
-    font: 'font-oswald',
-    rounded: 'rounded-none',
-    headerBg: 'bg-black border-b-2 border-[#D4AF37]',
-    statColor: 'text-[#D4AF37]',
-    secondaryText: 'text-white/50',
-    inputBg: 'bg-[#141414] border border-white/10 text-white placeholder-white/30',
+    bg: 'bg-pulse-bg',
+    card: 'bg-pulse-surface border border-white/[0.06]',
+    primary: 'bg-pulse-red',
+    text: 'text-pulse-text',
+    accent: 'text-pulse-red',
+    font: 'font-body',
+    rounded: 'rounded-card',
+    headerBg: 'bg-pulse-bg/95 backdrop-blur-xl border-b border-white/[0.06]',
+    statColor: 'text-pulse-red',
+    secondaryText: 'text-pulse-text-2',
+    inputBg: 'bg-pulse-surface border border-white/[0.06] text-pulse-text placeholder-pulse-text-3',
     tabBg: 'bg-white/10',
-    tabActive: 'bg-[#D4AF37] text-black',
-    badge: 'bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/30',
-    borderAccent: 'border-[#D4AF37]',
+    tabActive: 'bg-pulse-red text-white',
+    badge: 'bg-pulse-red/10 text-pulse-red border border-pulse-red/30',
+    borderAccent: 'border-pulse-red',
   };
 
   // --- HELPER: Reset Filters to DNA Defaults ---
@@ -852,41 +876,81 @@ export default function UFCFightRating() {
   if (!session && !isGuest) return (
     <LoginPage onGuestContinue={() => { guestStorage.setGuest(true); setIsGuest(true); }} />
   );
-  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin opacity-50" /></div>;
+  if (loading) return <div className="min-h-screen bg-pulse-bg flex items-center justify-center"><div className="w-8 h-8 border-2 border-pulse-red border-t-transparent rounded-full animate-spin" /></div>;
+
+  // Map views to bottom nav tabs (fightDetail inherits from where the user came from)
+  const fightDetailSection = currentView === 'fightDetail'
+    ? (previousView === 'profile' ? 'profile'
+      : ['dna', 'userJudgeComparison'].includes(previousView) ? 'scores'
+      : ['judgeComparison', 'judgeProfile', 'judges'].includes(previousView) ? 'analytics'
+      : 'events')
+    : null;
+  const navTab = currentView === 'fightDetail' ? fightDetailSection
+    : ['events', 'fights'].includes(currentView) ? 'events'
+    : ['dna', 'userJudgeComparison'].includes(currentView) ? 'scores'
+    : ['judges', 'judgeProfile', 'judgeComparison'].includes(currentView) ? 'analytics'
+    : currentView === 'profile' ? 'profile'
+    : 'events';
+
+  // Story progress bar — depth within current section
+  // Events:  3 bars — events(0) → fights(1) → fightDetail(2)
+  // Judges:  path-dependent:
+  //   directory(0) → profile(1) → controversial fight(2)        = 3 bars
+  //   directory(0) → profile(1) → comparison(2) → disagree fight(3) = 4 bars
+  // DNA:     2 bars — home(0) → user-judge comparison / scored fight(1)
+  // Profile: 2 bars — profile(0) → fight detail(1)
+  const sectionDepth = (() => {
+    switch (navTab) {
+      case 'events':
+        return { total: 3, active: currentView === 'events' ? 0 : currentView === 'fights' ? 1 : 2 };
+      case 'analytics': {
+        // fightDetail reached from comparison = 4 bars; from profile = 3 bars
+        const fromComparison = currentView === 'fightDetail' && previousView === 'judgeComparison';
+        if (currentView === 'fightDetail') {
+          return fromComparison
+            ? { total: 4, active: 3 }
+            : { total: 3, active: 2 };
+        }
+        if (currentView === 'judgeComparison') return { total: 4, active: 2 };
+        if (currentView === 'judgeProfile') return { total: 3, active: 1 };
+        return { total: 3, active: 0 }; // judges directory
+      }
+      case 'scores':
+        return { total: 2, active: currentView === 'dna' ? 0 : 1 };
+      case 'profile':
+        return { total: 2, active: currentView === 'profile' ? 0 : 1 };
+      default:
+        return { total: 3, active: 0 };
+    }
+  })();
 
   return (
-    <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} ${currentTheme.font} pb-20 transition-all duration-500`}>
+    <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} ${currentTheme.font} pb-nav transition-all duration-500`}>
+      {/* Story progress bar — depth within current section */}
+      <div className="fixed top-0 left-0 right-0 z-50 flex gap-1 px-3.5 py-2 bg-gradient-to-b from-pulse-bg/95 to-transparent">
+        {Array.from({ length: sectionDepth.total }, (_, i) => (
+          <div key={i} className={`flex-1 h-[3px] rounded-full transition-all duration-300 ${i <= sectionDepth.active ? 'bg-pulse-red' : 'bg-pulse-surface-2'}`} />
+        ))}
+      </div>
+
+      {/* Top bar */}
       <header className={`sticky top-0 z-40 ${currentTheme.headerBg}`}>
-        <div className="max-w-2xl mx-auto px-4 py-3 flex justify-between items-center">
+        <div className="max-w-mobile mx-auto px-4 pt-6 pb-3 flex justify-between items-center">
           <h1
-            className="text-2xl md:text-3xl font-bold uppercase tracking-widest cursor-pointer text-[#D4AF37]"
+            className="font-heading font-extrabold text-xl tracking-wider uppercase cursor-pointer"
             onClick={() => { setCurrentView('events'); setSearchQuery(''); setShowFilters(false); }}
           >
-            MMA DNA
+            MMA <span className="text-pulse-red">DNA</span>
           </h1>
-          <div className="flex gap-2">
-            <button
-              onClick={() => { setCurrentView('dna'); setSearchQuery(''); setShowFilters(false); }}
-              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${['dna','userJudgeComparison'].includes(currentView) ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
-            >
-              DNA
-            </button>
-            <button
-              onClick={() => { setCurrentView('judges'); setSearchQuery(''); setShowFilters(false); }}
-              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${['judges','judgeProfile','judgeComparison'].includes(currentView) ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
-            >
-              Judges
-            </button>
-            <button
-              onClick={() => { setCurrentView('profile'); setSearchQuery(''); setShowFilters(false); }}
-              className={`px-3 py-1.5 text-xs font-bold uppercase tracking-widest border transition-all ${currentView === 'profile' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'border-white/20 text-white/60 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'}`}
-            >
-              <User size={14} />
-            </button>
+          <div
+            className="w-9 h-9 rounded-full bg-pulse-surface-2 border-2 border-pulse-text-3 flex items-center justify-center cursor-pointer text-sm font-semibold text-pulse-text-2"
+            onClick={() => { setCurrentView('profile'); setSearchQuery(''); setShowFilters(false); }}
+          >
+            <User size={16} />
           </div>
         </div>
       </header>
-      <div className="max-w-2xl mx-auto px-4 pt-6">
+      <div className="max-w-mobile mx-auto px-4 pt-4">
 
         {isGuest && (
           <div className={`bg-yellow-500/10 border border-yellow-500/30 ${currentTheme.rounded} p-3 mb-4 flex items-center justify-between`}>
@@ -1037,13 +1101,13 @@ export default function UFCFightRating() {
 
             {!searchQuery && !showFilters && (
               <>
-                <div className="flex gap-2 mb-8 overflow-x-auto pb-2 scrollbar-hide items-center" style={{ maskImage: 'linear-gradient(to right, black 80%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 80%, transparent 100%)' }}>
-                  <button 
-                    onClick={() => setSelectedYear('For You')} 
-                    className={`px-5 py-2 font-bold uppercase tracking-widest text-sm border transition-all flex items-center gap-2 whitespace-nowrap
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide items-center" style={{ maskImage: 'linear-gradient(to right, black 85%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent 100%)' }}>
+                  <button
+                    onClick={() => setSelectedYear('For You')}
+                    className={`px-4 py-1.5 font-heading font-semibold text-[13px] uppercase tracking-wider rounded-pill border-[1.5px] transition-all flex items-center gap-2 whitespace-nowrap
                         ${selectedYear === 'For You'
-                            ? 'bg-[#D4AF37] border-[#D4AF37] text-black'
-                            : 'border-[#D4AF37]/30 text-[#D4AF37]/70 hover:border-[#D4AF37]/60 hover:text-[#D4AF37]'
+                            ? 'bg-pulse-red border-pulse-red text-white'
+                            : 'border-pulse-surface-2 text-pulse-text-2 hover:border-pulse-text-3 hover:text-pulse-text'
                         }`}
                   >
                     <Sparkles size={14} />
@@ -1051,7 +1115,7 @@ export default function UFCFightRating() {
                   </button>
 
                   {availableYears.map(y => (
-                    <button key={y} onClick={() => setSelectedYear(y)} className={`px-5 py-2 font-bold uppercase tracking-widest text-sm border transition-all whitespace-nowrap ${selectedYear === y ? 'bg-white text-black border-white' : 'border-white/20 text-white/50 hover:border-white/40 hover:text-white/80'}`}>{y}</button>
+                    <button key={y} onClick={() => setSelectedYear(y)} className={`px-4 py-1.5 font-heading font-semibold text-[13px] uppercase tracking-wider rounded-pill border-[1.5px] transition-all whitespace-nowrap ${selectedYear === y ? 'bg-pulse-surface-2 text-pulse-text border-pulse-text-3' : 'border-pulse-surface-2 text-pulse-text-2 hover:border-pulse-text-3 hover:text-pulse-text'}`}>{y}</button>
                   ))}
                 </div>
 
@@ -1085,7 +1149,7 @@ export default function UFCFightRating() {
                           <h3 className="text-lg font-bold uppercase tracking-wide flex items-center gap-3">
                             {event.event_name}
                             {isUpcoming(event.event_date) && (
-                                <span className="text-[10px] px-2 py-0.5 border border-[#D4AF37]/40 text-[#D4AF37] uppercase tracking-widest font-bold">
+                                <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-widest font-semibold">
                                     Upcoming
                                 </span>
                             )}
@@ -1106,9 +1170,9 @@ export default function UFCFightRating() {
         {/* --- 2. FIGHTS VIEW --- */}
         {currentView === 'fights' && !searchQuery && (
           <div className="animate-in fade-in">
-            <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest text-white/40 hover:text-[#D4AF37] transition-colors"><ChevronLeft size={16} /> Events</button>
-            <h2 className="text-2xl font-bold mb-1 uppercase tracking-wide border-l-4 border-[#D4AF37] pl-4">{selectedEvent?.event_name}</h2>
-            <p className="text-xs text-white/40 mb-8 pl-5 uppercase tracking-widest">{selectedEvent?.event_date}{selectedEvent?.event_location ? ` · ${selectedEvent.event_location}` : ''}</p>
+            <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest text-pulse-text-3 hover:text-pulse-red transition-colors"><ChevronLeft size={16} /> Events</button>
+            <h2 className="text-2xl font-heading font-extrabold mb-1 uppercase tracking-wide border-l-[3px] border-pulse-red pl-4">{selectedEvent?.event_name}</h2>
+            <p className="text-xs text-pulse-text-3 mb-8 pl-5 uppercase tracking-widest">{selectedEvent?.event_date}{selectedEvent?.event_location ? ` · ${selectedEvent.event_location}` : ''}</p>
             
             {loadingFights ? (
                 <div className="flex flex-col items-center justify-center py-20 opacity-50">
@@ -1184,7 +1248,7 @@ export default function UFCFightRating() {
                      </div>
                    </div>
                    <CombatDNACard dna={combatDNA} currentTheme={currentTheme} baselines={baselines} />
-                   {comparisonData.length > 0 && <CombatScatterPlot data={comparisonData} baselines={baselines} currentTheme={currentTheme} />}
+
                    <CombatDNAVisual dna={combatDNA} currentTheme={currentTheme} />
                  </>
                )}
@@ -1225,6 +1289,7 @@ export default function UFCFightRating() {
             currentTheme={currentTheme}
             onBack={() => setCurrentView('judgeProfile')}
             onViewProfile={(name) => { setSelectedJudge(name); setCurrentView('judgeProfile'); }}
+            onFightClick={handleFightClick}
           />
         )}
 
@@ -1278,6 +1343,26 @@ export default function UFCFightRating() {
           </div>
         )}
       </div>
+
+      {/* Bottom nav */}
+      <nav className="fixed bottom-0 left-0 right-0 h-nav z-50 bg-pulse-bg/[0.92] backdrop-blur-2xl border-t border-white/[0.06] flex">
+        {[
+          { key: 'events', icon: Calendar, label: 'Events', view: 'events' },
+          { key: 'analytics', icon: Scale, label: 'Judges', view: 'judges' },
+          { key: 'scores', icon: Dna, label: 'DNA', view: 'dna' },
+          { key: 'profile', icon: User, label: 'Profile', view: 'profile' },
+        ].map(({ key, icon: Icon, label, view }) => (
+          <button
+            key={key}
+            onClick={() => { setCurrentView(view); setSearchQuery(''); setShowFilters(false); }}
+            className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors relative ${navTab === key ? 'text-pulse-red' : 'text-pulse-text-3'}`}
+          >
+            {navTab === key && <span className="absolute top-0 w-6 h-0.5 rounded-b-sm bg-pulse-red" />}
+            <Icon size={22} />
+            <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
+          </button>
+        ))}
+      </nav>
     </div>
   );
 }

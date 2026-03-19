@@ -141,6 +141,18 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **Build full-app mockups (all 14 pages) before committing to a design direction.** Single-page concept mockups are not enough to evaluate — patterns only emerge across the full page set. B and D got full mockups; E was started but 3 pages in was enough to confirm D was the winner.
 - **Concepts must be truly distinct, not color swaps.** First round of alternatives were rejected because they were just palette variations. Second round (D/E/F/G) each had fundamentally different navigation paradigms and layout systems.
 - **Chosen design: Concept D (Pulse).** Barlow Condensed + Inter, red/blue fighter colors, charcoal (#0e0e12), Instagram Stories-style swipe nav, bottom sheet details. Mockups in `mockups/concept-D-pulse/`.
+- **Use a `currentTheme` object as a single point of control for Tailwind class tokens.** Swapping the entire theme (gold→Pulse) was a one-object change; all components that consume `currentTheme` inherited the new look automatically.
+- **CSS custom properties (`:root` vars) + Tailwind `extend.colors` together give maximum flexibility.** Tailwind classes for component styling, CSS vars for anything that needs runtime access (e.g. gradients, borders with opacity).
+- **Tab bars are better than long scroll for fight detail.** Organizing Overview/By Round/Scoring/Judges into tabs prevents mobile users from scrolling past content they care about.
+- **R1 stoppages produce 0 scoreable rounds — show an explicit empty state** rather than rendering a blank panel. The formula is `isDecision ? roundsFought : roundsFought - 1`.
+- **Mockups are design direction, not feature specs.** The Combat DNA mockup simplified metrics that were already richer in the app. Use mockups for visual language (colors, spacing, typography) but preserve existing feature depth.
+- **Round selector colors should encode data, not just state.** Red/blue for which fighter won that round is more informative than green for "scored." Active round uses a white border + glow to avoid conflicting with the score color.
+- **ScorecardComparison: collapse judges to majority with expandable detail.** Shows all info without cramming 7+ columns. "Judging majority" language is more accurate than "official judges" since individual judges often disagree.
+- **Score cells colored by fighter corner (red/blue) across all sources** (You, Judges, Model) makes disagreements visually obvious before reading the match icon.
+- **Split data-dense components into separate Pulse surface cards rather than one monolith.** JudgingDNACard went from one large card with border-t dividers to ~8 independent cards — each scannable on mobile without scrolling past unrelated sections.
+- **Horizontal scroll cards work better than table rows for weight class data on mobile.** Each card is a self-contained unit with its own bar fill + stats, easier to compare visually than reading across columns.
+- **Story progress bars should represent navigation depth, not global position.** A fixed linear bar implies a single journey; depth-based bars that adapt per section (different bar counts, path-dependent logic) match how users actually navigate between independent sections with varying drill-down levels.
+- **Hide ML model predictions for finishing rounds in non-decision fights.** The last round of a stoppage has partial/incomplete stats, making the model output meaningless. Suppress in both the Round Breakdown (Overview tab) and the Model column (Judges tab/ScorecardComparison).
 
 ---
 
