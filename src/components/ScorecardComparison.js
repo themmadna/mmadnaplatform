@@ -39,7 +39,7 @@ const scoreColor = (winner) =>
 
 const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores, isGuest = false }) => {
   const [userScores, setUserScores] = useState([]);
-  const [community, setCommunity] = useState([]);
+  const [, setCommunity] = useState([]);
   const [expandedRounds, setExpandedRounds] = useState(new Set());
 
   useEffect(() => {
