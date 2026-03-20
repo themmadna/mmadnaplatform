@@ -121,12 +121,20 @@ function matchesFighter(jsName, metaName) {
   const aWords = a.split(' ');
   const bWords = b.split(' ');
 
-  // Fallback 1: same last name (handles nickname/middle-name differences like "Alex" vs "Alexander")
+  // Fallback 1: first-name prefix with same last name (handles "Josh Van" vs "Joshua Van",
+  // "Alex Perez" vs "Alexander Perez", etc.)
+  if (aWords.length >= 2 && bWords.length >= 2) {
+    const aLast = aWords.slice(1).join(' ');
+    const bLast = bWords.slice(1).join(' ');
+    if (aLast === bLast && (aWords[0].startsWith(bWords[0]) || bWords[0].startsWith(aWords[0]))) return true;
+  }
+
+  // Fallback 2: same last name (handles nickname/middle-name differences)
   const aLast = aWords[aWords.length - 1];
   const bLast = bWords[bWords.length - 1];
   if (aLast === bLast && aLast.length > 3) return true;
 
-  // Fallback 2: all words of the shorter name appear in the longer (handles Jr., suffixes, middle names)
+  // Fallback 3: all words of the shorter name appear in the longer (handles Jr., suffixes, middle names)
   const shorter = aWords.length <= bWords.length ? aWords : bWords;
   const longer  = aWords.length <= bWords.length ? bWords : aWords;
   return shorter.filter(w => w.length > 1).every(w => longer.includes(w));
