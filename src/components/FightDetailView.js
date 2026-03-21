@@ -98,7 +98,7 @@ function scoreRound(f1Stats, f2Stats, eventYear) {
 // Normalize fighter names for fuzzy matching across data sources
 // Strips punctuation and lowercases so "Lone'er" matches "Loner", etc.
 function normName(name) {
-  return (name || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  return (name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 }
 
 function matchesFighter(jsName, metaName) {

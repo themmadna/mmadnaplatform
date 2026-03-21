@@ -12,7 +12,7 @@
 // ---------- helpers (mirrors FightDetailView.js) ----------
 
 function normName(name: string): string {
-  return (name || '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
+  return (name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
 }
 
 function matchesFighter(jsName: string, metaName: string): boolean {
