@@ -698,7 +698,7 @@ export default function UFCFightRating() {
     setCurrentView('fights');
     setEventFights([]);
     setLoadingFights(true);
-    const { data: bouts } = await supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name).order('id', { ascending: true });
+    const { data: bouts } = await supabase.from('fights').select(`*, fight_ratings (likes_count, dislikes_count, favorites_count)`).eq('event_name', event.event_name).order('card_position', { ascending: true, nullsLast: true }).order('id', { ascending: true });
     if (bouts) {
       let userVotes = [];
       if (session) {

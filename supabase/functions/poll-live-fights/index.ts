@@ -91,7 +91,7 @@ Deno.serve(async (_req) => {
     // Guard 3: All upcoming fights already ended?
     const fightsRes = await fetch(
       `${SUPABASE_URL}/rest/v1/fights?event_name=eq.${encodeURIComponent(event.event_name)}&status=eq.upcoming` +
-      `&select=id,bout,fight_started_at,fight_ended_at,rounds_fought,scheduled_rounds,ended_by_decision,espn_competition_id`,
+      `&select=id,bout,fight_started_at,fight_ended_at,rounds_fought,scheduled_rounds,ended_by_decision,espn_competition_id,card_position`,
       { headers: dbHeaders }
     )
     const fights = await fightsRes.json()
@@ -112,6 +112,18 @@ Deno.serve(async (_req) => {
       return json({ ok: false, error: 'ESPN fetch failed', espnStatus: espnRes.status }, 502)
     }
     const espnJson = await espnRes.json()
+
+    // Build card_position map from ESPN competition order.
+    // ESPN lists competitions chronologically (first fight = index 0).
+    // We want main event = 1 (top), so card_position = totalComps - index.
+    const allComps: any[] = []
+    for (const ev of espnJson.events || []) {
+      if (!ev.name?.toUpperCase().includes('UFC')) continue
+      for (const c of ev.competitions || []) allComps.push(c)
+    }
+    const totalComps = allComps.length
+    const compPositionMap = new Map<any, number>()
+    allComps.forEach((c: any, i: number) => compPositionMap.set(c, totalComps - i))
 
     const now = new Date().toISOString()
     const results: any[] = []
@@ -148,6 +160,12 @@ Deno.serve(async (_req) => {
       const isDecision: boolean = (comp.details || []).some((d: any) => d.type?.id === '22')
 
       const updates: Record<string, unknown> = {}
+
+      // Always sync card_position from ESPN order
+      const espnPos = compPositionMap.get(comp)
+      if (espnPos && espnPos !== fight.card_position) {
+        updates.card_position = espnPos
+      }
 
       // Always persist scheduled_rounds on first sight (available before fight starts)
       if (espnScheduled && !fight.scheduled_rounds) {

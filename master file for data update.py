@@ -482,8 +482,8 @@ def sync_round_stats():
 # --- ADD THIS FUNCTION WITH YOUR OTHER SCRAPERS ---
 def _norm_name(s):
     """Lowercase + strip non-alphanumeric except spaces. Mirrors frontend normName()."""
-    import re
-    return re.sub(r'[^a-z0-9 ]', '', s.lower()).strip()
+    import re, unicodedata
+    return re.sub(r'[^a-z0-9 ]', '', unicodedata.normalize('NFD', s).lower()).strip()
 
 def _names_match(a, b):
     """True if two fighter names refer to the same person (order-insensitive)."""
@@ -554,15 +554,16 @@ def sync_event_times():
 
                 # 4b. Populate fights.espn_competition_id for each competition
                 db_fights = supabase_db.table("fights")\
-                    .select("id, bout, espn_competition_id, scheduled_rounds")\
+                    .select("id, bout, espn_competition_id, scheduled_rounds, card_position")\
                     .eq("event_name", db_event['event_name'])\
                     .eq("status", "upcoming")\
                     .execute().data
 
                 competitions = espn_event.get('competitions', [])
+                total_comps = len(competitions)
                 matched_ids, unmatched = [], []
 
-                for comp in competitions:
+                for comp_index, comp in enumerate(competitions):
                     comp_id = str(comp['id'])
                     athletes = [c.get('athlete', {}).get('displayName', '') for c in comp.get('competitors', [])]
                     if len(athletes) < 2:
@@ -583,6 +584,10 @@ def sync_event_times():
                         scheduled = comp.get('format', {}).get('regulation', {}).get('periods')
                         if scheduled and db_match.get('scheduled_rounds') != scheduled:
                             updates['scheduled_rounds'] = scheduled
+                        # Sync card_position from ESPN order (main event = 1, first fight = highest)
+                        espn_card_pos = total_comps - comp_index
+                        if db_match.get('card_position') != espn_card_pos:
+                            updates['card_position'] = espn_card_pos
                         if updates:
                             supabase_db.table("fights").update(updates).eq("id", db_match['id']).execute()
                     else:
