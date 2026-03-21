@@ -895,6 +895,18 @@ export default function UFCFightRating() {
     return eventDate >= today;
   };
 
+  const isLiveEvent = (event) => {
+    if (!event?.event_date) return false;
+    // Compare as local date strings to avoid UTC timezone shift
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    if (event.event_date !== todayStr) return false;
+    if (event.start_time) {
+      return new Date(event.start_time) <= new Date();
+    }
+    return false;
+  };
+
   const isVotingLocked = (event) => {
     if (!event) return false;
     if (!event.start_time) return isUpcoming(event.event_date);
@@ -1178,7 +1190,12 @@ export default function UFCFightRating() {
                         <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-5 ${currentTheme.rounded} text-left hover:brightness-110 transition-all w-full`}>
                           <h3 className="text-lg font-bold uppercase tracking-wide flex items-center gap-3">
                             {event.event_name}
-                            {isUpcoming(event.event_date) && (
+                            {isLiveEvent(event) ? (
+                                <span className="text-[10px] px-2 py-0.5 rounded-badge bg-red-500/15 text-red-400 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+                                    Live
+                                </span>
+                            ) : isUpcoming(event.event_date) && (
                                 <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-widest font-semibold">
                                     Upcoming
                                 </span>
