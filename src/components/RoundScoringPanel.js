@@ -11,7 +11,7 @@ const getInitials = (name) => {
 
 const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsScored, totalRoundsOverride, isGuest = false }) => {
   const [user, setUser]                   = useState(null);
-  const [scores, setScores]               = useState({});   // { [round]: { fighterScoredFor, points } } — from DB
+  const [scores, setScores]               = useState({});   // { [round]: { f1_score, f2_score } } — from DB
   const [pending, setPending]             = useState({});   // local UI selection
   const [scorecardState, setScorecardState] = useState(null);
   const [judgesRevealed, setJudgesRevealed] = useState(false);
@@ -57,9 +57,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
         const state = guestStorage.getScorecardState(fight.id);
         const scoresMap = {};
         Object.entries(rawScores).forEach(([round, s]) => {
-          const fighterScoredFor = s.f1_score >= s.f2_score ? f1Name : f2Name;
-          const points = Math.min(s.f1_score, s.f2_score);
-          scoresMap[parseInt(round)] = { fighterScoredFor, points };
+          scoresMap[parseInt(round)] = { f1_score: s.f1_score, f2_score: s.f2_score };
         });
         setScores(scoresMap);
         setPending(scoresMap);
@@ -75,9 +73,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
       if (u) {
         const scoresMap = {};
         (rawScores || []).forEach(s => {
-          const fighterScoredFor = s.f1_score >= s.f2_score ? f1Name : f2Name;
-          const points = Math.min(s.f1_score, s.f2_score);
-          scoresMap[s.round] = { fighterScoredFor, points };
+          scoresMap[s.round] = { f1_score: s.f1_score, f2_score: s.f2_score };
         });
         setScores(scoresMap);
         setPending(scoresMap);
@@ -124,7 +120,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
 
   const handleSubmitRound = async (round) => {
     const p = pending[round];
-    if (!p?.fighterScoredFor) return;
+    if (p?.f1_score == null || p?.f2_score == null) return;
     setSaving(s => ({ ...s, [round]: true }));
     try {
       // Post-reveal edit on historical fight → mark ineligible
@@ -133,10 +129,8 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
         else await dataService.upsertScorecardState(fight.id, { modified_after_reveal: true });
         setScorecardState(s => ({ ...(s || {}), modified_after_reveal: true }));
       }
-      const f1Score = p.fighterScoredFor === f1Name ? 10 : p.points;
-      const f2Score = p.fighterScoredFor === f2Name ? 10 : p.points;
-      if (isGuest) guestStorage.setScore(fight.id, round, f1Score, f2Score);
-      else await dataService.upsertRoundScore(fight.id, round, f1Score, f2Score);
+      if (isGuest) guestStorage.setScore(fight.id, round, p.f1_score, p.f2_score);
+      else await dataService.upsertRoundScore(fight.id, round, p.f1_score, p.f2_score);
       const newScores = { ...scores, [round]: p };
       setScores(newScores);
       // Notify parent + auto-reveal when all scoreable rounds submitted.
@@ -155,14 +149,13 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
 
   const handleScoreClick = (fighter, value) => {
     if (readOnly || !canSubmit) return;
-    const otherFighter = fighter === f1Name ? f2Name : f1Name;
     setPending(prev => {
-      if (value === 10) {
-        const currentPoints = prev[activeRound]?.fighterScoredFor === fighter
-          ? prev[activeRound]?.points : 9;
-        return { ...prev, [activeRound]: { fighterScoredFor: fighter, points: currentPoints } };
+      const current = prev[activeRound] || { f1_score: null, f2_score: null };
+      if (fighter === f1Name) {
+        return { ...prev, [activeRound]: { ...current, f1_score: value } };
+      } else {
+        return { ...prev, [activeRound]: { ...current, f2_score: value } };
       }
-      return { ...prev, [activeRound]: { fighterScoredFor: otherFighter, points: value } };
     });
   };
 
@@ -180,22 +173,26 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   if (totalRounds === 0) return null;
 
   const scoredCount = Object.keys(scores).length;
-  const p = pending[activeRound] || { fighterScoredFor: null, points: 9 };
+  const p = pending[activeRound] || { f1_score: null, f2_score: null };
   const saved = scores[activeRound];
   const isDirty = !saved
-    || p.fighterScoredFor !== saved.fighterScoredFor
-    || p.points !== saved.points;
+    || p.f1_score !== saved.f1_score
+    || p.f2_score !== saved.f2_score;
   const isSaving = !!saving[activeRound];
 
   // Active round scores for display
-  const f1ActiveScore = p.fighterScoredFor ? (p.fighterScoredFor === f1Name ? 10 : p.points) : null;
-  const f2ActiveScore = p.fighterScoredFor ? (p.fighterScoredFor === f2Name ? 10 : p.points) : null;
+  const f1ActiveScore = p.f1_score;
+  const f2ActiveScore = p.f2_score;
+
+  // Is the current selection complete and valid?
+  const isComplete = p.f1_score != null && p.f2_score != null;
+  const isInvalid = p.f1_score === 10 && p.f2_score === 10;
 
   // Running totals from saved scores
   let f1Total = 0, f2Total = 0;
   Object.values(scores).forEach(s => {
-    f1Total += s.fighterScoredFor === f1Name ? 10 : s.points;
-    f2Total += s.fighterScoredFor === f2Name ? 10 : s.points;
+    f1Total += s.f1_score;
+    f2Total += s.f2_score;
   });
 
   const eligibilityNote = (() => {
@@ -244,13 +241,21 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
         {rounds.map(round => {
           const isActive = round === activeRound;
           const roundScore = scores[round];
-          const isF1Winner = roundScore?.fighterScoredFor === f1Name;
+          const isF1Winner = roundScore && roundScore.f1_score > roundScore.f2_score;
+          const isF2Winner = roundScore && roundScore.f2_score > roundScore.f1_score;
+          const isDraw = roundScore && roundScore.f1_score === roundScore.f2_score;
 
           let bgClass, borderColor, textClass;
           if (roundScore) {
-            bgClass = isF1Winner ? 'bg-pulse-red/[0.08]' : 'bg-pulse-blue/[0.08]';
-            borderColor = isF1Winner ? 'border-pulse-red' : 'border-pulse-blue';
-            textClass = isF1Winner ? 'text-pulse-red' : 'text-pulse-blue';
+            if (isDraw) {
+              bgClass = 'bg-white/[0.06]';
+              borderColor = 'border-pulse-text-2';
+              textClass = 'text-pulse-text-2';
+            } else {
+              bgClass = isF1Winner ? 'bg-pulse-red/[0.08]' : 'bg-pulse-blue/[0.08]';
+              borderColor = isF1Winner ? 'border-pulse-red' : 'border-pulse-blue';
+              textClass = isF1Winner ? 'text-pulse-red' : 'text-pulse-blue';
+            }
           } else {
             bgClass = 'bg-pulse-surface';
             borderColor = 'border-white/[0.06]';
@@ -288,20 +293,24 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
               <div className="flex flex-col items-center gap-1">
                 <span className="font-heading font-bold text-[13px] uppercase tracking-wide text-pulse-red">{f1Last}</span>
                 <div className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px]
-                  ${saved.fighterScoredFor === f1Name
+                  ${saved.f1_score > saved.f2_score
                     ? 'bg-pulse-red/[0.12] border-2 border-pulse-red text-pulse-text shadow-[0_0_20px_rgba(239,68,68,0.2)]'
-                    : 'bg-pulse-surface-2 border-2 border-white/[0.06] text-pulse-text-3'}`}>
-                  {saved.fighterScoredFor === f1Name ? 10 : saved.points}
+                    : saved.f1_score === saved.f2_score
+                      ? 'bg-white/[0.06] border-2 border-pulse-text-2 text-pulse-text-2'
+                      : 'bg-pulse-surface-2 border-2 border-white/[0.06] text-pulse-text-3'}`}>
+                  {saved.f1_score}
                 </div>
               </div>
               <div className="font-heading font-extrabold text-pulse-text-3 text-sm tracking-wider">vs</div>
               <div className="flex flex-col items-center gap-1">
                 <span className="font-heading font-bold text-[13px] uppercase tracking-wide text-pulse-blue">{f2Last}</span>
                 <div className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px]
-                  ${saved.fighterScoredFor === f2Name
+                  ${saved.f2_score > saved.f1_score
                     ? 'bg-pulse-blue/[0.12] border-2 border-pulse-blue text-pulse-text shadow-[0_0_20px_rgba(59,130,246,0.2)]'
-                    : 'bg-pulse-surface-2 border-2 border-white/[0.06] text-pulse-text-3'}`}>
-                  {saved.fighterScoredFor === f2Name ? 10 : saved.points}
+                    : saved.f1_score === saved.f2_score
+                      ? 'bg-white/[0.06] border-2 border-pulse-text-2 text-pulse-text-2'
+                      : 'bg-pulse-surface-2 border-2 border-white/[0.06] text-pulse-text-3'}`}>
+                  {saved.f2_score}
                 </div>
               </div>
             </div>
@@ -317,10 +326,11 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                 <span className="font-heading font-bold text-[13px] uppercase tracking-wide text-pulse-red mb-1">{f1Last}</span>
                 {[10, 9, 8].map(val => {
                   const isSelected = f1ActiveScore === val;
+                  const blocked = val === 10 && f2ActiveScore === 10;
                   return (
                     <button
                       key={val}
-                      disabled={!canSubmit}
+                      disabled={!canSubmit || blocked}
                       onClick={() => handleScoreClick(f1Name, val)}
                       className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all
                         ${isSelected
@@ -339,10 +349,11 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                 <span className="font-heading font-bold text-[13px] uppercase tracking-wide text-pulse-blue mb-1">{f2Last}</span>
                 {[10, 9, 8].map(val => {
                   const isSelected = f2ActiveScore === val;
+                  const blocked = val === 10 && f1ActiveScore === 10;
                   return (
                     <button
                       key={val}
-                      disabled={!canSubmit}
+                      disabled={!canSubmit || blocked}
                       onClick={() => handleScoreClick(f2Name, val)}
                       className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all
                         ${isSelected
@@ -358,7 +369,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
             </div>
 
             {/* Lock Round button */}
-            {p.fighterScoredFor && canSubmit && isDirty && (
+            {isComplete && !isInvalid && canSubmit && isDirty && (
               <button
                 onClick={handleLockRound}
                 disabled={isSaving}
@@ -391,15 +402,14 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                 </div>
               </div>
             );
-            const sf1 = s.fighterScoredFor === f1Name ? 10 : s.points;
-            const sf2 = s.fighterScoredFor === f2Name ? 10 : s.points;
-            const isF1 = s.fighterScoredFor === f1Name;
+            const isF1 = s.f1_score > s.f2_score;
+            const isDrw = s.f1_score === s.f2_score;
             return (
               <div key={round} className="flex flex-col items-center gap-1">
                 <div className="text-[10px] text-pulse-text-3 font-semibold">R{round}</div>
                 <div className={`font-heading font-bold text-sm py-1.5 px-2.5 rounded-lg bg-pulse-surface-2 min-w-[52px] text-center
-                  ${isF1 ? 'text-pulse-red border border-pulse-red/20' : 'text-pulse-blue border border-pulse-blue/20'}`}>
-                  {sf1}-{sf2}
+                  ${isDrw ? 'text-pulse-text-2 border border-white/[0.1]' : isF1 ? 'text-pulse-red border border-pulse-red/20' : 'text-pulse-blue border border-pulse-blue/20'}`}>
+                  {s.f1_score}-{s.f2_score}
                 </div>
               </div>
             );
