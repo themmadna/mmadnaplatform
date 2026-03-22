@@ -242,7 +242,6 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
           const isActive = round === activeRound;
           const roundScore = scores[round];
           const isF1Winner = roundScore && roundScore.f1_score > roundScore.f2_score;
-          const isF2Winner = roundScore && roundScore.f2_score > roundScore.f1_score;
           const isDraw = roundScore && roundScore.f1_score === roundScore.f2_score;
 
           let bgClass, borderColor, textClass;
