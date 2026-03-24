@@ -134,6 +134,7 @@ Redesign the entire frontend from the current gold/black Oswald theme to Concept
 - [x] **8d. Fight detail view** — avatar header, green result banner, 4-tab bar (Overview/By Round/Scoring/Judges), red/blue dual stat bars, round breakdown with ML description, R1 stoppage empty state
 - [x] **8e. Scoring & DNA panels** — RoundScoringPanel, ScorecardComparison, CombatDNA, JudgingDNA
   - [x] RoundScoringPanel — round selector, single-round scoring, 72px score buttons, scored summary, running total
+  - [x] RoundScoringPanel — point deduction scoring (9-9, 8-8 draws); independent per-fighter score selection; 10-10 blocked
   - [x] ScorecardComparison — 5-col grid (Round/You/Judges/Model/Match), expandable judges, accuracy ring, result card
   - [x] CombatDNACard — Pulse surface cards, red accent values, pulse token classes
   - [x] CombatDNAVisual — Pulse card, stat bars + per-fight averages alongside body map

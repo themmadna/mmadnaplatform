@@ -34,7 +34,9 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **When broadening a DB-side filter for fuzzy matching, audit all downstream consumers.** A broader result set can introduce new bugs elsewhere (e.g. summary totals picking up rows from other fights on the same date).
 - **Diagnostic "gaps" have three distinct root causes** — distinguish them before fixing: (a) data genuinely missing from the source, (b) wrong join condition (e.g. date offset for international events), (c) text format mismatch across sources. All three look the same until you dig.
 - **±1 day date window** is correct for joining mmadecisions to UFC Stats. International events (Australia, Singapore, Abu Dhabi) consistently have a +1 day offset in mmadecisions dates.
-- **Unicode accent normalization:** use `unicodedata.normalize('NFKD', s)` before the regex strip, not after. NFKD decomposes accented chars into base + combining mark, then the strip removes the combining mark. Omitting this causes name match failures (ñ→n, ä→a, ã→a).
+- **Unicode accent normalization:** use `unicodedata.normalize('NFKD', s)` (Python) or `.normalize('NFD').replace(/[\u0300-\u036f]/g, '')` (JS) before the regex strip, not after. Decomposes accented chars into base + combining mark, then the strip removes the combining mark. Without this, `normName()` drops diacritics entirely (e.g. `Peričić` → `Perii` instead of `Pericic`), causing ESPN match failures.
+- **`card_position` for fight ordering:** `fights.id` insertion order breaks when UFC reshuffles cards or adds/removes fights. Use `card_position` derived from ESPN competition order (main event = 1). Frontend sorts by `card_position ASC nullsLast, id ASC`.
+- **Cross-source nickname vs full name mismatch:** mmadecisions URL slugs use short names (e.g. "Josh Van") while ufcstats uses full names ("Joshua Van"). `matchesFighter()` now has a first-name prefix strategy to handle this. Short last names (≤3 chars like "Van") also bypass the last-name-only fallback, so the prefix check is the only path that catches them.
 
 ---
 
@@ -73,6 +75,7 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **When two sequential `await` calls hit the same table with identical filters, merge them into one query and split the result client-side.**
 - **Gate/lock booleans should be derived state, not computed inline in JSX.** `isLive = !!fightStartedAt && !fightEndedAt` — keeps 3-state branching readable.
 - **For badge conditions that depend on DB fields not reliably present on fight objects, inject at the data layer** (e.g. `handleEventClick` spreading `event_date`), not via conditional logic in the badge render.
+- **RoundScoringPanel internal state uses `{ f1_score, f2_score }` — not `{ fighterScoredFor, points }`.** The old model assumed a winner always gets 10. The new model stores each fighter's score independently, supporting point deduction draws (9-9, 8-8). DB schema (`user_round_scores`) already had `f1_score`/`f2_score` columns, so no migration was needed.
 
 ---
 
