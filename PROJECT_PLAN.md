@@ -170,7 +170,7 @@ New "Scoring Insights" section in Judging DNA. Compares user's scoring against t
 - [x] **9.7** ConsistencyGauge UI
 - [x] **9.8** DriftSparkline UI
 - [x] **9.9** Tier 2/3 UI controls (gender/group splits)
-- [ ] **9.10** Polish + context file updates
+- [x] **9.10** Polish + context file updates
 
 ---
 

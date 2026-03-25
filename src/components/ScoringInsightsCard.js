@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Cell, Tooltip } from 'recharts';
-import { Zap, ChevronRight, Lock, Shuffle, Unplug, Target, TrendingUp } from 'lucide-react';
+import { Zap, ChevronRight, Lock, Shuffle, Unplug, Gauge, TrendingUp, Crosshair } from 'lucide-react';
 
 const STAT_LABELS = {
   ssl_pct: 'Sig. Strikes',
@@ -17,8 +17,8 @@ const lastName = (name) => name ? name.split(' ').pop() : '?';
 
 // --- Sub-components ---
 
-const SectionTitle = ({ children, icon: Icon }) => (
-  <div className="flex items-center gap-2 font-heading font-bold text-[15px] uppercase tracking-wider text-pulse-text-2 mb-4">
+const SectionTitle = ({ children, icon: Icon, className = '' }) => (
+  <div className={`flex items-center gap-2 font-heading font-bold text-[15px] uppercase tracking-wider text-pulse-text-2 ${className}`}>
     {Icon && <Icon size={16} className="text-pulse-text-3" />}
     {children}
   </div>
@@ -55,7 +55,7 @@ const TierBadge = ({ tier, roundsWithStats, tier2Progress, tier3Progress }) => {
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3" role="status" aria-label={`Tier ${tier}: ${label}`}>
       <div className="flex items-center gap-1.5 px-3 py-1 rounded-pill bg-pulse-surface-2 border border-white/[0.06]">
         <Zap size={14} className={color} />
         <span className={`text-[12px] font-heading font-bold uppercase tracking-wider ${color}`}>
@@ -65,7 +65,7 @@ const TierBadge = ({ tier, roundsWithStats, tier2Progress, tier3Progress }) => {
       {progressText && (
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <div className="flex-1 h-[4px] bg-pulse-surface-2 rounded-full overflow-hidden">
+            <div className="flex-1 h-[4px] bg-pulse-surface-2 rounded-full overflow-hidden" role="progressbar" aria-valuenow={Math.round(progressFrac * 100)} aria-valuemin={0} aria-valuemax={100}>
               <div
                 className="h-full bg-pulse-red rounded-full transition-all duration-700"
                 style={{ width: `${Math.round(progressFrac * 100)}%` }}
@@ -102,7 +102,7 @@ const FingerprintChart = ({ fp, label }) => {
         </p>
       )}
       <div className="flex items-center gap-4">
-        <div className="w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] flex-shrink-0">
+        <div className="w-[200px] h-[200px] sm:w-[240px] sm:h-[240px] flex-shrink-0" role="img" aria-label={`Scoring fingerprint radar: ${ranked.map(r => `${r.label} ${Math.round(r.pct * 100)}%`).join(', ')}`}>
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="75%">
               <PolarGrid stroke="#ffffff0f" />
@@ -171,12 +171,11 @@ const FingerprintRadar = ({ fingerprint, fingerprintMens, fingerprintWomens, fin
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <SectionTitle icon={Target}>Scoring Fingerprint</SectionTitle>
+        <SectionTitle icon={Crosshair}>Scoring Fingerprint</SectionTitle>
         {(showGender || showGroup) && (
           <div className="flex items-center gap-1 flex-wrap justify-end">
-            {/* Gender toggle (tier 2+) */}
             {showGender && (
-              <div className="flex items-center gap-0.5 bg-pulse-surface-2 rounded-pill p-0.5">
+              <div className="flex items-center gap-0.5 bg-pulse-surface-2 rounded-pill p-0.5" role="radiogroup" aria-label="Gender filter">
                 {['all', 'mens', 'womens'].map(f => {
                   const isDisabled = (f === 'mens' && !fingerprintMens) || (f === 'womens' && !fingerprintWomens);
                   return (
@@ -184,6 +183,8 @@ const FingerprintRadar = ({ fingerprint, fingerprintMens, fingerprintWomens, fin
                       key={f}
                       onClick={() => setFpFilter(fpFilter === f ? 'all' : f)}
                       disabled={isDisabled}
+                      role="radio"
+                      aria-checked={fpFilter === f}
                       className={`text-[10px] font-heading font-semibold uppercase tracking-wider px-2.5 py-1 min-h-[28px] rounded-pill transition-colors ${
                         fpFilter === f
                           ? 'bg-pulse-red text-white'
@@ -198,11 +199,11 @@ const FingerprintRadar = ({ fingerprint, fingerprintMens, fingerprintWomens, fin
                 })}
               </div>
             )}
-            {/* Group dropdown (tier 3+) */}
             {showGroup && (
               <select
                 value={fpFilter?.startsWith('group:') ? fpFilter : ''}
                 onChange={e => setFpFilter(e.target.value || 'all')}
+                aria-label="Weight class group filter"
                 className="text-[10px] font-heading font-semibold uppercase tracking-wider bg-pulse-surface-2 text-pulse-text-2 border border-white/[0.06] rounded-pill px-2.5 py-1 min-h-[28px] cursor-pointer"
               >
                 <option value="">By Group</option>
@@ -231,7 +232,7 @@ const PatternBreakSection = ({ patternBreaks }) => {
 
   return (
     <div>
-      <SectionTitle icon={Shuffle}>Pattern Breaks</SectionTitle>
+      <SectionTitle icon={Shuffle} className="mb-4">Pattern Breaks</SectionTitle>
       <div className="flex items-center gap-4 mb-4">
         <div className="text-center flex-shrink-0">
           <span className="font-heading font-black text-[32px] leading-none text-pulse-amber">{ratePct}%</span>
@@ -247,7 +248,7 @@ const PatternBreakSection = ({ patternBreaks }) => {
           <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mb-2">
             Biggest surprises
           </p>
-          {examples.map((ex, i) => (
+          {examples.map((ex) => (
             <div
               key={`${ex.fight_url}-${ex.round}`}
               className="flex items-center justify-between py-2 px-3 rounded-card bg-pulse-surface-2"
@@ -282,7 +283,7 @@ const DisconnectSection = ({ disconnect }) => {
 
   return (
     <div>
-      <SectionTitle icon={Unplug}>Stat Disconnects</SectionTitle>
+      <SectionTitle icon={Unplug} className="mb-4">Stat Disconnects</SectionTitle>
       <div className="flex items-center gap-4 mb-4">
         <div className="text-center flex-shrink-0">
           <span className="font-heading font-black text-[32px] leading-none text-pulse-red">{ratePct}%</span>
@@ -298,7 +299,7 @@ const DisconnectSection = ({ disconnect }) => {
           <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mb-2">
             Biggest gaps
           </p>
-          {examples.map((ex, i) => (
+          {examples.map((ex) => (
             <div
               key={`${ex.fight_url}-${ex.round}`}
               className="flex items-center justify-between py-2 px-3 rounded-card bg-pulse-surface-2"
@@ -312,7 +313,7 @@ const DisconnectSection = ({ disconnect }) => {
               </div>
               <div className="flex-shrink-0 text-right ml-3">
                 <p className="text-[11px] text-pulse-text-3">
-                  Winner: {ex.winner_cats} cat{ex.winner_cats !== 1 ? 's' : ''} · Loser: {ex.loser_cats} cat{ex.loser_cats !== 1 ? 's' : ''}
+                  Your pick won {ex.winner_cats} of 5 stats · opponent won {ex.loser_cats}
                 </p>
               </div>
             </div>
@@ -328,18 +329,17 @@ const ConsistencyGauge = ({ consistency }) => {
   const { score, buckets } = consistency;
   const pct = Math.round((score || 0) * 100);
 
-  // Arc gauge: score ranges 50 (random) to 100 (perfectly consistent)
-  // Normalize to 0-100 for display: (score - 0.5) * 2
+  // Normalize to 0-100: score ranges 0.5 (random) to 1.0 (perfectly consistent)
   const normalized = Math.max(0, Math.round(((score || 0.5) - 0.5) * 200));
   const gaugeColor = normalized >= 70 ? 'text-pulse-green' : normalized >= 40 ? 'text-pulse-amber' : 'text-pulse-red';
   const gaugeLabel = normalized >= 70 ? 'Highly Consistent' : normalized >= 40 ? 'Moderately Consistent' : 'Variable';
 
   return (
     <div>
-      <SectionTitle icon={Target}>Consistency</SectionTitle>
+      <SectionTitle icon={Gauge} className="mb-4">Consistency</SectionTitle>
       <div className="flex items-center gap-5 mb-4">
         <div className="text-center flex-shrink-0">
-          <span className={`font-heading font-black text-[32px] leading-none ${gaugeColor}`}>{pct}%</span>
+          <span className={`font-heading font-black text-[32px] leading-none ${gaugeColor}`} aria-label={`Consistency score: ${pct}%`}>{pct}%</span>
           <p className={`text-[11px] font-heading font-semibold uppercase tracking-wider mt-1 ${gaugeColor}`}>
             {gaugeLabel}
           </p>
@@ -352,14 +352,14 @@ const ConsistencyGauge = ({ consistency }) => {
       {buckets?.length > 0 && (
         <div className="space-y-1.5">
           <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mb-2">
-            By stat pattern
+            By stat dominance
           </p>
           {buckets.map((b, i) => {
             const bPct = Math.round((b.picked_dominant_pct || 0) * 100);
             return (
               <div key={i} className="flex items-center gap-3">
                 <span className="text-[11px] text-pulse-text-3 w-28 flex-shrink-0 truncate font-heading font-semibold uppercase">
-                  {b.dominant_cats} cat{b.dominant_cats !== 1 ? 's' : ''}
+                  Won {b.dominant_cats} of 5
                 </span>
                 <div className="flex-1 h-[4px] bg-pulse-surface-2 rounded-full overflow-hidden">
                   <div
@@ -373,7 +373,7 @@ const ConsistencyGauge = ({ consistency }) => {
             );
           })}
           <p className="text-[11px] text-pulse-text-3 mt-2">
-            % of time you picked the fighter who led more stat categories
+            % of time you picked the fighter who won more stat categories
           </p>
         </div>
       )}
@@ -392,17 +392,20 @@ const DriftSparkline = ({ drift }) => {
   }));
 
   const momPct = Math.round((momentum_rate || 0) * 100);
+  const hasChart = chartData.length > 0;
+  const hasMomentum = (momentum_sample || 0) > 0;
+  if (!hasChart && !hasMomentum) return null;
 
   return (
     <div>
-      <SectionTitle icon={TrendingUp}>Round Drift</SectionTitle>
+      <SectionTitle icon={TrendingUp} className="mb-4">Round Drift</SectionTitle>
 
-      {chartData.length > 0 && (
+      {hasChart && (
         <div className="mb-4">
           <p className="text-[11px] font-heading font-semibold uppercase tracking-wider text-pulse-text-3 mb-2">
             Accuracy by round number
           </p>
-          <div className="h-[120px]">
+          <div className="h-[120px]" role="img" aria-label={`Round accuracy: ${chartData.map(d => `${d.name} ${d.accuracy}%`).join(', ')}`}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={chartData} barCategoryGap="25%">
                 <XAxis
@@ -422,7 +425,7 @@ const DriftSparkline = ({ drift }) => {
                 <Tooltip
                   contentStyle={{ background: '#1a1a24', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: '#94949e' }}
-                  formatter={(val, name, props) => [`${val}% (${props.payload.count} rounds)`, 'Accuracy']}
+                  formatter={(val, _name, props) => [`${val}% (${props.payload.count} rounds)`, 'Accuracy']}
                 />
                 <Bar dataKey="accuracy" radius={[4, 4, 0, 0]}>
                   {chartData.map((d, i) => (
@@ -438,8 +441,8 @@ const DriftSparkline = ({ drift }) => {
         </div>
       )}
 
-      {momentum_sample > 0 && (
-        <div className="flex items-center gap-4 pt-3 border-t border-white/[0.06]">
+      {hasMomentum && (
+        <div className={`flex items-center gap-4 ${hasChart ? 'pt-3 border-t border-white/[0.06]' : ''}`}>
           <div className="text-center flex-shrink-0">
             <span className="font-heading font-black text-[26px] leading-none text-pulse-blue">{momPct}%</span>
             <p className="text-[11px] text-pulse-text-3 mt-0.5">{momentum_sample} fights</p>
@@ -475,7 +478,7 @@ const ScoringInsightsCard = ({ insights }) => {
         <p className="text-sm text-pulse-text-2 mb-3">
           Score {15 - (rounds_with_stats || 0)} more matched round{15 - (rounds_with_stats || 0) === 1 ? '' : 's'} to unlock Scoring Insights
         </p>
-        <div className="w-48 mx-auto h-[4px] bg-pulse-surface-2 rounded-full overflow-hidden">
+        <div className="w-48 mx-auto h-[4px] bg-pulse-surface-2 rounded-full overflow-hidden" role="progressbar" aria-valuenow={rounds_with_stats || 0} aria-valuemin={0} aria-valuemax={15}>
           <div
             className="h-full bg-pulse-red rounded-full transition-all duration-700"
             style={{ width: `${Math.round(((rounds_with_stats || 0) / 15) * 100)}%` }}
@@ -486,12 +489,33 @@ const ScoringInsightsCard = ({ insights }) => {
     );
   }
 
+  // Build feature sections with conditional dividers
+  const sections = [
+    fingerprint && (
+      <FingerprintRadar
+        key="fingerprint"
+        fingerprint={fingerprint}
+        fingerprintMens={fingerprint_mens}
+        fingerprintWomens={fingerprint_womens}
+        fingerprintByGroup={fingerprint_by_group}
+        tier={tier}
+        fpFilter={fpFilter}
+        setFpFilter={setFpFilter}
+      />
+    ),
+    pattern_breaks && <PatternBreakSection key="pattern" patternBreaks={pattern_breaks} />,
+    disconnect && <DisconnectSection key="disconnect" disconnect={disconnect} />,
+    consistency && <ConsistencyGauge key="consistency" consistency={consistency} />,
+    drift && <DriftSparkline key="drift" drift={drift} />,
+  ].filter(Boolean);
+
   return (
     <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5">
-      {/* Collapsible header */}
       <button
         onClick={() => setExpanded(v => !v)}
         className="flex items-center justify-between w-full text-left"
+        aria-expanded={expanded}
+        aria-controls="scoring-insights-content"
       >
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pulse-red to-orange-600 flex items-center justify-center">
@@ -508,7 +532,7 @@ const ScoringInsightsCard = ({ insights }) => {
       </button>
 
       {expanded && (
-        <div className="mt-5 space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div id="scoring-insights-content" className="mt-5 space-y-6 animate-in fade-in slide-in-from-top-2 duration-200">
           <TierBadge
             tier={tier}
             roundsWithStats={rounds_with_stats}
@@ -516,27 +540,12 @@ const ScoringInsightsCard = ({ insights }) => {
             tier3Progress={tier3_progress}
           />
 
-          <FingerprintRadar
-            fingerprint={fingerprint}
-            fingerprintMens={fingerprint_mens}
-            fingerprintWomens={fingerprint_womens}
-            fingerprintByGroup={fingerprint_by_group}
-            tier={tier}
-            fpFilter={fpFilter}
-            setFpFilter={setFpFilter}
-          />
-
-          <div className="border-t border-white/[0.06]" />
-          <PatternBreakSection patternBreaks={pattern_breaks} />
-
-          <div className="border-t border-white/[0.06]" />
-          <DisconnectSection disconnect={disconnect} />
-
-          <div className="border-t border-white/[0.06]" />
-          <ConsistencyGauge consistency={consistency} />
-
-          <div className="border-t border-white/[0.06]" />
-          <DriftSparkline drift={drift} />
+          {sections.map((section, i) => (
+            <div key={section.key}>
+              {i > 0 && <div className="border-t border-white/[0.06] mb-6" />}
+              {section}
+            </div>
+          ))}
         </div>
       )}
     </div>
