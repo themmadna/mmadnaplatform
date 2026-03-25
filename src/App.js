@@ -157,7 +157,7 @@ function boutMatchesComp(bout, comp) {
 }
 
 // --- FightCard Component (Favorites First) ---
-const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null }) => {
+const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0 }) => {
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
@@ -183,7 +183,8 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 
   return (
     <div
-      className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 transition-all relative group${onClick ? ' cursor-pointer' : ''}`}
+      className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 transition-all relative group${onClick ? ' cursor-pointer active:scale-[0.98]' : ''} animate-in fade-in slide-in-from-bottom-2`}
+      style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'both' }}
       onClick={onClick ? () => onClick(fight) : undefined}
     >
       {/* Badge row */}
@@ -271,7 +272,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'favorite'); }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
                 ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
-                  (isFav ? 'bg-yellow-500 text-black' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-yellow-500/20 hover:text-yellow-400')}`}
+                  (isFav ? 'bg-yellow-500 text-black active:scale-[0.94]' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-yellow-500/20 hover:text-yellow-400 active:scale-[0.94]')}`}
           >
              <Star size={16} className={isFav ? 'fill-current' : ''} />
              <span className="font-semibold">{favorites}</span>
@@ -282,7 +283,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'like'); }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
                 ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
-                  (isLike ? 'bg-pulse-blue text-white' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-pulse-blue/20 hover:text-pulse-blue')}`}
+                  (isLike ? 'bg-pulse-blue text-white active:scale-[0.94]' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-pulse-blue/20 hover:text-pulse-blue active:scale-[0.94]')}`}
           >
              <ThumbsUp size={16} className={isLike ? 'fill-current' : ''} />
              <span className="font-semibold">{likes}</span>
@@ -293,7 +294,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'dislike'); }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
                 ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
-                  (isDislike ? 'bg-red-900/60 text-pulse-red' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-red-900/20 hover:text-pulse-red')}`}
+                  (isDislike ? 'bg-red-900/60 text-pulse-red active:scale-[0.94]' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-red-900/20 hover:text-pulse-red active:scale-[0.94]')}`}
           >
              <ThumbsDown size={16} className={isDislike ? 'fill-current' : ''} />
              <span className="font-semibold">{dislikes}</span>
@@ -1122,8 +1123,8 @@ export default function UFCFightRating() {
                     {fetchingEvents ? "Searching..." : `Found ${searchResults.length} Fights`}
                 </h3>
                 
-                {searchResults.slice(0, displayLimit).map(f => (
-                    <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} locked={isUpcoming(f.event_date)} onClick={handleFightClick} />
+                {searchResults.slice(0, displayLimit).map((f, i) => (
+                    <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} locked={isUpcoming(f.event_date)} onClick={handleFightClick} index={i} />
                 ))}
 
                 {!fetchingEvents && searchResults.length > displayLimit && (
@@ -1164,7 +1165,24 @@ export default function UFCFightRating() {
                 {selectedYear === 'For You' ? (
                       <div className="animate-in slide-in-from-right duration-500">
                           {fetchingEvents ? (
-                             <p className="text-center opacity-40 py-10 italic">Curating your fight feed...</p>
+                             <div className="space-y-3 py-2">
+                               <p className="text-center text-xs text-pulse-text-3 uppercase tracking-widest mb-4">Curating your fight feed...</p>
+                               {[1,2,3].map(i => (
+                                 <div key={i} className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 animate-pulse">
+                                   <div className="flex items-center justify-between mb-3">
+                                     <div className="flex items-center gap-2">
+                                       <div className="w-10 h-10 rounded-full bg-white/[0.06]" />
+                                       <div className="h-3 w-20 bg-white/[0.06] rounded" />
+                                     </div>
+                                     <div className="flex items-center gap-2">
+                                       <div className="h-3 w-20 bg-white/[0.06] rounded" />
+                                       <div className="w-10 h-10 rounded-full bg-white/[0.06]" />
+                                     </div>
+                                   </div>
+                                   <div className="h-3 w-1/2 bg-white/[0.06] rounded mx-auto" />
+                                 </div>
+                               ))}
+                             </div>
                           ) : (
                              <>
                                 {recommendations.length > 0 ? (
@@ -1174,8 +1192,8 @@ export default function UFCFightRating() {
                                                 ? "Community Favorites (Rate 5 fights to unlock DNA)" 
                                                 : "Based on your Combat DNA"}
                                         </div>
-                                        {recommendations.map(f => (
-                                            <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} onClick={handleFightClick} />
+                                        {recommendations.map((f, i) => (
+                                            <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} onClick={handleFightClick} index={i} />
                                         ))}
                                     </>
                                 ) : (
@@ -1186,8 +1204,18 @@ export default function UFCFightRating() {
                       </div>
                 ) : (
                     <div className="grid gap-4">
-                      {fetchingEvents ? (<p className="text-center opacity-40 py-10 italic">Loading...</p>) : events.map(event => (
-                        <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-5 ${currentTheme.rounded} text-left hover:brightness-110 transition-all w-full`}>
+                      {fetchingEvents ? (
+                        <div className="grid gap-4">
+                          {[1,2,3,4].map(i => (
+                            <div key={i} className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5 animate-pulse">
+                              <div className="h-5 w-3/4 bg-white/[0.06] rounded mb-3" />
+                              <div className="h-3 w-1/3 bg-white/[0.06] rounded mb-1.5" />
+                              <div className="h-3 w-1/4 bg-white/[0.06] rounded" />
+                            </div>
+                          ))}
+                        </div>
+                      ) : events.map(event => (
+                        <button key={event.id} onClick={() => handleEventClick(event)} className={`${currentTheme.card} p-5 ${currentTheme.rounded} text-left hover:brightness-110 transition-all active:scale-[0.98] w-full`}>
                           <h3 className="text-lg font-bold uppercase tracking-wide flex items-center gap-3">
                             {event.event_name}
                             {isLiveEvent(event) ? (
@@ -1222,15 +1250,32 @@ export default function UFCFightRating() {
             <p className="text-xs text-pulse-text-3 mb-8 pl-5 uppercase tracking-widest">{selectedEvent?.event_date}{selectedEvent?.event_location ? ` · ${selectedEvent.event_location}` : ''}</p>
             
             {loadingFights ? (
-                <div className="flex flex-col items-center justify-center py-20 opacity-50">
-                    <div className="w-8 h-8 border-2 border-current border-t-transparent rounded-full animate-spin mb-3" />
-                    <p className="text-sm font-bold uppercase tracking-widest">Loading fights...</p>
+                <div className="space-y-3">
+                  {[1,2,3,4,5].map(i => (
+                    <div key={i} className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 animate-pulse">
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <div className="h-4 w-14 bg-white/[0.06] rounded-badge" />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-pulse-red/[0.08]" />
+                          <div className="h-3 w-20 bg-white/[0.06] rounded" />
+                        </div>
+                        <div className="h-4 w-6 bg-white/[0.06] rounded" />
+                        <div className="flex items-center gap-2">
+                          <div className="h-3 w-20 bg-white/[0.06] rounded" />
+                          <div className="w-10 h-10 rounded-full bg-pulse-blue/[0.08]" />
+                        </div>
+                      </div>
+                      <div className="h-3 w-1/3 bg-white/[0.06] rounded mx-auto mt-3" />
+                    </div>
+                  ))}
                 </div>
             ) : eventFights.length === 0 ? (
                 <div className="text-center py-20 opacity-40 italic">No fights found for this event.</div>
             ) : (() => {
                 const eventLocked = isVotingLocked(selectedEvent);
-                return eventFights.map(f => (
+                return eventFights.map((f, i) => (
                     <FightCard
                         key={f.id}
                         fight={f}
@@ -1238,6 +1283,7 @@ export default function UFCFightRating() {
                         handleVote={handleVote}
                         locked={eventLocked}
                         onClick={handleFightClick}
+                        index={i}
                     />
                 ));
             })()}
@@ -1378,8 +1424,8 @@ export default function UFCFightRating() {
             <div className="space-y-4">
               {userHistory.filter(f => f.userVote === activeProfileTab).length === 0 ? (
                 <div className="text-center py-20 opacity-40 italic">No {activeProfileTab}s yet.</div>
-              ) : userHistory.filter(f => f.userVote === activeProfileTab).map(f => (
-                <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} onClick={handleFightClick} />
+              ) : userHistory.filter(f => f.userVote === activeProfileTab).map((f, i) => (
+                <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} onClick={handleFightClick} index={i} />
               ))}
             </div>
             {isGuest ? (

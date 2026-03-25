@@ -164,6 +164,9 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **CSS mask-image is the cleanest scroll affordance on mobile.** Apply `maskImage: 'linear-gradient(to right, black 80%, transparent 100%)'` directly to the scrollable container.
 - **Scroll restoration needs two refs: a saved position and a previous-view tracker.** Save `window.scrollY` before navigating away; restore on transition FROM the detail view, not on every render.
 - **Card-level headers inside a page that already has a section header are redundant.** Remove the card's own header if the page context makes its purpose obvious.
+- **Skeleton loaders should mirror the real layout, not just show a spinner.** Match the avatar circles, stat rows, grid columns, etc. so the transition feels seamless.
+- **Stagger animations via `animationDelay` + `animationFillMode: 'both'`** — keeps CSS-only (no JS timers). 60ms per card is a good balance between visible stagger and not feeling slow.
+- **`active:scale-[0.94]` for small buttons, `active:scale-[0.98]` for large cards** — subtle press feedback that works well on mobile without feeling laggy.
 
 ---
 

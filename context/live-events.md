@@ -88,6 +88,9 @@ The Edge Function is the only path — it runs with service role and validates t
 ### `fights` table query
 `select('*')` everywhere in App.js — new columns auto-included in the `fight` prop without explicit listing.
 
+### Fight card ordering
+Frontend orders fights by `card_position ASC` (nulls last), then `id ASC` as fallback for older events without `card_position`. This ensures the display always matches the real UFC card order even after reshuffles.
+
 ---
 
 ## Live Scoring Render Logic (`FightDetailView`)
@@ -129,7 +132,8 @@ Called by pg_cron every minute. No JWT required (`verify_jwt: false`).
 **Poll logic (mirrors FightDetailView client-side polling):**
 - Fetches `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=YYYYMMDD`
 - For each upcoming fight without `fight_ended_at`: find matching ESPN competition (by `espn_competition_id` first, then `boutMatchesComp` name fallback)
-- Updates `fight_started_at` / `fight_ended_at` / `rounds_fought` / `ended_by_decision` / `scheduled_rounds` via service role REST PATCH (same null-safe logic as `record-fight-status`)
+- Updates `fight_started_at` / `fight_ended_at` / `rounds_fought` / `ended_by_decision` / `scheduled_rounds` / `card_position` via service role REST PATCH (same null-safe logic as `record-fight-status`)
+- `card_position` derived from ESPN competition order: main event = 1, first fight of night = highest number. Synced on every poll cycle so card reshuffles are reflected automatically
 - `period=0` guard on STATUS_FINAL: falls back to last known `rounds_fought`, then `scheduled_rounds`, then 3
 
 ### pg_cron setup

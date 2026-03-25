@@ -34,6 +34,7 @@ Full table and view definitions. Update this file whenever a migration adds, rem
 | `espn_competition_id` | text | NULL | ESPN competition ID for live status polling |
 | `fight_started_at` | timestamptz | NULL | set when ESPN returns STATUS_IN_PROGRESS |
 | `fight_ended_at` | timestamptz | NULL | set when ESPN returns STATUS_FINAL |
+| `card_position` | integer | NULL | ESPN-derived card order: 1 = main event, highest = first fight of night. Set by poll-live-fights + scraper Phase 5 |
 
 ### `fight_meta_details`
 | Column | Type | Nullable | Notes |

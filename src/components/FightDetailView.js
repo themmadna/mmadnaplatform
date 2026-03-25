@@ -532,7 +532,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
   ];
 
   return (
-    <div className="animate-in fade-in">
+    <div className="animate-in fade-in duration-300">
 
       {/* BACK BUTTON */}
       <button
@@ -545,10 +545,46 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
         <span>{fight.event_name}</span>
       </button>
 
-      {/* LOADING */}
+      {/* LOADING SKELETON */}
       {loading && (
-        <div className="flex items-center justify-center py-24">
-          <div className="w-8 h-8 border-2 border-pulse-red border-t-transparent rounded-full animate-spin" />
+        <div className="animate-in fade-in duration-300">
+          {/* Avatar header skeleton */}
+          <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5 mb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-[60px] h-[60px] rounded-full bg-white/[0.06] animate-pulse" />
+                <div className="h-3 w-16 bg-white/[0.06] rounded animate-pulse mt-3" />
+              </div>
+              <div className="flex flex-col items-center gap-1.5 px-2">
+                <div className="h-4 w-8 bg-white/[0.06] rounded animate-pulse" />
+                <div className="h-5 w-24 bg-white/[0.06] rounded-pill animate-pulse" />
+              </div>
+              <div className="flex flex-col items-center flex-1">
+                <div className="w-[60px] h-[60px] rounded-full bg-white/[0.06] animate-pulse" />
+                <div className="h-3 w-16 bg-white/[0.06] rounded animate-pulse mt-3" />
+              </div>
+            </div>
+          </div>
+          {/* Result banner skeleton */}
+          <div className="h-12 bg-white/[0.04] rounded-card mb-3 animate-pulse" />
+          {/* Tab bar skeleton */}
+          <div className="flex gap-2 mb-4">
+            {[1,2,3,4].map(i => (
+              <div key={i} className="h-9 flex-1 bg-pulse-surface rounded-btn animate-pulse" />
+            ))}
+          </div>
+          {/* Stat rows skeleton */}
+          <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 space-y-4">
+            {[1,2,3,4,5].map(i => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="h-3 w-8 bg-white/[0.06] rounded animate-pulse" />
+                <div className="flex-1 h-2.5 bg-white/[0.06] rounded-full animate-pulse" />
+                <div className="h-3 w-12 bg-white/[0.06] rounded animate-pulse" />
+                <div className="flex-1 h-2.5 bg-white/[0.06] rounded-full animate-pulse" />
+                <div className="h-3 w-8 bg-white/[0.06] rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -658,7 +694,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
                   <button
                     key={key}
                     onClick={() => setDetailTab(key)}
-                    className={`font-heading font-semibold text-[13px] px-3.5 py-1.5 rounded-pill whitespace-nowrap uppercase tracking-wider border transition-all
+                    className={`font-heading font-semibold text-[13px] px-3.5 py-1.5 rounded-pill whitespace-nowrap uppercase tracking-wider border transition-all active:scale-[0.95]
                       ${detailTab === key
                         ? 'bg-pulse-red text-white border-pulse-red'
                         : 'bg-pulse-surface text-pulse-text-3 border-white/[0.06] hover:text-pulse-text-2'}`}
@@ -670,7 +706,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
               {/* === OVERVIEW TAB === */}
               {detailTab === 'overview' && (
-                <div className="animate-in fade-in">
+                <div className="animate-in fade-in duration-300">
                   {overviewStats.length > 0 ? (
                     <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 mb-3">
                       <h3 className="font-heading font-bold text-sm uppercase tracking-widest text-pulse-text-2 mb-4">Fight Statistics</h3>
@@ -740,7 +776,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
               {/* === BY ROUND TAB === */}
               {detailTab === 'byRound' && (
-                <div className="animate-in fade-in">
+                <div className="animate-in fade-in duration-300">
                   {rounds.length === 0 && (
                     <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center">
                       <p className="text-sm text-pulse-text-3 uppercase tracking-widest">Round stats not yet available for this fight.</p>
@@ -769,7 +805,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
               {/* === SCORING TAB === */}
               {detailTab === 'scoring' && (
-                <div className="animate-in fade-in">
+                <div className="animate-in fade-in duration-300">
                   {(() => {
                     const isDecision = meta?.method?.toLowerCase().includes('decision');
                     const roundsFought = parseInt((meta?.round || '').split(' ')[0]) || 0;
@@ -800,7 +836,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
 
               {/* === JUDGES TAB === */}
               {detailTab === 'judges' && (
-                <div className="animate-in fade-in">
+                <div className="animate-in fade-in duration-300">
                   {rounds.length > 0 ? (
                     <ScorecardComparison fight={fight} rounds={rounds} meta={meta} currentTheme={currentTheme} hasUserScores={hasUserScores} isGuest={isGuest} />
                   ) : (

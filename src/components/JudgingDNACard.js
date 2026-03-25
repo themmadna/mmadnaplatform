@@ -480,7 +480,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           </button>
 
           {showScoredFights && (
-            <div className="mt-3 space-y-0.5">
+            <div className="mt-3 space-y-0.5 animate-in fade-in slide-in-from-top-2 duration-200">
               {scoredFights.map(sf => {
                 const f1Name = sf.fighter1_name || (sf.bout?.split(/ vs /i)?.[0]?.trim() || '?');
                 const f2Name = sf.fighter2_name || (sf.bout?.split(/ vs /i)?.[1]?.trim() || '?');

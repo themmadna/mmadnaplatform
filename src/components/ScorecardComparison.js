@@ -41,9 +41,11 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
   const [userScores, setUserScores] = useState([]);
   const [, setCommunity] = useState([]);
   const [expandedRounds, setExpandedRounds] = useState(new Set());
+  const [loadingScores, setLoadingScores] = useState(false);
 
   useEffect(() => {
     if (!hasUserScores) return;
+    setLoadingScores(true);
     const load = async () => {
       const commData = await dataService.getCommunityScorecard(fight.id);
       setCommunity(commData);
@@ -53,6 +55,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
         setUserScores(Object.entries(raw).map(([round, s]) => ({
           round: parseInt(round), f1_score: s.f1_score, f2_score: s.f2_score,
         })));
+        setLoadingScores(false);
         return;
       }
 
@@ -64,6 +67,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
             .eq('user_id', user.id)
         : { data: [] };
       setUserScores(userResult.data || []);
+      setLoadingScores(false);
     };
     load();
   }, [fight.id, hasUserScores, isGuest]);
@@ -161,7 +165,35 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
         </div>
       )}
 
-      {hasUserScores && (
+      {/* Loading skeleton */}
+      {hasUserScores && loadingScores && (
+        <div className="animate-in fade-in duration-300">
+          <div className="flex items-center justify-center gap-3 py-4 mb-2 border-b border-white/[0.06]">
+            <div className="w-9 h-9 rounded-full bg-white/[0.06] animate-pulse" />
+            <div className="h-4 w-32 bg-white/[0.06] rounded animate-pulse" />
+            <div className="w-9 h-9 rounded-full bg-white/[0.06] animate-pulse" />
+          </div>
+          <div className="bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-4">
+            <div className="grid grid-cols-[44px_1fr_1fr_1fr_32px] px-3.5 py-3 border-b border-white/[0.06]">
+              {[1,2,3,4,5].map(i => <div key={i} className="h-3 bg-white/[0.06] rounded animate-pulse" />)}
+            </div>
+            {[1,2,3].map(i => (
+              <div key={i} className="grid grid-cols-[44px_1fr_1fr_1fr_32px] px-3.5 py-3.5 border-b border-white/[0.06]">
+                <div className="h-3 w-6 bg-white/[0.06] rounded animate-pulse" />
+                <div className="h-3 w-10 bg-white/[0.06] rounded animate-pulse mx-auto" />
+                <div className="h-3 w-10 bg-white/[0.06] rounded animate-pulse mx-auto" />
+                <div className="h-3 w-10 bg-white/[0.06] rounded animate-pulse mx-auto" />
+                <div className="h-3 w-4 bg-white/[0.06] rounded animate-pulse" />
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-center py-6">
+            <div className="w-20 h-20 rounded-full bg-white/[0.06] animate-pulse" />
+          </div>
+        </div>
+      )}
+
+      {hasUserScores && !loadingScores && (
         <>
           {/* Mini Fighter Header */}
           <div className="flex items-center justify-center gap-3 py-4 mb-2 border-b border-white/[0.06]">
@@ -239,7 +271,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
 
                 {/* Expanded individual judges */}
                 {expandedRounds.has(rd.round) && rd.judges.length > 0 && (
-                  <div className="px-5 py-2 bg-pulse-surface-2/40 border-b border-white/[0.06]">
+                  <div className="px-5 py-2 bg-pulse-surface-2/40 border-b border-white/[0.06] animate-in fade-in slide-in-from-top-2 duration-200">
                     {rd.judges.map(j => {
                       const jWinner = j.f1Score > j.f2Score ? 'f1' : j.f2Score > j.f1Score ? 'f2' : 'draw';
                       return (

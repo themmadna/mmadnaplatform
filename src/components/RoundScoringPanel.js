@@ -168,7 +168,43 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   };
 
   // --- Render guards ---
-  if (!loaded) return null;
+  if (!loaded) return (
+    <div className="animate-in fade-in duration-300">
+      {/* Fighter header skeleton */}
+      <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 mb-2">
+        <div className="flex items-center justify-center gap-6">
+          <div className="flex flex-col items-center">
+            <div className="w-[52px] h-[52px] rounded-full bg-white/[0.06] animate-pulse" />
+            <div className="h-3 w-14 bg-white/[0.06] rounded animate-pulse mt-2" />
+          </div>
+          <div className="h-4 w-6 bg-white/[0.06] rounded animate-pulse" />
+          <div className="flex flex-col items-center">
+            <div className="w-[52px] h-[52px] rounded-full bg-white/[0.06] animate-pulse" />
+            <div className="h-3 w-14 bg-white/[0.06] rounded animate-pulse mt-2" />
+          </div>
+        </div>
+        {/* Round selector skeleton */}
+        <div className="flex justify-center gap-2 mt-4">
+          {[1,2,3].map(i => (
+            <div key={i} className="w-12 h-12 rounded-card bg-white/[0.06] animate-pulse" />
+          ))}
+        </div>
+        {/* Score buttons skeleton */}
+        <div className="h-4 w-24 bg-white/[0.06] rounded animate-pulse mx-auto mt-5 mb-4" />
+        <div className="flex items-center justify-center gap-6">
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-3 w-12 bg-white/[0.06] rounded animate-pulse" />
+            <div className="w-[72px] h-[72px] rounded-[16px] bg-white/[0.06] animate-pulse" />
+          </div>
+          <div className="h-3 w-6 bg-white/[0.06] rounded animate-pulse" />
+          <div className="flex flex-col items-center gap-2">
+            <div className="h-3 w-12 bg-white/[0.06] rounded animate-pulse" />
+            <div className="w-[72px] h-[72px] rounded-[16px] bg-white/[0.06] animate-pulse" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   if (!user) return null;
   if (totalRounds === 0) return null;
 
@@ -265,7 +301,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
             <button
               key={round}
               onClick={() => setActiveRound(round)}
-              className={`w-12 h-12 rounded-card flex items-center justify-center font-heading font-bold text-sm flex-shrink-0 transition-all
+              className={`w-12 h-12 rounded-card flex items-center justify-center font-heading font-bold text-sm flex-shrink-0 transition-all active:scale-[0.90]
                 ${bgClass} ${textClass} ${borderColor}
                 ${isActive ? 'border-[3px] border-white scale-110 shadow-[0_0_12px_rgba(255,255,255,0.4)]' : 'border-2'}`}
             >
@@ -331,7 +367,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                       key={val}
                       disabled={!canSubmit || blocked}
                       onClick={() => handleScoreClick(f1Name, val)}
-                      className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all
+                      className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all active:scale-[0.92]
                         ${isSelected
                           ? 'bg-pulse-red/[0.12] border-2 border-pulse-red text-pulse-text shadow-[0_0_20px_rgba(239,68,68,0.2)]'
                           : 'bg-pulse-surface-2 border-2 border-white/[0.06] text-pulse-text-3 hover:border-white/[0.15]'
@@ -354,7 +390,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                       key={val}
                       disabled={!canSubmit || blocked}
                       onClick={() => handleScoreClick(f2Name, val)}
-                      className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all
+                      className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all active:scale-[0.92]
                         ${isSelected
                           ? 'bg-pulse-blue/[0.12] border-2 border-pulse-blue text-pulse-text shadow-[0_0_20px_rgba(59,130,246,0.2)]'
                           : 'bg-pulse-surface-2 border-2 border-white/[0.06] text-pulse-text-3 hover:border-white/[0.15]'
