@@ -66,7 +66,7 @@ const CombatDNAVisual = ({ dna, currentTheme }) => {
           <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 200 400"
-            className="h-56 w-auto"
+            className="h-48 sm:h-56 w-auto max-w-full"
             style={{ overflow: 'visible' }}
           >
             <defs>

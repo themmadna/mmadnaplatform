@@ -514,7 +514,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
         {f1Display ?? f1Val}
       </div>
       <div className="flex-1 flex flex-col items-center gap-1 px-1.5">
-        <span className="text-[10px] text-pulse-text-3 uppercase tracking-wider">{label}</span>
+        <span className="text-[11px] text-pulse-text-3 uppercase tracking-wider">{label}</span>
         <DualBar f1Val={f1Val} f2Val={f2Val} />
       </div>
       <div className={`w-12 text-center font-heading font-bold text-[15px] ${f2Val > f1Val ? 'text-pulse-blue' : 'text-pulse-text-2'}`}>
@@ -689,12 +689,12 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
           {fight.status === 'completed' && meta && (
             <>
               {/* Tab bar */}
-              <div className="flex gap-1 mb-4 overflow-x-auto pb-1 scrollbar-hide">
+              <div className="flex gap-1 mb-4 overflow-x-auto pb-1 scrollbar-hide" style={{ maskImage: 'linear-gradient(to right, black 75%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 95%)' }}>
                 {tabs.map(({ key, label }) => (
                   <button
                     key={key}
                     onClick={() => setDetailTab(key)}
-                    className={`font-heading font-semibold text-[13px] px-3.5 py-1.5 rounded-pill whitespace-nowrap uppercase tracking-wider border transition-all active:scale-[0.95]
+                    className={`font-heading font-semibold text-[13px] px-3.5 py-2 min-h-[44px] rounded-pill whitespace-nowrap uppercase tracking-wider border transition-all active:scale-[0.95]
                       ${detailTab === key
                         ? 'bg-pulse-red text-white border-pulse-red'
                         : 'bg-pulse-surface text-pulse-text-3 border-white/[0.06] hover:text-pulse-text-2'}`}

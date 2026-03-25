@@ -190,28 +190,28 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
       {/* Badge row */}
       <div className="flex gap-1.5 px-3.5 pt-2.5 flex-wrap items-center">
         {isLiveFight && (
-          <span className="flex items-center gap-1.5 bg-pulse-red/15 text-pulse-red text-[10px] px-2 py-0.5 rounded-badge uppercase tracking-wider font-semibold">
+          <span className="flex items-center gap-1.5 bg-pulse-red/15 text-pulse-red text-[11px] px-2 py-0.5 rounded-badge uppercase tracking-wider font-semibold">
             <span className="w-1.5 h-1.5 rounded-full bg-pulse-red animate-pulse" />
             Live
           </span>
         )}
         {isCompleted && (
-          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-green/10 text-pulse-green uppercase tracking-wider font-semibold">
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-green/10 text-pulse-green uppercase tracking-wider font-semibold">
             ✓ Final
           </span>
         )}
         {isUpcomingFight && (
-          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-wider font-semibold">
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-wider font-semibold">
             Upcoming
           </span>
         )}
         {showEvent && (
-          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold truncate max-w-[200px]">
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold truncate max-w-[200px]">
             {fight.event_name}
           </span>
         )}
         {fight.weight_class && !showEvent && (
-          <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold">
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold">
             {fight.weight_class}
           </span>
         )}
@@ -1035,10 +1035,10 @@ export default function UFCFightRating() {
                         <div className="flex items-center gap-2">
                             <Settings2 size={14} className={currentTheme.accent} />
                             <h3 className="text-xs font-bold uppercase tracking-widest opacity-70">Fight Finder</h3>
-                            <button onClick={() => setFilters(DEFAULT_FILTERS)} className="text-[10px] uppercase font-bold opacity-30 hover:opacity-70 transition-opacity">Reset</button>
+                            <button onClick={() => setFilters(DEFAULT_FILTERS)} className="text-[11px] uppercase font-bold opacity-30 hover:opacity-70 transition-opacity">Reset</button>
                         </div>
                         {combatDNA && (
-                            <button onClick={resetFiltersToDNA} className={`text-[10px] uppercase font-bold ${currentTheme.accent} hover:text-white transition-colors flex items-center gap-1`}>
+                            <button onClick={resetFiltersToDNA} className={`text-[11px] uppercase font-bold ${currentTheme.accent} hover:text-white transition-colors flex items-center gap-1`}>
                                 <Dna size={10} /> Apply My Stats
                             </button>
                         )}
@@ -1144,10 +1144,10 @@ export default function UFCFightRating() {
 
             {!searchQuery && !showFilters && (
               <>
-                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide items-center" style={{ maskImage: 'linear-gradient(to right, black 85%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to right, black 85%, transparent 100%)' }}>
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-2 scrollbar-hide items-center" style={{ maskImage: 'linear-gradient(to right, black 70%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to right, black 70%, transparent 95%)' }}>
                   <button
                     onClick={() => setSelectedYear('For You')}
-                    className={`px-4 py-1.5 font-heading font-semibold text-[13px] uppercase tracking-wider rounded-pill border-[1.5px] transition-all flex items-center gap-2 whitespace-nowrap
+                    className={`px-4 py-2.5 min-h-[44px] font-heading font-semibold text-[13px] uppercase tracking-wider rounded-pill border-[1.5px] transition-all flex items-center gap-2 whitespace-nowrap
                         ${selectedYear === 'For You'
                             ? 'bg-pulse-red border-pulse-red text-white'
                             : 'border-pulse-surface-2 text-pulse-text-2 hover:border-pulse-text-3 hover:text-pulse-text'
@@ -1158,7 +1158,7 @@ export default function UFCFightRating() {
                   </button>
 
                   {availableYears.map(y => (
-                    <button key={y} onClick={() => setSelectedYear(y)} className={`px-4 py-1.5 font-heading font-semibold text-[13px] uppercase tracking-wider rounded-pill border-[1.5px] transition-all whitespace-nowrap ${selectedYear === y ? 'bg-pulse-surface-2 text-pulse-text border-pulse-text-3' : 'border-pulse-surface-2 text-pulse-text-2 hover:border-pulse-text-3 hover:text-pulse-text'}`}>{y}</button>
+                    <button key={y} onClick={() => setSelectedYear(y)} className={`px-4 py-2.5 min-h-[44px] font-heading font-semibold text-[13px] uppercase tracking-wider rounded-pill border-[1.5px] transition-all whitespace-nowrap ${selectedYear === y ? 'bg-pulse-surface-2 text-pulse-text border-pulse-text-3' : 'border-pulse-surface-2 text-pulse-text-2 hover:border-pulse-text-3 hover:text-pulse-text'}`}>{y}</button>
                   ))}
                 </div>
 
@@ -1219,12 +1219,12 @@ export default function UFCFightRating() {
                           <h3 className="text-lg font-bold uppercase tracking-wide flex items-center gap-3">
                             {event.event_name}
                             {isLiveEvent(event) ? (
-                                <span className="text-[10px] px-2 py-0.5 rounded-badge bg-red-500/15 text-red-400 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                                <span className="text-[11px] px-2 py-0.5 rounded-badge bg-red-500/15 text-red-400 uppercase tracking-widest font-semibold flex items-center gap-1.5">
                                     <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                                     Live
                                 </span>
                             ) : isUpcoming(event.event_date) && (
-                                <span className="text-[10px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-widest font-semibold">
+                                <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-widest font-semibold">
                                     Upcoming
                                 </span>
                             )}
@@ -1452,7 +1452,7 @@ export default function UFCFightRating() {
           >
             {navTab === key && <span className="absolute top-0 w-6 h-0.5 rounded-b-sm bg-pulse-red" />}
             <Icon size={22} />
-            <span className="text-[10px] font-semibold uppercase tracking-wider">{label}</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
           </button>
         ))}
       </nav>

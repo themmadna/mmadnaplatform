@@ -167,6 +167,11 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **Skeleton loaders should mirror the real layout, not just show a spinner.** Match the avatar circles, stat rows, grid columns, etc. so the transition feels seamless.
 - **Stagger animations via `animationDelay` + `animationFillMode: 'both'`** — keeps CSS-only (no JS timers). 60ms per card is a good balance between visible stagger and not feeling slow.
 - **`active:scale-[0.94]` for small buttons, `active:scale-[0.98]` for large cards** — subtle press feedback that works well on mobile without feeling laggy.
+- **44px minimum touch target matters.** Year pills, tab buttons, and gender toggles were all ~32–36px; bumping to `py-2`/`py-2.5` + `min-h-[44px]` fixes without visual bloat.
+- **Tables need card-based alternatives on mobile.** JudgeDirectory's 5-column `<table>` was unusable below 768px. Sort pills + card list (md:hidden / hidden md:block split) gives full functionality on both form factors.
+- **Fade-edge mask on scroll containers is the strongest affordance.** `maskImage: linear-gradient(to right, black 75%, transparent 95%)` signals "more content" without extra DOM. Use 70–75% cutoff (not 85%+ which is too subtle on small screens).
+- **SVG accuracy rings need responsive sizing.** Fixed `w-24 h-24` wastes 40% of width on 320px phones. Use mobile-first base size with `sm:` breakpoint scaling.
+- **10px font is below safe mobile minimum.** Bump badges, labels, and nav text to 11px; 12px for anything that must be read quickly.
 
 ---
 

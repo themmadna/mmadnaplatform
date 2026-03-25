@@ -306,8 +306,8 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
           {totalWithJudges > 0 && (
             <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5 mb-4 flex items-center gap-5">
               {/* Accuracy Ring */}
-              <div className="w-20 h-20 relative flex-shrink-0">
-                <svg viewBox="0 0 80 80" className="w-20 h-20" style={{ transform: 'rotate(-90deg)' }}>
+              <div className="w-16 h-16 sm:w-20 sm:h-20 relative flex-shrink-0">
+                <svg viewBox="0 0 80 80" className="w-16 h-16 sm:w-20 sm:h-20" style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="40" cy="40" r="36" fill="none" stroke="#24242e" strokeWidth="6" />
                   <circle
                     cx="40" cy="40" r="36" fill="none"
@@ -317,7 +317,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
                     style={{ transition: 'stroke-dashoffset 1s ease' }}
                   />
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center font-heading font-extrabold text-[22px] text-pulse-green">
+                <div className="absolute inset-0 flex items-center justify-center font-heading font-extrabold text-[18px] sm:text-[22px] text-pulse-green">
                   {matchPct}%
                 </div>
               </div>

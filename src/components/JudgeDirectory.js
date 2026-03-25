@@ -71,7 +71,53 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {/* Sort pills (mobile) */}
+      <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1 scrollbar-hide md:hidden" style={{ maskImage: 'linear-gradient(to right, black 80%, transparent 98%)', WebkitMaskImage: 'linear-gradient(to right, black 80%, transparent 98%)' }}>
+        {SORT_OPTIONS.map(opt => (
+          <button
+            key={opt.key}
+            onClick={() => handleSort(opt.key)}
+            className={`flex items-center gap-1 px-3 py-2 min-h-[44px] text-[12px] font-heading font-semibold uppercase tracking-wider rounded-pill border whitespace-nowrap transition-all ${
+              sortKey === opt.key
+                ? 'bg-pulse-surface-2 text-pulse-text border-pulse-text-3'
+                : 'border-white/[0.06] text-white/40 hover:text-white/60'
+            }`}
+          >
+            {opt.label}<SortIcon col={opt.key} />
+          </button>
+        ))}
+      </div>
+
+      {/* Card list (mobile) */}
+      <div className="space-y-2 md:hidden">
+        {sorted.map((judge, i) => (
+          <button
+            key={judge.name}
+            className="w-full text-left bg-pulse-surface border border-white/[0.06] rounded-fight p-4 min-h-[56px] flex items-center justify-between transition-colors hover:bg-white/5 active:scale-[0.98]"
+            onClick={() => onSelectJudge(judge.name)}
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <span className="text-white/20 text-xs font-bold w-5 text-right flex-shrink-0">{i + 1}</span>
+              <div className="min-w-0">
+                <p className="font-semibold text-white/90 text-sm truncate">{judge.name}</p>
+                <p className="text-[11px] text-white/40">
+                  {judge.rounds_judged.toLocaleString()} rds · {judge.fights_judged} fights
+                  {judge.last_active && <> · {new Date(judge.last_active).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</>}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+              <span className={`text-[13px] font-bold ${outlierColor(judge.outlier_rate)}`}>
+                {judge.outlier_rate != null ? `${(judge.outlier_rate * 100).toFixed(1)}%` : '—'}
+              </span>
+              <ChevronDown size={14} className="text-white/20 -rotate-90" />
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Table (desktop) */}
+      <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-white/40 text-xs uppercase tracking-widest border-b border-white/10">
@@ -94,21 +140,21 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
                 className="border-b border-white/5 hover:bg-white/5 cursor-pointer transition-colors"
                 onClick={() => onSelectJudge(judge.name)}
               >
-                <td className="py-3 pr-4 font-semibold text-white/90">
+                <td className="py-3.5 pr-4 font-semibold text-white/90">
                   <span className="text-white/20 text-xs mr-2">{i + 1}</span>
                   {judge.name}
                 </td>
-                <td className="py-3 px-3 text-right text-white/70">
+                <td className="py-3.5 px-3 text-right text-white/70">
                   {judge.rounds_judged.toLocaleString()}
                   <span className="text-white/30 text-xs ml-1">({judge.fights_judged})</span>
                 </td>
-                <td className={`py-3 px-3 text-right font-bold ${outlierColor(judge.outlier_rate)}`}>
+                <td className={`py-3.5 px-3 text-right font-bold ${outlierColor(judge.outlier_rate)}`}>
                   {judge.outlier_rate != null ? `${(judge.outlier_rate * 100).toFixed(1)}%` : '—'}
                 </td>
-                <td className="py-3 px-3 text-right text-white/70">
+                <td className="py-3.5 px-3 text-right text-white/70">
                   {judge.ten_eight_rate != null ? `${(judge.ten_eight_rate * 100).toFixed(1)}%` : '—'}
                 </td>
-                <td className="py-3 px-3 text-right text-white/40 text-xs">
+                <td className="py-3.5 px-3 text-right text-white/40 text-xs">
                   {judge.last_active
                     ? new Date(judge.last_active).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                     : '—'}

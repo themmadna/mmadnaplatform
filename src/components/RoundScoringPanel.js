@@ -273,7 +273,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
       </div>
 
       {/* Round Selector */}
-      <div className="flex gap-2 px-1 py-3 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
+      <div className="flex gap-2 px-1 py-3 overflow-x-auto" style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch', maskImage: 'linear-gradient(to right, black 75%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 95%)' }}>
         {rounds.map(round => {
           const isActive = round === activeRound;
           const roundScore = scores[round];

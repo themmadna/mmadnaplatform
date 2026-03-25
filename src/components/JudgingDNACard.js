@@ -20,8 +20,8 @@ const AccuracyRing = ({ value }) => {
   const circumference = 2 * Math.PI * 42; // r=42
   const offset = circumference * (1 - (pct / 100));
   return (
-    <div className="relative w-24 h-24 flex-shrink-0">
-      <svg viewBox="0 0 96 96" className="w-24 h-24" style={{ transform: 'rotate(-90deg)' }}>
+    <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
+      <svg viewBox="0 0 96 96" className="w-20 h-20 sm:w-24 sm:h-24" style={{ transform: 'rotate(-90deg)' }}>
         <circle cx="48" cy="48" r="42" fill="none" stroke="#24242e" strokeWidth="7" />
         <circle
           cx="48" cy="48" r="42" fill="none"
@@ -31,7 +31,7 @@ const AccuracyRing = ({ value }) => {
           style={{ transition: 'stroke-dashoffset 1s ease' }}
         />
       </svg>
-      <div className="absolute inset-0 flex items-center justify-center font-heading font-black text-[28px] text-pulse-red">
+      <div className="absolute inset-0 flex items-center justify-center font-heading font-black text-[22px] sm:text-[28px] text-pulse-red">
         {pct}%
       </div>
     </div>
@@ -203,7 +203,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
                 <button
                   key={f}
                   onClick={() => setGenderFilter(f)}
-                  className={`text-[10px] font-heading font-semibold uppercase tracking-wider px-2.5 py-1 rounded-pill transition-colors ${
+                  className={`text-[11px] font-heading font-semibold uppercase tracking-wider px-3 py-1.5 min-h-[36px] rounded-pill transition-colors ${
                     genderFilter === f
                       ? 'bg-pulse-red text-white'
                       : 'text-pulse-text-3 hover:text-pulse-text-2'
@@ -278,7 +278,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           <div className="flex items-center justify-between mb-4">
             <SectionTitle>Judge Match</SectionTitle>
             {onCompareWithJudge && (
-              <span className="text-[10px] text-pulse-text-3 uppercase tracking-wider">tap to compare</span>
+              <span className="text-[11px] text-pulse-text-3 uppercase tracking-wider">tap to compare</span>
             )}
           </div>
           <div className="space-y-2">
@@ -326,7 +326,7 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           <div className="pr-5">
             <SectionTitle>Accuracy by Weight Class</SectionTitle>
           </div>
-          <div className="flex gap-2.5 overflow-x-auto pb-2 pr-5" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}>
+          <div className="flex gap-2.5 overflow-x-auto pb-2 pr-5" style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none', maskImage: 'linear-gradient(to right, black 75%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 95%)' }}>
             {topClasses.map(wc => {
               const accPct = Math.round((wc.accuracy || 0) * 100);
               return (

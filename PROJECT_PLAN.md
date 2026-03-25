@@ -144,7 +144,7 @@ Redesign the entire frontend from the current gold/black Oswald theme to Concept
 - [~] **8f. Polish** — animations, loading states, mobile audit, accessibility
   - [x] 8f.1 Skeleton loading states — FightDetailView, RoundScoringPanel, ScorecardComparison, App.js event/fight lists
   - [x] 8f.2 Animations & transitions — stagger fight cards, tab cross-fade, button press feedback, expand/collapse
-  - [ ] 8f.3 Mobile audit — touch targets, scroll indicators, responsive SVG
+  - [x] 8f.3 Mobile audit — touch targets, scroll indicators, responsive SVG
   - [ ] 8f.4 Accessibility — ARIA labels, focus management, contrast, keyboard nav
 
 ---
