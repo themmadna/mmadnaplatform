@@ -297,6 +297,14 @@ export const dataService = {
     return data;
   },
 
+  async getScoringInsights() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase.rpc('get_scoring_insights');
+    if (error) { console.error('getScoringInsights error:', error); return null; }
+    return data;
+  },
+
   // --- COMMUNITY FAVORITES (Fallback for new users) ---
   // UPDATED: Now fetches and sorts by 'favorites_count' as the highest priority
   async getCommunityFavorites() {

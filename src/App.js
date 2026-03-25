@@ -361,6 +361,7 @@ export default function UFCFightRating() {
   const [activeProfileTab, setActiveProfileTab] = useState('favorite');
   const [dnaTab, setDnaTab] = useState('combat');
   const [judgingProfile, setJudgingProfile] = useState(null);
+  const [scoringInsights, setScoringInsights] = useState(null);
   const [scoredFights, setScoredFights] = useState(null);
   const savedScrollRef = useRef(0);
   const prevViewRef = useRef(null);
@@ -466,6 +467,13 @@ export default function UFCFightRating() {
   useEffect(() => {
     if (currentView !== 'dna' || scoredFights !== null || isGuest) return;
     dataService.getScoredFights().then(data => setScoredFights(data || []));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, isGuest]);
+
+  // Fetch scoring insights once when user opens the DNA view (skip for guests)
+  useEffect(() => {
+    if (currentView !== 'dna' || scoringInsights || isGuest) return;
+    dataService.getScoringInsights().then(setScoringInsights);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, isGuest]);
 
@@ -1373,6 +1381,7 @@ export default function UFCFightRating() {
                {dnaTab === 'judging' && (
                  <JudgingDNACard
                    profile={judgingProfile}
+                   scoringInsights={scoringInsights}
                    currentTheme={currentTheme}
                    scoredFights={scoredFights}
                    onFightClick={handleFightClick}

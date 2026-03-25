@@ -283,7 +283,7 @@ Returns: json {
 - Momentum: self-join `user_rounds` on fight_id for rounds 1/2/3; only counts fights where R1+R2 went to the same fighter
 
 Deploy: `python supabase/deploy_scoring_insights.py`
-Frontend: `dataService.getScoringInsights()` (to be wired)
+Frontend: `dataService.getScoringInsights()` → lazy-fetched in App.js when `currentView === 'dna'`, passed as `scoringInsights` prop to `JudgingDNACard`
 
 ---
 
