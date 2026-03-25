@@ -163,13 +163,13 @@ New "Scoring Insights" section in Judging DNA. Compares user's scoring against t
 **Steps:**
 - [x] **9.1** RPC `get_scoring_insights()` — all 5 features + tier gating + deploy script
 - [x] **9.2** `dataService.getScoringInsights()` + App.js wiring + lazy fetch
-- [ ] **9.3** `ScoringInsightsCard.js` shell + TierBadge + FingerprintRadar
-- [ ] **9.4** Wire ScoringInsightsCard into JudgingDNACard as collapsed section
-- [ ] **9.5** PatternBreakCard UI
-- [ ] **9.6** DisconnectCard UI
-- [ ] **9.7** ConsistencyGauge UI
-- [ ] **9.8** DriftSparkline UI
-- [ ] **9.9** Tier 2/3 UI controls (gender/group splits)
+- [x] **9.3** `ScoringInsightsCard.js` shell + TierBadge + FingerprintRadar
+- [x] **9.4** Wire ScoringInsightsCard into JudgingDNACard as collapsed section
+- [x] **9.5** PatternBreakCard UI
+- [x] **9.6** DisconnectCard UI
+- [x] **9.7** ConsistencyGauge UI
+- [x] **9.8** DriftSparkline UI
+- [x] **9.9** Tier 2/3 UI controls (gender/group splits)
 - [ ] **9.10** Polish + context file updates
 
 ---

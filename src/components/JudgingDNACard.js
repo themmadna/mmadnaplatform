@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Scale, ChevronRight } from 'lucide-react';
+import ScoringInsightsCard from './ScoringInsightsCard';
 
 const MIN_ROUNDS = 5;
 
@@ -124,7 +125,7 @@ const BiasTile = ({ value, label, sub }) => (
   </div>
 );
 
-const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick = null, onCompareWithJudge = null }) => {
+const JudgingDNACard = ({ profile, scoringInsights, currentTheme, scoredFights = [], onFightClick = null, onCompareWithJudge = null }) => {
   const [showBiasByClass, setShowBiasByClass] = useState(false);
   const [showScoredFights, setShowScoredFights] = useState(false);
   const [genderFilter, setGenderFilter] = useState('all');
@@ -462,6 +463,9 @@ const JudgingDNACard = ({ profile, currentTheme, scoredFights = [], onFightClick
           </div>
         </div>
       )}
+
+      {/* ── Scoring Insights (collapsible) ── */}
+      <ScoringInsightsCard insights={scoringInsights} />
 
       {/* ── Scored Fights collapsible card ── */}
       {scoredFights?.length > 0 && (

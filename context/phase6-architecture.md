@@ -134,6 +134,23 @@ Returns sorted by event_date desc. Passed as `scoredFights` prop; `onFightClick`
 - Scorecard total (e.g. "29–28 Poirier")
 - Chevron; click calls onFightClick(sf) to navigate to fight detail
 
+### Phase 9 — Scoring Insights (`src/components/ScoringInsightsCard.js`)
+
+Collapsible card inside `JudgingDNACard`, positioned after Scoring Tendencies and before Scored Fights.
+
+**Data flow:** `dataService.getScoringInsights()` → lazy-fetched in App.js (`currentView === 'dna'`) → passed as `scoringInsights` prop through JudgingDNACard → ScoringInsightsCard.
+
+**Tier system:** Tier 0 = locked (< 15 matched rounds, progress bar shown). Tiers 1–3 unlock progressively. TierBadge shows current tier + progress to next.
+
+**FingerprintRadar:** Recharts RadarChart with 5 axes (Sig. Strikes, Takedowns, Control, Knockdowns, Ground). Ranked stat list alongside showing % bars. Tier 2+ adds gender toggle (All / M / W pill buttons). Tier 3+ adds weight class group dropdown. Both swap the active fingerprint data; `FingerprintChart` sub-component renders any fingerprint object (overall, gender, or group).
+
+**All 5 features (sub-components inside ScoringInsightsCard, separated by dividers):**
+1. **FingerprintRadar** — Recharts RadarChart (5 axes) + ranked stat bars. Shows which stats drive scoring.
+2. **PatternBreakSection** — Rate % + count/total headline. "Biggest surprises" list: predicted vs actual pick per round.
+3. **DisconnectSection** — Rate % + count/total headline. "Biggest gaps" list: winner/loser category counts per round.
+4. **ConsistencyGauge** — Score % (0.5=random, 1.0=perfect). Normalized label (Highly/Moderately/Variable). Bucket breakdown by dominant stat categories.
+5. **DriftSparkline** — Recharts BarChart of accuracy by round number (color-coded green/amber/red). Momentum bias stat below (% R3 continuation when R1+R2 same fighter).
+
 ---
 
 ## User vs Judge Comparison (`src/components/UserJudgeComparison.js`)
