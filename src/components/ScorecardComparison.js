@@ -122,11 +122,9 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
   const isDecision = meta?.method?.toLowerCase().includes('decision');
   const lastRound = rounds.length;
 
-  let judgeMajF1 = 0, judgeMajF2 = 0;
   let modelF1 = 0, modelF2 = 0, hasModelTotal = false;
   roundData.forEach(rd => {
     const isFinishRound = !isDecision && rd.round === lastRound;
-    if (rd.majInfo.f1Score != null) { judgeMajF1 += rd.majInfo.f1Score; judgeMajF2 += rd.majInfo.f2Score; }
     if (rd.model?.confidence && !isFinishRound) { modelF1 += rd.model.f1Score; modelF2 += rd.model.f2Score; hasModelTotal = true; }
   });
 
@@ -140,6 +138,17 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
     });
   });
   const judgeScoreStrings = Object.values(judgeTotals).map(t => `${t.f1}-${t.f2}`);
+
+  // Median judge total — avoids the split-decision paradox where summing
+  // round-by-round majorities can disagree with the actual result
+  const judgeTotalArr = Object.values(judgeTotals);
+  let judgeMajF1 = 0, judgeMajF2 = 0;
+  if (judgeTotalArr.length > 0) {
+    const sorted = [...judgeTotalArr].sort((a, b) => (a.f1 - a.f2) - (b.f1 - b.f2));
+    const mid = sorted[Math.floor(sorted.length / 2)];
+    judgeMajF1 = mid.f1;
+    judgeMajF2 = mid.f2;
+  }
 
   // Winner side for result card color
   const winnerSide = (() => {

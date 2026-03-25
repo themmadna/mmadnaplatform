@@ -163,7 +163,7 @@ function buildRoundData(meta, roundStats, judgeScores, eventYear) {
       js.round === r &&
       (matchesFighter(js.fighter, meta.fighter1_name) || matchesFighter(js.fighter, meta.fighter2_name))
     );
-    const judgeNames = [...new Set(roundJudgeRows.map(js => js.judge))];
+    const judgeNames = [...new Set(roundJudgeRows.map(js => js.judge))].sort();
     const judges = judgeNames.map(judgeName => {
       const f1Row = roundJudgeRows.find(js => js.judge === judgeName && matchesFighter(js.fighter, meta.fighter1_name));
       const f2Row = roundJudgeRows.find(js => js.judge === judgeName && matchesFighter(js.fighter, meta.fighter2_name));
