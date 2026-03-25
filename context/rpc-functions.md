@@ -220,6 +220,73 @@ Frontend: `dataService.getUserJudgingProfile()` calls `supabase.rpc('get_user_ju
 
 ---
 
+## `get_scoring_insights()`
+
+Returns a JSON object with self-comparison scoring insights for the current user (`auth.uid()`). Lazy-loaded separately from `get_user_judging_profile()` for performance.
+
+**Tiered unlocking:**
+- Tier 0 (< 15 matched rounds): returns early with `{ tier: 0, rounds_with_stats, tier1_needed: 15 }`
+- Tier 1 (15+): all 5 features with global data
+- Tier 2 (40+ total, 15+ each gender): adds `fingerprint_mens` / `fingerprint_womens`
+- Tier 3 (80+ total, 15+ in 3+ weight class groups): adds `fingerprint_by_group`
+
+Weight class groups: Fly+BW, FW+LW, WW+MW, LHW+HW, W-Straw+Fly, W-BW+FW.
+
+```
+Returns: json {
+  tier,                  -- 0, 1, 2, or 3
+  rounds_with_stats,     -- total matched rounds (user scores with round_fight_stats data)
+  tier2_progress: { mens, womens, mens_needed, womens_needed, total_needed },
+  tier3_progress: { qualifying_groups, groups_needed, total_needed },
+
+  fingerprint: {
+    ssl_pct, td_pct, ctrl_pct, kd_pct, grd_pct, rounds,
+    ranked: [{ stat, label, pct }]  -- sorted by pct DESC
+  },
+
+  pattern_breaks: {
+    rate, count, total,
+    examples: [{ fight_id, fight_url, round, fighter1_name, fighter2_name,
+                 predicted_pick, actual_pick, weight_class_clean }]  -- top 5 by confidence
+  },
+
+  disconnect: {
+    rate, count, total,
+    examples: [{ fight_id, fight_url, round, fighter1_name, fighter2_name,
+                 winner_cats, loser_cats, weight_class_clean }]  -- top 5 by gap
+  },
+
+  consistency: {
+    score,  -- weighted avg of MAX(pct, 1-pct) across buckets; 0.5 = random, 1.0 = perfectly consistent
+    buckets: [{ dominant_cats, rounds, picked_dominant_pct }]
+  },
+
+  drift: {
+    by_round: [{ round, accuracy, count }],  -- accuracy per round number (vs judges)
+    momentum_rate,   -- % of R1+R2 same-fighter fights where R3 continued to same fighter
+    momentum_sample  -- number of qualifying fights
+  },
+
+  fingerprint_mens: { ssl_pct, td_pct, ctrl_pct, kd_pct, grd_pct, rounds } | null,
+  fingerprint_womens: { ... } | null,
+  fingerprint_by_group: [{ group, ssl_pct, td_pct, ctrl_pct, kd_pct, grd_pct, rounds }] | null
+}
+```
+
+**Implementation notes:**
+- SECURITY DEFINER, no params (uses `auth.uid()`)
+- Reuses same CTE foundation as `get_user_judging_profile()` (user_rounds, fight_stats_raw, fight_stats_pivoted, round_winner_stats) — duplicated, not shared
+- `round_winner_stats` extended with `winner_kd` / `loser_kd` (not in the profile RPC)
+- Fingerprint: simple `AVG(CASE WHEN winner_X > loser_X THEN 1.0 ELSE 0.0 END)` per stat
+- Pattern breaks: `CROSS JOIN stat_fingerprint` (single row) to compute weighted prediction per round
+- Consistency uses stat-category bucketing (GREATEST(f1_cats, f2_cats)) to avoid O(n^2) pairwise comparison
+- Momentum: self-join `user_rounds` on fight_id for rounds 1/2/3; only counts fights where R1+R2 went to the same fighter
+
+Deploy: `python supabase/deploy_scoring_insights.py`
+Frontend: `dataService.getScoringInsights()` (to be wired)
+
+---
+
 ## `update_fight_ratings()` (trigger function)
 
 Trigger on `user_votes` (INSERT/UPDATE/DELETE). Recounts likes/dislikes/favorites for the affected fight and upserts into `fight_ratings`.

@@ -149,6 +149,31 @@ Redesign the entire frontend from the current gold/black Oswald theme to Concept
 
 ---
 
+## Phase 9: Scoring Insights (Judging DNA Extension)
+
+New "Scoring Insights" section in Judging DNA. Compares user's scoring against their own patterns across rounds. Tiered unlocking (15/40/80 matched rounds). Separate `get_scoring_insights()` RPC, lazy-loaded.
+
+**Features:**
+1. Round-by-Round Drift — accuracy per round number + momentum bias
+2. Stat-Score Disconnect — rounds where user scored against the stat-sheet winner
+3. Consistency Score — how consistently the user scores similar stat profiles
+4. Stat Weighting Fingerprint — which stats best predict the user's picks (radar chart)
+5. Pattern Breaks — rounds where the user went against their own fingerprint
+
+**Steps:**
+- [x] **9.1** RPC `get_scoring_insights()` — all 5 features + tier gating + deploy script
+- [ ] **9.2** `dataService.getScoringInsights()` + App.js wiring + lazy fetch
+- [ ] **9.3** `ScoringInsightsCard.js` shell + TierBadge + FingerprintRadar
+- [ ] **9.4** Wire ScoringInsightsCard into JudgingDNACard as collapsed section
+- [ ] **9.5** PatternBreakCard UI
+- [ ] **9.6** DisconnectCard UI
+- [ ] **9.7** ConsistencyGauge UI
+- [ ] **9.8** DriftSparkline UI
+- [ ] **9.9** Tier 2/3 UI controls (gender/group splits)
+- [ ] **9.10** Polish + context file updates
+
+---
+
 ## Build Order
 
-6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5 → **Phase 8**
+6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5 → **Phase 8** ✅ → **Phase 9**

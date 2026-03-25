@@ -123,6 +123,9 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **For a gender toggle that affects pre-aggregated RPC scalars, return a `gender_split` object with both sub-objects** rather than making two separate RPC calls. Client picks the right sub-object by key. `accuracy_by_class` can be filtered client-side since the raw array is already returned.
 - **Hide secondary toggles (e.g. "By Class") when a primary filter is active** — showing per-class breakdown inside an already-filtered gender view is redundant and confusing.
 - **For "overall-only" stats in a filtered view, show a short inline note** rather than hiding the stats entirely — users should know the numbers are still overall, not gender-filtered.
+- **Separate RPC for computationally heavy extensions** — `get_scoring_insights()` is a separate RPC from `get_user_judging_profile()` to keep base DNA load fast. Lazy-loaded on user action rather than on view open. Both share the same CTE foundation (user_rounds → fight_stats_pivoted → round_winner_stats) but run independently.
+- **Stat correlation via simple AVG(CASE) is sufficient for fingerprinting** — for each stat, `AVG(CASE WHEN winner_X > loser_X THEN 1.0 ELSE 0.0 END)` gives a 0-1 correlation that's meaningful with as few as 15 rounds. No ML library needed.
+- **Pattern break detection via dot product of stat differentials × fingerprint weights** — `CROSS JOIN` a single-row fingerprint CTE. Positive sum = predicted f1, negative = predicted f2. When prediction disagrees with actual pick, that's a pattern break. Entirely in SQL, no client-side math needed.
 
 ---
 
