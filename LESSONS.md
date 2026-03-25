@@ -173,6 +173,18 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **SVG accuracy rings need responsive sizing.** Fixed `w-24 h-24` wastes 40% of width on 320px phones. Use mobile-first base size with `sm:` breakpoint scaling.
 - **10px font is below safe mobile minimum.** Bump badges, labels, and nav text to 11px; 12px for anything that must be read quickly.
 
+## Accessibility
+
+- **`text-pulse-text-3` at #5a5a6e fails WCAG AA on #0e0e12 background.** Lightened to #7a7a8e (~5.2:1 contrast ratio) which passes AA for all text sizes.
+- **Icon-only buttons need `aria-label`.** Settings toggle, vote buttons (Star/ThumbsUp/ThumbsDown), profile avatar — all silent to screen readers without it. Also add `aria-hidden="true"` to the icon SVG itself.
+- **Tab bars need `role="tablist"` + `role="tab"` + `aria-selected`.** Without these, screen readers can't distinguish tabs from regular buttons. Apply to DNA tabs, profile tabs, fight detail tabs.
+- **Bottom nav needs `aria-label="Main navigation"` and `aria-current="page"`.** The `<nav>` element alone isn't enough; screen readers need the label to distinguish it from other nav regions.
+- **Skip-to-content link is essential for keyboard users.** `sr-only` class hides it visually; `focus:not-sr-only` reveals it on Tab. Target the `<main>` element.
+- **SVG data visualizations need `role="img"` + `aria-label` with the data value.** Accuracy rings, body map — screen readers skip unlabeled SVGs entirely.
+- **Expandable rows need `aria-expanded` + keyboard Enter/Space/Escape.** Without these, keyboard users can't tell state or operate the control.
+- **`text-white/40` and below fail WCAG AA.** Replace with `text-pulse-text-3` (now #7a7a8e) or use `text-white/60` minimum for body text.
+- **Live region (`role="status" aria-live="polite"`) announces view changes.** Without it, SPA navigation is silent to screen readers.
+
 ---
 
 ## Git Hygiene

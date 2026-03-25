@@ -67,6 +67,8 @@ const CombatDNAVisual = ({ dna, currentTheme }) => {
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 200 400"
             className="h-48 sm:h-56 w-auto max-w-full"
+            role="img"
+            aria-label={`Strike distribution: Head ${headPct}%, Body ${bodyPct}%, Legs ${legPct}%`}
             style={{ overflow: 'visible' }}
           >
             <defs>

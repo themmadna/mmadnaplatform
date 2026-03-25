@@ -117,7 +117,7 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
 };
 
 // --- Dual-thumb Range Slider ---
-const RangeSlider = ({ min, max, step, value, onChange }) => {
+const RangeSlider = ({ min, max, step, value, onChange, label = 'Range' }) => {
   const minPct = ((value.min - min) / (max - min)) * 100;
   const maxPct = ((value.max - min) / (max - min)) * 100;
   return (
@@ -126,11 +126,15 @@ const RangeSlider = ({ min, max, step, value, onChange }) => {
       <div className="absolute h-1 bg-red-500 rounded-full pointer-events-none"
         style={{ left: `${minPct}%`, width: `${maxPct - minPct}%` }} />
       <input type="range" min={min} max={max} step={step} value={value.min}
+        aria-label={`${label} minimum`}
+        aria-valuemin={min} aria-valuemax={max} aria-valuenow={value.min}
         onChange={(e) => { const v = +e.target.value; onChange({ ...value, min: Math.min(v, value.max) }); }}
         className="range-thumb"
         style={{ zIndex: value.min >= max ? 5 : 3 }}
       />
       <input type="range" min={min} max={max} step={step} value={value.max}
+        aria-label={`${label} maximum`}
+        aria-valuemin={min} aria-valuemax={max} aria-valuenow={value.max}
         onChange={(e) => { const v = +e.target.value; onChange({ ...value, max: Math.max(v, value.min) }); }}
         className="range-thumb"
         style={{ zIndex: 4 }}
@@ -269,34 +273,40 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
         <div className="flex gap-2">
           <button
             disabled={locked}
+            aria-label={isFav ? 'Remove from favorites' : 'Add to favorites'}
+            aria-pressed={isFav}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'favorite'); }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
                 ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
                   (isFav ? 'bg-yellow-500 text-black active:scale-[0.94]' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-yellow-500/20 hover:text-yellow-400 active:scale-[0.94]')}`}
           >
-             <Star size={16} className={isFav ? 'fill-current' : ''} />
+             <Star size={16} className={isFav ? 'fill-current' : ''} aria-hidden="true" />
              <span className="font-semibold">{favorites}</span>
           </button>
 
           <button
             disabled={locked}
+            aria-label={isLike ? 'Remove like' : 'Like this fight'}
+            aria-pressed={isLike}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'like'); }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
                 ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
                   (isLike ? 'bg-pulse-blue text-white active:scale-[0.94]' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-pulse-blue/20 hover:text-pulse-blue active:scale-[0.94]')}`}
           >
-             <ThumbsUp size={16} className={isLike ? 'fill-current' : ''} />
+             <ThumbsUp size={16} className={isLike ? 'fill-current' : ''} aria-hidden="true" />
              <span className="font-semibold">{likes}</span>
           </button>
 
           <button
             disabled={locked}
+            aria-label={isDislike ? 'Remove dislike' : 'Dislike this fight'}
+            aria-pressed={isDislike}
             onClick={(e) => { e.stopPropagation(); handleVote(fight.id, 'dislike'); }}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn transition-all text-sm
                 ${locked ? 'opacity-30 cursor-not-allowed bg-pulse-surface-2' :
                   (isDislike ? 'bg-red-900/60 text-pulse-red active:scale-[0.94]' : 'bg-pulse-surface-2 text-pulse-text-2 hover:bg-red-900/20 hover:text-pulse-red active:scale-[0.94]')}`}
           >
-             <ThumbsDown size={16} className={isDislike ? 'fill-current' : ''} />
+             <ThumbsDown size={16} className={isDislike ? 'fill-current' : ''} aria-hidden="true" />
              <span className="font-semibold">{dislikes}</span>
           </button>
         </div>
@@ -969,6 +979,14 @@ export default function UFCFightRating() {
 
   return (
     <div className={`min-h-screen ${currentTheme.bg} ${currentTheme.text} ${currentTheme.font} pb-nav transition-all duration-500`}>
+      {/* Skip nav */}
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:top-2 focus:left-2 focus:bg-pulse-red focus:text-white focus:px-4 focus:py-2 focus:rounded-btn focus:text-sm focus:font-bold">Skip to main content</a>
+
+      {/* Live region for view announcements */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+        {currentView === 'events' ? 'Events page' : currentView === 'fights' ? 'Fights page' : currentView === 'fightDetail' ? 'Fight detail page' : currentView === 'judges' ? 'Judges page' : currentView === 'dna' ? 'DNA analysis page' : currentView === 'profile' ? 'Profile page' : ''}
+      </div>
+
       {/* Story progress bar — depth within current section */}
       <div className="fixed top-0 left-0 right-0 z-50 flex gap-1 px-3.5 py-2 bg-gradient-to-b from-pulse-bg/95 to-transparent">
         {Array.from({ length: sectionDepth.total }, (_, i) => (
@@ -985,15 +1003,16 @@ export default function UFCFightRating() {
           >
             MMA <span className="text-pulse-red">DNA</span>
           </h1>
-          <div
+          <button
+            aria-label="View profile"
             className="w-9 h-9 rounded-full bg-pulse-surface-2 border-2 border-pulse-text-3 flex items-center justify-center cursor-pointer text-sm font-semibold text-pulse-text-2"
             onClick={() => { setCurrentView('profile'); setSearchQuery(''); setShowFilters(false); }}
           >
-            <User size={16} />
-          </div>
+            <User size={16} aria-hidden="true" />
+          </button>
         </div>
       </header>
-      <div className="max-w-mobile mx-auto px-4 pt-4">
+      <main id="main-content" className="max-w-mobile mx-auto px-4 pt-4">
 
         {isGuest && (
           <div className={`bg-yellow-500/10 border border-yellow-500/30 ${currentTheme.rounded} p-3 mb-4 flex items-center justify-between`}>
@@ -1006,10 +1025,11 @@ export default function UFCFightRating() {
           <>
             <div className="relative mb-2">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 opacity-30" size={20} />
-              <input 
-                  type="text" 
-                  placeholder="Search fighters or filters..." 
-                  value={searchQuery} 
+              <input
+                  type="text"
+                  aria-label="Search fighters or filters"
+                  placeholder="Search fighters or filters..."
+                  value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)} 
                   className={`w-full py-4 pl-12 pr-12 ${currentTheme.rounded} ${currentTheme.inputBg} focus:outline-none focus:ring-2 focus:ring-current/20 transition-all shadow-sm`}
               />
@@ -1020,11 +1040,13 @@ export default function UFCFightRating() {
                   </button>
               )}
 
-              <button 
+              <button
                   onClick={() => setShowFilters(!showFilters)}
+                  aria-label={showFilters ? 'Close filters' : 'Open filters'}
+                  aria-expanded={showFilters}
                   className={`absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full transition-all ${showFilters ? 'bg-red-600 text-white shadow-lg' : 'opacity-50 hover:opacity-100 hover:bg-white/10'}`}
               >
-                  <Settings2 size={18} />
+                  <Settings2 size={18} aria-hidden="true" />
               </button>
             </div>
 
@@ -1051,7 +1073,7 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Duration</span>
                                 <span className="font-bold">{filters.duration.min} – {filters.duration.max} mins</span>
                             </div>
-                            <RangeSlider min={0} max={25} step={1}
+                            <RangeSlider min={0} max={25} step={1} label="Duration"
                                 value={filters.duration}
                                 onChange={(v) => setFilters({...filters, duration: v})}
                             />
@@ -1063,7 +1085,7 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Pace</span>
                                 <span className="font-bold">{filters.pace.min} – {filters.pace.max} strikes/min</span>
                             </div>
-                            <RangeSlider min={0} max={60} step={1}
+                            <RangeSlider min={0} max={60} step={1} label="Pace"
                                 value={filters.pace}
                                 onChange={(v) => setFilters({...filters, pace: v})}
                             />
@@ -1075,7 +1097,7 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Violence Index</span>
                                 <span className="font-bold">{filters.violence.min} – {filters.violence.max}</span>
                             </div>
-                            <RangeSlider min={0} max={2} step={0.1}
+                            <RangeSlider min={0} max={2} step={0.1} label="Violence index"
                                 value={filters.violence}
                                 onChange={(v) => setFilters({...filters, violence: v})}
                             />
@@ -1090,7 +1112,7 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Control %</span>
                                 <span className="font-bold">{filters.control.min} – {filters.control.max}%</span>
                             </div>
-                            <RangeSlider min={0} max={100} step={5}
+                            <RangeSlider min={0} max={100} step={5} label="Control percent"
                                 value={filters.control}
                                 onChange={(v) => setFilters({...filters, control: v})}
                             />
@@ -1105,7 +1127,7 @@ export default function UFCFightRating() {
                                 <span className="opacity-50 font-bold uppercase tracking-wider">Grappling Intensity</span>
                                 <span className="font-bold">{filters.grappling.min} – {filters.grappling.max}</span>
                             </div>
-                            <RangeSlider min={0} max={20} step={0.5}
+                            <RangeSlider min={0} max={20} step={0.5} label="Grappling intensity"
                                 value={filters.grappling}
                                 onChange={(v) => setFilters({...filters, grappling: v})}
                             />
@@ -1245,7 +1267,7 @@ export default function UFCFightRating() {
         {/* --- 2. FIGHTS VIEW --- */}
         {currentView === 'fights' && !searchQuery && (
           <div className="animate-in fade-in">
-            <button onClick={() => setCurrentView('events')} className="flex items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest text-pulse-text-3 hover:text-pulse-red transition-colors"><ChevronLeft size={16} /> Events</button>
+            <button onClick={() => setCurrentView('events')} aria-label="Back to events" className="flex items-center gap-2 mb-6 text-xs font-bold uppercase tracking-widest text-pulse-text-3 hover:text-pulse-red transition-colors"><ChevronLeft size={16} aria-hidden="true" /> Events</button>
             <h2 className="text-2xl font-heading font-extrabold mb-1 uppercase tracking-wide border-l-[3px] border-pulse-red pl-4">{selectedEvent?.event_name}</h2>
             <p className="text-xs text-pulse-text-3 mb-8 pl-5 uppercase tracking-widest">{selectedEvent?.event_date}{selectedEvent?.event_location ? ` · ${selectedEvent.event_location}` : ''}</p>
             
@@ -1309,10 +1331,12 @@ export default function UFCFightRating() {
                </div>
 
                {/* Top-level tab: Combat DNA / Judging DNA */}
-               <div className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-6`}>
+               <div role="tablist" aria-label="DNA analysis type" className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-6`}>
                  {[['combat', 'Combat DNA'], ['judging', 'Judging DNA']].map(([key, label]) => (
                    <button
                      key={key}
+                     role="tab"
+                     aria-selected={dnaTab === key}
                      onClick={() => setDnaTab(key)}
                      className={`flex-1 py-2.5 ${currentTheme.rounded} text-xs font-bold uppercase tracking-wider transition-all
                        ${dnaTab === key ? currentTheme.tabActive : 'opacity-50 hover:opacity-80'}`}
@@ -1405,10 +1429,12 @@ export default function UFCFightRating() {
                  <span className="font-bold">VOTING HISTORY</span>
              </div>
 
-            <div className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-8`}>
+            <div role="tablist" aria-label="Voting history" className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-8`}>
               {['favorite', 'like', 'dislike'].map(tab => (
                 <button
                   key={tab}
+                  role="tab"
+                  aria-selected={activeProfileTab === tab}
                   onClick={() => setActiveProfileTab(tab)}
                   className={`flex-1 py-3 ${currentTheme.rounded} font-bold text-xs sm:text-sm uppercase transition-all
                     ${activeProfileTab === tab
@@ -1435,10 +1461,10 @@ export default function UFCFightRating() {
             )}
           </div>
         )}
-      </div>
+      </main>
 
       {/* Bottom nav */}
-      <nav className="fixed bottom-0 left-0 right-0 h-nav z-50 bg-pulse-bg/[0.92] backdrop-blur-2xl border-t border-white/[0.06] flex">
+      <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 h-nav z-50 bg-pulse-bg/[0.92] backdrop-blur-2xl border-t border-white/[0.06] flex">
         {[
           { key: 'events', icon: Calendar, label: 'Events', view: 'events' },
           { key: 'analytics', icon: Scale, label: 'Judges', view: 'judges' },
@@ -1447,11 +1473,13 @@ export default function UFCFightRating() {
         ].map(({ key, icon: Icon, label, view }) => (
           <button
             key={key}
+            aria-label={label}
+            aria-current={navTab === key ? 'page' : undefined}
             onClick={() => { setCurrentView(view); setSearchQuery(''); setShowFilters(false); }}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors relative ${navTab === key ? 'text-pulse-red' : 'text-pulse-text-3'}`}
           >
-            {navTab === key && <span className="absolute top-0 w-6 h-0.5 rounded-b-sm bg-pulse-red" />}
-            <Icon size={22} />
+            {navTab === key && <span className="absolute top-0 w-6 h-0.5 rounded-b-sm bg-pulse-red" aria-hidden="true" />}
+            <Icon size={22} aria-hidden="true" />
             <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
           </button>
         ))}

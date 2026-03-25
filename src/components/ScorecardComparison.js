@@ -228,9 +228,14 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
             {roundData.map(rd => (
               <div key={rd.round}>
                 <div
+                  role="button"
+                  tabIndex={rd.judges.length > 0 ? 0 : undefined}
+                  aria-expanded={rd.judges.length > 0 ? expandedRounds.has(rd.round) : undefined}
+                  aria-label={`Round ${rd.round}${rd.judges.length > 0 ? ', expand for judge details' : ''}`}
                   className={`grid grid-cols-[44px_1fr_1fr_1fr_32px] px-3.5 py-3 border-b border-white/[0.06] items-center cursor-pointer transition-colors
                     ${rd.isMatch === false ? 'bg-pulse-amber/[0.06]' : 'hover:bg-white/[0.02]'}`}
                   onClick={() => rd.judges.length > 0 && toggleExpand(rd.round)}
+                  onKeyDown={(e) => { if (rd.judges.length > 0 && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); toggleExpand(rd.round); } if (e.key === 'Escape' && expandedRounds.has(rd.round)) toggleExpand(rd.round); }}
                 >
                   <span className="font-heading font-semibold text-[13px] text-pulse-text-2">R{rd.round}</span>
 
@@ -307,7 +312,7 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
             <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-5 mb-4 flex items-center gap-5">
               {/* Accuracy Ring */}
               <div className="w-16 h-16 sm:w-20 sm:h-20 relative flex-shrink-0">
-                <svg viewBox="0 0 80 80" className="w-16 h-16 sm:w-20 sm:h-20" style={{ transform: 'rotate(-90deg)' }}>
+                <svg viewBox="0 0 80 80" className="w-16 h-16 sm:w-20 sm:h-20" role="img" aria-label={`Match accuracy: ${matchPct}%`} style={{ transform: 'rotate(-90deg)' }}>
                   <circle cx="40" cy="40" r="36" fill="none" stroke="#24242e" strokeWidth="6" />
                   <circle
                     cx="40" cy="40" r="36" fill="none"

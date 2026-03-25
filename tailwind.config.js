@@ -16,7 +16,7 @@ module.exports = {
           amber:     '#f59e0b',
           text:      '#f5f5f7',
           'text-2':  '#9898a8',
-          'text-3':  '#5a5a6e',
+          'text-3':  '#7a7a8e',
         },
       },
       fontFamily: {

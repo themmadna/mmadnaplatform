@@ -366,6 +366,8 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                     <button
                       key={val}
                       disabled={!canSubmit || blocked}
+                      aria-label={`Score ${val} for ${f1Last}`}
+                      aria-pressed={isSelected}
                       onClick={() => handleScoreClick(f1Name, val)}
                       className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all active:scale-[0.92]
                         ${isSelected
@@ -389,6 +391,8 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                     <button
                       key={val}
                       disabled={!canSubmit || blocked}
+                      aria-label={`Score ${val} for ${f2Last}`}
+                      aria-pressed={isSelected}
                       onClick={() => handleScoreClick(f2Name, val)}
                       className={`w-[72px] h-[72px] rounded-[16px] flex items-center justify-center font-heading font-extrabold text-[28px] transition-all active:scale-[0.92]
                         ${isSelected

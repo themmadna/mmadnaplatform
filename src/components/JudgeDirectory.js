@@ -47,7 +47,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
   };
 
   const outlierColor = (rate) => {
-    if (rate == null) return 'text-white/40';
+    if (rate == null) return 'text-pulse-text-3';
     if (rate >= 0.10) return 'text-red-400';
     if (rate >= 0.07) return 'text-yellow-400';
     return 'text-green-400';
@@ -55,7 +55,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-white/40 text-sm">
+      <div className="flex items-center justify-center py-20 text-pulse-text-3 text-sm">
         Loading judges...
       </div>
     );
@@ -67,7 +67,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
         <Scale size={20} className="text-[#D4AF37]" />
         <div>
           <h2 className="text-lg font-black uppercase tracking-widest">Judge Directory</h2>
-          <p className="text-xs text-white/40">{judges.length} judges · 50+ rounds minimum</p>
+          <p className="text-xs text-pulse-text-3">{judges.length} judges · 50+ rounds minimum</p>
         </div>
       </div>
 
@@ -80,7 +80,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
             className={`flex items-center gap-1 px-3 py-2 min-h-[44px] text-[12px] font-heading font-semibold uppercase tracking-wider rounded-pill border whitespace-nowrap transition-all ${
               sortKey === opt.key
                 ? 'bg-pulse-surface-2 text-pulse-text border-pulse-text-3'
-                : 'border-white/[0.06] text-white/40 hover:text-white/60'
+                : 'border-white/[0.06] text-pulse-text-3 hover:text-white/60'
             }`}
           >
             {opt.label}<SortIcon col={opt.key} />
@@ -97,10 +97,10 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
             onClick={() => onSelectJudge(judge.name)}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <span className="text-white/20 text-xs font-bold w-5 text-right flex-shrink-0">{i + 1}</span>
+              <span className="text-pulse-text-3 text-xs font-bold w-5 text-right flex-shrink-0">{i + 1}</span>
               <div className="min-w-0">
                 <p className="font-semibold text-white/90 text-sm truncate">{judge.name}</p>
-                <p className="text-[11px] text-white/40">
+                <p className="text-[11px] text-pulse-text-3">
                   {judge.rounds_judged.toLocaleString()} rds · {judge.fights_judged} fights
                   {judge.last_active && <> · {new Date(judge.last_active).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}</>}
                 </p>
@@ -110,7 +110,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
               <span className={`text-[13px] font-bold ${outlierColor(judge.outlier_rate)}`}>
                 {judge.outlier_rate != null ? `${(judge.outlier_rate * 100).toFixed(1)}%` : '—'}
               </span>
-              <ChevronDown size={14} className="text-white/20 -rotate-90" />
+              <ChevronDown size={14} className="text-pulse-text-3 -rotate-90" />
             </div>
           </button>
         ))}
@@ -120,7 +120,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
       <div className="overflow-x-auto hidden md:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-white/40 text-xs uppercase tracking-widest border-b border-white/10">
+            <tr className="text-pulse-text-3 text-xs uppercase tracking-widest border-b border-white/10">
               <th className="text-left pb-3 pr-4 font-semibold">Judge</th>
               {SORT_OPTIONS.map(opt => (
                 <th
@@ -141,12 +141,12 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
                 onClick={() => onSelectJudge(judge.name)}
               >
                 <td className="py-3.5 pr-4 font-semibold text-white/90">
-                  <span className="text-white/20 text-xs mr-2">{i + 1}</span>
+                  <span className="text-pulse-text-3 text-xs mr-2">{i + 1}</span>
                   {judge.name}
                 </td>
                 <td className="py-3.5 px-3 text-right text-white/70">
                   {judge.rounds_judged.toLocaleString()}
-                  <span className="text-white/30 text-xs ml-1">({judge.fights_judged})</span>
+                  <span className="text-pulse-text-3 text-xs ml-1">({judge.fights_judged})</span>
                 </td>
                 <td className={`py-3.5 px-3 text-right font-bold ${outlierColor(judge.outlier_rate)}`}>
                   {judge.outlier_rate != null ? `${(judge.outlier_rate * 100).toFixed(1)}%` : '—'}
@@ -154,7 +154,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
                 <td className="py-3.5 px-3 text-right text-white/70">
                   {judge.ten_eight_rate != null ? `${(judge.ten_eight_rate * 100).toFixed(1)}%` : '—'}
                 </td>
-                <td className="py-3.5 px-3 text-right text-white/40 text-xs">
+                <td className="py-3.5 px-3 text-right text-pulse-text-3 text-xs">
                   {judge.last_active
                     ? new Date(judge.last_active).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
                     : '—'}
@@ -165,7 +165,7 @@ export default function JudgeDirectory({ currentTheme, onSelectJudge }) {
         </table>
       </div>
 
-      <div className="mt-4 flex gap-4 text-xs text-white/30">
+      <div className="mt-4 flex gap-4 text-xs text-pulse-text-3">
         <span><span className="text-green-400 font-bold">Green</span> outlier rate &lt; 7%</span>
         <span><span className="text-yellow-400 font-bold">Yellow</span> 7–10%</span>
         <span><span className="text-red-400 font-bold">Red</span> &gt; 10%</span>

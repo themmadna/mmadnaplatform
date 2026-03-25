@@ -21,7 +21,7 @@ const AccuracyRing = ({ value }) => {
   const offset = circumference * (1 - (pct / 100));
   return (
     <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0">
-      <svg viewBox="0 0 96 96" className="w-20 h-20 sm:w-24 sm:h-24" style={{ transform: 'rotate(-90deg)' }}>
+      <svg viewBox="0 0 96 96" className="w-20 h-20 sm:w-24 sm:h-24" role="img" aria-label={`Accuracy: ${pct}%`} style={{ transform: 'rotate(-90deg)' }}>
         <circle cx="48" cy="48" r="42" fill="none" stroke="#24242e" strokeWidth="7" />
         <circle
           cx="48" cy="48" r="42" fill="none"

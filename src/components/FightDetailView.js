@@ -689,10 +689,12 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
           {fight.status === 'completed' && meta && (
             <>
               {/* Tab bar */}
-              <div className="flex gap-1 mb-4 overflow-x-auto pb-1 scrollbar-hide" style={{ maskImage: 'linear-gradient(to right, black 75%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 95%)' }}>
+              <div role="tablist" aria-label="Fight detail sections" className="flex gap-1 mb-4 overflow-x-auto pb-1 scrollbar-hide" style={{ maskImage: 'linear-gradient(to right, black 75%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 95%)' }}>
                 {tabs.map(({ key, label }) => (
                   <button
                     key={key}
+                    role="tab"
+                    aria-selected={detailTab === key}
                     onClick={() => setDetailTab(key)}
                     className={`font-heading font-semibold text-[13px] px-3.5 py-2 min-h-[44px] rounded-pill whitespace-nowrap uppercase tracking-wider border transition-all active:scale-[0.95]
                       ${detailTab === key

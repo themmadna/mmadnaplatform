@@ -99,6 +99,7 @@ export default function UserJudgeComparison({
         <div className="relative mb-4">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
           <input
+            aria-label="Search judges"
             className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#D4AF37]/50"
             placeholder="Search judges..."
             value={search}

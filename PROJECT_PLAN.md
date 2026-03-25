@@ -141,11 +141,11 @@ Redesign the entire frontend from the current gold/black Oswald theme to Concept
   - [x] CombatScatterPlot — removed from Combat DNA page (data kept for "Apply My Stats" filter)
   - [x] JudgingDNACard — Pulse surface cards, accuracy ring, horizontal-scroll weight class cards, judge avatars, bias tiles
   - [ ] Deferred: CombatDNAVisual landed vs attempted strike data investigation
-- [~] **8f. Polish** — animations, loading states, mobile audit, accessibility
+- [x] **8f. Polish** — animations, loading states, mobile audit, accessibility
   - [x] 8f.1 Skeleton loading states — FightDetailView, RoundScoringPanel, ScorecardComparison, App.js event/fight lists
   - [x] 8f.2 Animations & transitions — stagger fight cards, tab cross-fade, button press feedback, expand/collapse
   - [x] 8f.3 Mobile audit — touch targets, scroll indicators, responsive SVG
-  - [ ] 8f.4 Accessibility — ARIA labels, focus management, contrast, keyboard nav
+  - [x] 8f.4 Accessibility — ARIA labels, focus management, contrast, keyboard nav
 
 ---
 
