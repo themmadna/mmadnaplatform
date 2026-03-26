@@ -56,13 +56,13 @@ const AgreementBar = ({ breakdown }) => {
   if (!breakdown || !breakdown.total) return null;
   const segments = [
     { key: 'all3',           pct: breakdown.all3_pct, label: 'All 3',  color: 'bg-pulse-green' },
-    { key: 'two_of_three',   pct: breakdown.two_pct,  label: '2 of 3', color: 'bg-emerald-400' },
+    { key: 'two_of_three',   pct: breakdown.two_pct,  label: '2 of 3', color: 'bg-pulse-blue' },
     { key: 'one_of_three',   pct: breakdown.one_pct,  label: '1 of 3', color: 'bg-pulse-amber' },
     { key: 'lone_dissenter', pct: breakdown.lone_pct, label: 'None',   color: 'bg-pulse-red' },
   ];
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div className="flex h-[6px] rounded-full overflow-hidden gap-px bg-pulse-surface-2">
         {segments.map(s =>
           (s.pct || 0) > 0 ? (
@@ -74,21 +74,19 @@ const AgreementBar = ({ breakdown }) => {
           ) : null
         )}
       </div>
-      <div className="flex">
-        {segments.map(s =>
-          (s.pct || 0) > 0 ? (
-            <div
-              key={s.key}
-              className="text-center overflow-hidden min-w-0"
-              style={{ width: `${Math.round((s.pct || 0) * 100)}%` }}
-            >
-              <p className="text-[11px] font-heading font-bold text-pulse-text truncate">
-                {Math.round(s.pct * 100)}%
-              </p>
-              <p className="text-[11px] uppercase tracking-wide text-pulse-text-3 truncate">{s.label}</p>
+      <div className="grid grid-cols-4 gap-2">
+        {segments.map(s => {
+          const val = Math.round((s.pct || 0) * 100);
+          return (
+            <div key={s.key} className="text-center">
+              <div className="flex items-center justify-center gap-1.5 mb-0.5">
+                <div className={`w-2 h-2 rounded-full ${s.color} flex-shrink-0`} />
+                <span className="text-[12px] font-heading font-bold text-pulse-text">{val}%</span>
+              </div>
+              <p className="text-[10px] uppercase tracking-wide text-pulse-text-3">{s.label}</p>
             </div>
-          ) : null
-        )}
+          );
+        })}
       </div>
     </div>
   );
@@ -448,17 +446,17 @@ const JudgingDNACard = ({ profile, scoringInsights, currentTheme, scoredFights =
             <BiasTile
               value={takedown_quality_bias?.passive_control_pct}
               label="Passive Control"
-              sub="of control wins had no subs or ground strikes"
+              sub="picked the control winner even when they weren't active on the ground"
             />
             <BiasTile
               value={knockdown_bias?.kd_bias_pct}
               label="KD Fighter"
-              sub={`sided with knockdown scorer${knockdown_bias?.kd_rounds > 0 ? ` (${knockdown_bias.kd_rounds} KD rds)` : ''}`}
+              sub={`gave the round to the fighter who scored a knockdown${knockdown_bias?.kd_rounds > 0 ? ` (${knockdown_bias.kd_rounds} rounds with KDs)` : ''}`}
             />
             <BiasTile
               value={takedown_lean?.pct}
               label="TD Fighter"
-              sub={`sided with more takedowns${takedown_lean?.rounds > 0 ? ` (${takedown_lean.rounds} rds)` : ''}`}
+              sub={`gave the round to the fighter who landed more takedowns${takedown_lean?.rounds > 0 ? ` (${takedown_lean.rounds} rounds)` : ''}`}
             />
           </div>
         </div>
