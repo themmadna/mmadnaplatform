@@ -333,5 +333,27 @@ export const dataService = {
         ...f,
         ratings: f.fight_ratings,
     }));
-  }
+  },
+
+  // --- USER PROFILE (spoiler protection default) ---
+  async getProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('spoiler_protection')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (error) { console.error('getProfile error:', error); return null; }
+    return data;
+  },
+
+  async updateProfile(updates) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from('profiles')
+      .upsert({ user_id: user.id, ...updates });
+    if (error) console.error('updateProfile error:', error);
+  },
 };

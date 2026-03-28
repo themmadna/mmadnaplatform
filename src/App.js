@@ -363,6 +363,7 @@ export default function UFCFightRating() {
   const [judgingProfile, setJudgingProfile] = useState(null);
   const [scoringInsights, setScoringInsights] = useState(null);
   const [scoredFights, setScoredFights] = useState(null);
+  const [spoilerDefault, setSpoilerDefault] = useState(true);
   const savedScrollRef = useRef(0);
   const prevViewRef = useRef(null);
   const eventFightsRef = useRef([]);
@@ -577,6 +578,25 @@ export default function UFCFightRating() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
     return () => subscription.unsubscribe();
   }, []);
+
+  // Fetch spoiler default from profile (logged-in) or sessionStorage (guest)
+  useEffect(() => {
+    if (isGuest) {
+      setSpoilerDefault(guestStorage.getSpoilerDefault());
+      return;
+    }
+    if (!session) return;
+    dataService.getProfile().then(profile => {
+      // null = no row yet → use default true
+      setSpoilerDefault(profile ? profile.spoiler_protection : true);
+    });
+  }, [session, isGuest]);
+
+  const handleSpoilerDefaultChange = async (val) => {
+    setSpoilerDefault(val);
+    if (isGuest) { guestStorage.setSpoilerDefault(val); return; }
+    await dataService.updateProfile({ spoiler_protection: val });
+  };
 
   const fetchYears = async () => {
     const { data } = await supabase.from('ufc_events').select('event_date');
@@ -1327,6 +1347,8 @@ export default function UFCFightRating() {
             currentTheme={currentTheme}
             onBack={() => setCurrentView(previousView)}
             isGuest={isGuest}
+            spoilerDefault={spoilerDefault}
+            onSpoilerDefaultChange={handleSpoilerDefaultChange}
           />
         )}
 
@@ -1463,10 +1485,25 @@ export default function UFCFightRating() {
                 <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} onClick={handleFightClick} index={i} />
               ))}
             </div>
+            {/* Spoiler Protection Setting */}
+            <div className="mt-10 bg-pulse-surface border border-white/[0.06] rounded-fight p-4 flex items-center justify-between">
+              <div>
+                <p className="font-heading font-semibold text-sm uppercase tracking-widest text-pulse-text">Spoiler Protection</p>
+                <p className="text-xs text-pulse-text-3 mt-0.5">Hide fight results until you've scored</p>
+              </div>
+              <button
+                onClick={() => handleSpoilerDefaultChange(!spoilerDefault)}
+                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${spoilerDefault ? 'bg-pulse-red' : 'bg-white/10'}`}
+                aria-label={spoilerDefault ? 'Disable spoiler protection' : 'Enable spoiler protection'}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${spoilerDefault ? 'translate-x-7' : 'translate-x-1'}`} />
+              </button>
+            </div>
+
             {isGuest ? (
-              <button onClick={handleGuestSignUp} className="w-full mt-12 py-4 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-xl font-bold hover:bg-yellow-500 hover:text-black transition-all">SIGN UP / LOG IN</button>
+              <button onClick={handleGuestSignUp} className="w-full mt-4 py-4 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-xl font-bold hover:bg-yellow-500 hover:text-black transition-all">SIGN UP / LOG IN</button>
             ) : (
-              <button onClick={handleSignOut} className="w-full mt-12 py-4 bg-red-600/10 text-red-500 border border-red-500/30 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all">SIGN OUT</button>
+              <button onClick={handleSignOut} className="w-full mt-4 py-4 bg-red-600/10 text-red-500 border border-red-500/30 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all">SIGN OUT</button>
             )}
           </div>
         )}

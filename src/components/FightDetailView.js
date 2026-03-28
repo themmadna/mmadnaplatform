@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Brain } from 'lucide-react';
+import { ChevronLeft, Brain, EyeOff, Eye } from 'lucide-react';
 import { dataService } from '../dataService';
 import { supabase } from '../supabaseClient';
 import RoundScoringPanel from './RoundScoringPanel';
@@ -195,7 +195,7 @@ function fmtControlTime(stats) {
 const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
 const ESPN_SCOREBOARD = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard';
 
-const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
+const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoilerDefault = true, onSpoilerDefaultChange }) => {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -205,6 +205,12 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
   // Whether the current user has submitted any scores for this fight
   // Gates the Final Scorecard and Scorecard Comparison reveal
   const [hasUserScores, setHasUserScores] = useState(false);
+
+  // Per-fight spoiler protection: initialised from user's profile default.
+  // Auto-reveals when the user has existing scores (watched already) or finishes scoring.
+  const [spoilerActive, setSpoilerActive] = useState(
+    fight.status === 'completed' ? spoilerDefault : false
+  );
 
   useEffect(() => {
     if (fight.status !== 'completed') return;
@@ -224,6 +230,11 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
       if (count > 0) setHasUserScores(true);
     })();
   }, [fight.id, fight.status, isGuest]);
+
+  // Auto-reveal spoilers once the user has existing scores (they've watched this fight)
+  useEffect(() => {
+    if (hasUserScores) setSpoilerActive(false);
+  }, [hasUserScores]);
 
   // Live fight status — seeded from DB, updated by ESPN polling
   const [fightStartedAt, setFightStartedAt] = useState(fight.fight_started_at || null);
@@ -637,7 +648,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
           </div>
 
           {/* RESULT BANNER */}
-          {meta?.winner && fight.status === 'completed' && (
+          {meta?.winner && fight.status === 'completed' && !spoilerActive && (
             <div className="mx-0 mb-3 bg-pulse-green/[0.08] border border-pulse-green/20 rounded-card px-4 py-3 flex items-center gap-2.5">
               <div className="w-2 h-2 rounded-full bg-pulse-green shrink-0" />
               <span className="font-heading font-semibold text-[15px] text-pulse-green tracking-wider">
@@ -688,6 +699,50 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
           {/* COMPLETED — has meta: TAB BAR + CONTENT */}
           {fight.status === 'completed' && meta && (
             <>
+              {/* Spoiler toggle row — always visible for completed fights */}
+              <button
+                onClick={() => setSpoilerActive(v => !v)}
+                className="w-full flex items-center justify-between bg-pulse-surface border border-white/[0.06] rounded-card px-4 py-2.5 mb-3 active:scale-[0.98] transition-transform"
+              >
+                <span className="flex items-center gap-2 text-xs font-heading font-semibold uppercase tracking-widest text-pulse-text-3">
+                  {spoilerActive ? <EyeOff size={14} /> : <Eye size={14} />}
+                  Spoiler protection {spoilerActive ? 'on' : 'off'}
+                </span>
+                <span className="text-[11px] text-pulse-red uppercase tracking-widest font-semibold">
+                  {spoilerActive ? 'Reveal' : 'Hide'}
+                </span>
+              </button>
+
+              {/* SPOILER SHIELD — scoring only */}
+              {spoilerActive && (
+                <>
+                  <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-6 mb-3 text-center">
+                    <EyeOff size={28} className="text-pulse-text-3 mx-auto mb-3" />
+                    <p className="font-heading font-bold text-sm uppercase tracking-widest text-pulse-text mb-1">Results Hidden</p>
+                    <p className="text-xs text-pulse-text-3">Score the fight to reveal stats, judges &amp; result.</p>
+                  </div>
+                  {(() => {
+                    const isDecision = meta?.method?.toLowerCase().includes('decision');
+                    const roundsFought = parseInt((meta?.round || '').split(' ')[0]) || 0;
+                    const scoreableRounds = isDecision ? roundsFought : Math.max(0, roundsFought - 1);
+                    if (scoreableRounds === 0) return null;
+                    return (
+                      <RoundScoringPanel
+                        fight={fight}
+                        meta={meta}
+                        isLocked={false}
+                        currentTheme={currentTheme}
+                        onAllRoundsScored={() => { setHasUserScores(true); setSpoilerActive(false); }}
+                        isGuest={isGuest}
+                      />
+                    );
+                  })()}
+                </>
+              )}
+
+              {/* FULL CONTENT — tab bar + tabs (shown when spoiler off) */}
+              {!spoilerActive && (
+                <>
               {/* Tab bar */}
               <div role="tablist" aria-label="Fight detail sections" className="flex gap-1 mb-4 overflow-x-auto pb-1 scrollbar-hide" style={{ maskImage: 'linear-gradient(to right, black 75%, transparent 95%)', WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 95%)' }}>
                 {tabs.map(({ key, label }) => (
@@ -847,6 +902,8 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false }) => {
                     </div>
                   )}
                 </div>
+              )}
+                </>
               )}
             </>
           )}

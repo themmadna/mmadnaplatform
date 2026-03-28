@@ -37,3 +37,8 @@ export const setScorecardState = (fightId, updates) => {
   all[k] = { ...(all[k] || {}), ...updates };
   sessionStorage.setItem(STATE_KEY, JSON.stringify(all));
 };
+
+const SPOILER_KEY = 'ufc_guest_spoiler_protection';
+// Default true — returns false only if explicitly set to 'false'
+export const getSpoilerDefault = () => sessionStorage.getItem(SPOILER_KEY) !== 'false';
+export const setSpoilerDefault = (val) => sessionStorage.setItem(SPOILER_KEY, String(val));
