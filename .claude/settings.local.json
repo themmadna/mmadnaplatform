@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe diagnose_judge_scores.py)",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe diagnose_judge_scores2.py)",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe scrape_mmadecisions.py --start 2015 --end 2026 --no-stop)",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe scrape_mmadecisions.py --start 2015 --end 2026 --no-stop --yes)",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe -u scrape_mmadecisions.py --start 2015 --end 2026 --no-stop --yes)",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe -u scrape_mmadecisions.py --start 2015 --end 2024 --no-stop --yes)",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe -c \"import sklearn; import numpy; print\\(''sklearn:'', sklearn.__version__, ''| numpy:'', numpy.__version__\\)\")",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe -c \"import xgboost; print\\(''xgboost:'', xgboost.__version__\\)\")",
+      "Bash(/c/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe train_scoring_model.py)",
+      "WebFetch(domain:api-sports.io)",
+      "WebFetch(domain:rapidapi.com)",
+      "WebFetch(domain:v1.mma.api-sports.io)",
+      "WebFetch(domain:sportsdata.io)",
+      "WebFetch(domain:the-odds-api.com)",
+      "WebFetch(domain:developer.sportradar.com)",
+      "Bash(cmd /c \"start cmd /k \"\"cd /d C:\\\\Users\\\\sabzu\\\\Documents\\\\VS^ Ufc\\\\ufc-web-app && npm start\"\"\")",
+      "WebFetch(domain:vercel.com)"
+    ]
+  }
+}
