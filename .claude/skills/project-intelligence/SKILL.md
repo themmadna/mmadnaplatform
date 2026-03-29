@@ -75,17 +75,27 @@ Files load on a tiered basis to keep context lean.
 These prompts are baked into CLAUDE.md for every project.
 
 **Session start:**
-```
 Before we begin, read PROGRESS.md to orient yourself on current state.
 Summarize where we left off and confirm you're ready to proceed.
-```
+
+**First session only (cold start):**
+If PROGRESS.md is empty or this is the first session, read PROJECT.md
+instead to orient yourself. Ask Bastian to confirm current state before proceeding.
+
+**If PROGRESS.md looks stale or incomplete:**
+Do not proceed from potentially bad information. Read PROJECT.md, flag the
+discrepancy to Bastian, and confirm current state before starting work.
 
 **Session end:**
-```
-Update PROGRESS.md to reflect what we accomplished this session.
-Flag anything in /memory that needs updating based on what changed.
-Do not make changes — list them for my review.
-```
+1. Update PROGRESS.md to reflect what we accomplished this session.
+   Add a Last updated: [date] line at the top.
+2. Flag anything in /memory that needs updating — list for Bastian's review,
+   do not write unilaterally.
+3. Flag anything worth adding to ~/bastian-global-brain/ LESSONS.md, PLAYBOOK.md,
+   or OPERATING.md — but only if it would apply to a project you've never worked
+   on before. Project-specific insights belong in /memory/LESSONS.md, not the
+   global brain.
+4. Wait for Bastian's approval, then stage, commit, and push to GitHub.
 
 ## CLAUDE.md Router Template
 

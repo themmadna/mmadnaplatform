@@ -99,17 +99,26 @@ Complete and mark done before moving to the next.
 `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]` blocked
 
 ### Session start
-Before we begin, read `memory/PROGRESS.md` to orient yourself on current state. Summarize where we left off and confirm you're ready to proceed.
+Before we begin, read `/memory/PROGRESS.md` to orient yourself on current state.
+Summarize where we left off and confirm you're ready to proceed.
+
+**First session only (cold start):**
+If PROGRESS.md is empty or this is the first session, read `/memory/PROJECT.md`
+instead to orient yourself. Ask Bastian to confirm current state before proceeding.
+
+**If PROGRESS.md looks stale or incomplete:**
+Do not proceed from potentially bad information. Read `/memory/PROJECT.md`,
+flag the discrepancy to Bastian, and confirm current state before starting work.
 
 Then read the relevant `context/` file(s) for the task area before writing any code. Do not rely on MEMORY.md alone for detail work.
 
 ### REQUIRED concluding steps — do not skip
 After every task group:
-1. **Update `memory/PROGRESS.md`** — mark completed tasks `[x]`
+1. **Update `/memory/PROGRESS.md`** — mark completed tasks `[x]`. Add a `Last updated: [date]` line at the top.
 2. **Update `memory/LESSONS.md`** — add entry under the relevant topic section (not chronologically)
 3. **Update `context/` files** — if the task changed anything covered by a context file, update it (see sync table below)
 4. **Flag anything else in `memory/` that needs updating** — list for Bastian's review, do not write unilaterally
-5. **Flag anything worth adding to `~/bastian-global-brain/`** (LESSONS.md, PLAYBOOK.md, or OPERATING.md)
+5. **Flag anything worth adding to `~/bastian-global-brain/`** (LESSONS.md, PLAYBOOK.md, or OPERATING.md) — but only if it would apply to a project you've never worked on before. Project-specific insights belong in `/memory/LESSONS.md`, not the global brain.
 6. **Wait for Bastian's approval**, then stage, commit, and push to GitHub
 
 ### Context file sync table
