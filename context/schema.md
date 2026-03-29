@@ -113,6 +113,14 @@ One row per (fighter, judge, round). Unique constraint: `(bout, date, judge, fig
 | `referee` | text | NULL | |
 | `created_at` | timestamptz | NULL | default now() |
 
+### `profiles`
+One row per registered user. Created on first profile save.
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `user_id` | uuid PK | NOT NULL | FK → auth.users ON DELETE CASCADE |
+| `spoiler_protection` | boolean | NOT NULL | default `true` |
+
 ### `user_votes`
 Unique constraint: `(user_id, fight_id)`.
 
