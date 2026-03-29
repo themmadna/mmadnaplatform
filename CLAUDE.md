@@ -109,9 +109,8 @@ After every task group:
 2. **Update `memory/LESSONS.md`** — add entry under the relevant topic section (not chronologically)
 3. **Update `context/` files** — if the task changed anything covered by a context file, update it (see sync table below)
 4. **Flag anything else in `memory/` that needs updating** — list for Bastian's review, do not write unilaterally
-5. **Update MEMORY.md** — if any stable pattern was confirmed or a context file was updated
-6. **Flag anything worth adding to `~/bastian-global-brain/`** (LESSONS.md, PLAYBOOK.md, or OPERATING.md)
-7. **Wait for Bastian's approval**, then stage, commit, and push to GitHub
+5. **Flag anything worth adding to `~/bastian-global-brain/`** (LESSONS.md, PLAYBOOK.md, or OPERATING.md)
+6. **Wait for Bastian's approval**, then stage, commit, and push to GitHub
 
 ### Context file sync table
 When a task changes something in these areas, update the corresponding file:
@@ -129,13 +128,11 @@ When a task changes something in these areas, update the corresponding file:
 | Critical conventions or git/session workflow | `CLAUDE.md` directly |
 
 ### Canonical hierarchy
-`context/` files are canonical for detail. MEMORY.md is canonical for quick always-on conventions. When they conflict, fix the `context/` file first, then update MEMORY.md to match.
+`context/` files are the canonical source of truth for detail. When they conflict with anything else, fix the `context/` file first. When something feels unclear, the context file wins.
 
 ### Deprecation rule
 When replacing existing architecture — not just adding to it — find every file that references the old approach and update all of them in the same session. Stale references in any file are worse than no reference.
 
-### MEMORY.md pruning
-When a phase is fully complete and its detail lives in `context/`, shrink the MEMORY.md entry for that area to a one-line pointer. MEMORY.md has a hard 200-line limit — keep it lean.
 
 ---
 

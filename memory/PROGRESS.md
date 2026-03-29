@@ -177,4 +177,4 @@ New "Scoring Insights" section in Judging DNA. Compares user's scoring against t
 
 ## Build Order
 
-6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5 → **Phase 8** ✅ → **Phase 9**
+6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5 → **Phase 8** ✅ → **Phase 9** ✅
