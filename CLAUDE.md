@@ -86,6 +86,7 @@ These are the highest-stakes gotchas. Violating any of these causes silent bugs.
 - Single branch `main` for active development; feature branches for larger additions
 - Push from `ufc-web-app/` only — never from the parent `VS Ufc/` folder
 - Before any cleanup or deletion work, check for multiple `.git` dirs — two repos sharing a remote causes destructive-looking commits
+- **Vercel auto-deploys on push** — confirm with user before pushing to main
 
 ---
 
@@ -94,19 +95,23 @@ These are the highest-stakes gotchas. Violating any of these causes silent bugs.
 ### One task at a time
 Complete and mark done before moving to the next.
 
-### Status markers (PROJECT_PLAN.md)
+### Status markers (memory/PROGRESS.md)
 `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]` blocked
 
 ### Session start
-At the start of a session, read the relevant `context/` file(s) for the task area before writing any code. Do not rely on MEMORY.md alone for detail work.
+Before we begin, read `memory/PROGRESS.md` to orient yourself on current state. Summarize where we left off and confirm you're ready to proceed.
+
+Then read the relevant `context/` file(s) for the task area before writing any code. Do not rely on MEMORY.md alone for detail work.
 
 ### REQUIRED concluding steps — do not skip
 After every task group:
-1. **Update PROJECT_PLAN.md** — mark completed tasks `[x]`
-2. **Update LESSONS.md** — add entry under the relevant topic section (not chronologically)
-3. **Update context/ files** — if the task changed anything covered by a context file, update it (see sync table below)
-4. **Update MEMORY.md** — if any stable pattern was confirmed or a context file was updated
-5. **Ask the user** if they want to commit and push before continuing
+1. **Update `memory/PROGRESS.md`** — mark completed tasks `[x]`
+2. **Update `memory/LESSONS.md`** — add entry under the relevant topic section (not chronologically)
+3. **Update `context/` files** — if the task changed anything covered by a context file, update it (see sync table below)
+4. **Flag anything else in `memory/` that needs updating** — list for Bastian's review, do not write unilaterally
+5. **Update MEMORY.md** — if any stable pattern was confirmed or a context file was updated
+6. **Flag anything worth adding to `~/bastian-global-brain/`** (LESSONS.md, PLAYBOOK.md, or OPERATING.md)
+7. **Wait for Bastian's approval**, then stage, commit, and push to GitHub
 
 ### Context file sync table
 When a task changes something in these areas, update the corresponding file:
@@ -120,7 +125,7 @@ When a task changes something in these areas, update the corresponding file:
 | ML model features, threshold, or JS integration | `context/ml-model.md` |
 | DNA metrics or formulas | `context/combat-dna.md` |
 | Phase 6 scoring UI or Judging DNA architecture | `context/phase6-architecture.md` |
-| Completed a full phase | `context/completed-phases.md` + condense in PROJECT_PLAN.md |
+| Completed a full phase | `context/completed-phases.md` + update `memory/PROGRESS.md` |
 | Critical conventions or git/session workflow | `CLAUDE.md` directly |
 
 ### Canonical hierarchy
@@ -148,3 +153,23 @@ Read these files at the start of a session when the task touches that area.
 | `context/combat-dna.md` | DNA concept, metric formulas, frontend key mapping | DNA/recommendations feature work |
 | `context/phase6-architecture.md` | RoundScoringPanel, ScorecardComparison, Judging DNA, leaderboard eligibility | Phase 6 scoring UI or Judging DNA work |
 | `context/completed-phases.md` | Condensed summaries of Phases 1, 2, 3, 4.5, 7 | Historical reference only |
+
+---
+
+## Memory System
+
+The Project Brain lives in `memory/` at the root of this repo. Read the relevant files at session start and when navigating unfamiliar territory.
+
+| When | File to read |
+|---|---|
+| Always — at session start | `memory/PROGRESS.md` |
+| Starting a new feature | `memory/PROJECT.md` |
+| Before any architectural decision | `memory/DECISIONS.md` |
+| Hitting errors or blockers | `memory/LESSONS.md` |
+| Something is unclear | `memory/OPEN-QUESTIONS.md` |
+
+### Global Brain
+Location: `~/bastian-global-brain/`
+- Read `OPERATING.md` when onboarding or uncertain how to proceed
+- Read `LESSONS.md` when hitting blockers or making architectural decisions
+- Read `PLAYBOOK.md` when starting a new feature or planning a session

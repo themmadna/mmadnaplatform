@@ -13,6 +13,7 @@ Status markers: `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]
 - **Phase 3** — Predictive Scoring Feature (ML model) ✅
 - **Phase 4.5** — Weight Class Normalization ✅
 - **Phase 7** — Guest Mode ✅
+- **Spoiler Protection** — Per-user default in `profiles` table; per-fight toggle in fight detail; auto-reveal on existing/completed scores ✅
 
 ---
 

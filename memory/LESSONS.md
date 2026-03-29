@@ -162,6 +162,12 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## User Preferences
+
+- **Per-user settings belong in a `profiles` table (one row per user), not in transactional tables.** Transactional tables (`user_votes`, `user_round_scores`) are per-(user, fight) — wrong shape for global prefs. `profiles` with `user_id uuid PK REFERENCES auth.users` + `upsert` is the clean pattern.
+- **Initialise per-fight state from the global default, then apply local overrides.** Spoiler protection follows this pattern: `useState(spoilerDefault)` in the component, auto-overridden when existing scores are found. The local state lives in the component and dies on unmount — no need to persist it.
+- **Auto-reveal on `hasUserScores` via `useEffect`** — cleaner than checking in every render path. A single `useEffect([hasUserScores])` that calls `setSpoilerActive(false)` covers both the async DB check and the real-time `onAllRoundsScored` callback.
+
 ## UX Polish
 
 - **CSS mask-image is the cleanest scroll affordance on mobile.** Apply `maskImage: 'linear-gradient(to right, black 80%, transparent 100%)'` directly to the scrollable container.
