@@ -1,4 +1,5 @@
 # UFC Web App — Project Plan
+Last updated: 2026-03-30
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
 

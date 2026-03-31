@@ -15,6 +15,15 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Post-Event Data Ops
+
+- **After every master scraper run, audit the updated event card before presenting the summary.** Check for: stale `upcoming` fights (cancelled bouts), duplicate `card_position` rows (replaced matchups — delete the upcoming one), and `completed` fights with `winner: null` (scrape the `fight_url` for No Contest or draw). Report findings to Bastian before making any changes.
+- **Cancelled bouts don't get UFCStats fight pages** — they remain in the DB as `upcoming` indefinitely unless manually deleted. The scraper has no mechanism to detect cancellations.
+- **Replaced matchups leave two rows at the same `card_position`** — one `upcoming` (original opponent), one `completed` (replacement). The `upcoming` one should be deleted.
+- **No Contest results appear as `nc` in UFCStats HTML** — the scraper doesn't currently parse these, so NCs land as `completed` with `winner: null`. Fix by setting `winner: 'NC'` manually after auditing the fight page.
+
+---
+
 ## Scrapers
 
 - **`.limit(N)` on a query that claims to be "incremental" is usually a bug.** The per-record existence check is the deduplication mechanism, not the limit.
