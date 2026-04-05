@@ -102,6 +102,8 @@ Complete and mark done before moving to the next.
 Before we begin, read `/memory/PROGRESS.md` to orient yourself on current state.
 Summarize where we left off and confirm you're ready to proceed.
 
+Check `Last refreshed:` in `/memory/PROGRESS.md`. If the line is missing or the date is more than 30 days ago, flag: "Memory refresh is overdue — run /memory-refresh when ready." Non-blocking — proceed with the session regardless.
+
 **First session only (cold start):**
 If PROGRESS.md is empty or this is the first session, read `/memory/PROJECT.md`
 instead to orient yourself. Ask Bastian to confirm current state before proceeding.
