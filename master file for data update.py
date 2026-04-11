@@ -263,7 +263,7 @@ def sync_upcoming_fights():
 
         # Build a set of bouts already in DB for this event (per-fight check)
         existing = supabase_db.table("fights").select("bout").eq("event_name", event['event_name']).execute().data
-        existing_bouts = {f['bout'] for f in existing}
+        existing_bouts = [f['bout'] for f in existing]
 
         res = requests.get(event['event_url'], timeout=15)
         soup = BeautifulSoup(res.text, 'html.parser')
@@ -289,7 +289,7 @@ def sync_upcoming_fights():
             f2 = clean_bout_name(fighters[1])
             standardized_bout = f"{f1} vs {f2}"
 
-            if standardized_bout in existing_bouts:
+            if standardized_bout in existing_bouts or any(_bout_matches(f1, f2, b) for b in existing_bouts):
                 print(f"  ⏭️  Skipping existing: {standardized_bout}")
                 continue
 
@@ -376,7 +376,7 @@ def sync_fights():
                 standardized_bout = f"{f1} vs {f2}"
                 fight_url = link_tag['href']
 
-                # 3. Check map
+                # 3. Check map (exact first, then alias-aware fallback)
                 if standardized_bout in existing_map:
                     fight_record = existing_map[standardized_bout]
                     scraped_ids.append(fight_record['id'])
@@ -391,14 +391,32 @@ def sync_fights():
                         stats_summary["updated_fights"] += 1
                         any_newly_completed = True
                 else:
-                    print(f"➕ Inserting New Completed: {standardized_bout}")
-                    supabase_db.table("fights").insert({
-                        'event_name': event['event_name'],
-                        'bout': standardized_bout,
-                        'fight_url': fight_url,
-                        'status': 'completed'
-                    }).execute()
-                    stats_summary["new_fights"] += 1
+                    # Alias-aware fallback: catches fighters known by different names
+                    # across scrape sources (e.g. "Patricio Pitbull" vs "Patricio Freire")
+                    parts = standardized_bout.split(' vs ', 1)
+                    alias_match = next(
+                        (f for f in existing_fights if len(parts) == 2 and _bout_matches(parts[0], parts[1], f['bout'])),
+                        None
+                    )
+                    if alias_match:
+                        scraped_ids.append(alias_match['id'])
+                        if alias_match.get('status') == 'upcoming':
+                            print(f"🔄 Updating Status (Upcoming -> Completed, alias): {alias_match['bout']} ← {standardized_bout}")
+                            supabase_db.table("fights").update({
+                                "status": "completed",
+                                "fight_url": fight_url,
+                            }).eq("id", alias_match['id']).execute()
+                            stats_summary["updated_fights"] += 1
+                            any_newly_completed = True
+                    else:
+                        print(f"➕ Inserting New Completed: {standardized_bout}")
+                        supabase_db.table("fights").insert({
+                            'event_name': event['event_name'],
+                            'bout': standardized_bout,
+                            'fight_url': fight_url,
+                            'status': 'completed'
+                        }).execute()
+                        stats_summary["new_fights"] += 1
 
         # 4. AUTO-DELETE LOGIC
         # Only delete if: fights found on ufcstats AND nothing newly completed this
@@ -483,11 +501,27 @@ def sync_round_stats():
 def _norm_name(s):
     """Lowercase + strip non-alphanumeric except spaces. Mirrors frontend normName()."""
     import re, unicodedata
+    # Transliterate characters that NFD won't decompose (ł→l, ø→o, ð→d, þ→th, ß→ss, æ→ae, œ→oe)
+    _xlat = str.maketrans({
+        'ł': 'l', 'Ł': 'l', 'ø': 'o', 'Ø': 'o',
+        'ð': 'd', 'Ð': 'd', 'þ': 'th', 'Þ': 'th',
+        'ß': 'ss', 'æ': 'ae', 'Æ': 'ae', 'œ': 'oe', 'Œ': 'oe',
+    })
+    s = s.translate(_xlat)
     return re.sub(r'[^a-z0-9 ]', '', unicodedata.normalize('NFD', s).lower()).strip()
+
+# Fighters whose ESPN name differs from their UFC Stats name (normalized → normalized).
+# Add entries when ESPN uses a nickname or alternate spelling as the display name.
+_FIGHTER_ALIASES = {
+    'patricio pitbull': 'patricio freire',
+}
+
+def _resolve_alias(n):
+    return _FIGHTER_ALIASES.get(n, n)
 
 def _names_match(a, b):
     """True if two fighter names refer to the same person (order-insensitive)."""
-    na, nb = _norm_name(a), _norm_name(b)
+    na, nb = _resolve_alias(_norm_name(a)), _resolve_alias(_norm_name(b))
     if na == nb:
         return True
     # Space-collapse (handles "Rong Zhu" / "Rongzhu")

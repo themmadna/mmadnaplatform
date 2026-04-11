@@ -52,6 +52,10 @@ python "master file for data update.py"
 | **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights |
 | **6** | Judge scores — `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` |
 
+### Phase 0.5 Duplicate Detection
+
+Uses `_bout_matches(f1, f2, existing_bout)` as a fallback after exact-string check. This catches fighters known by different names across scrape sources (e.g. "Patricio Pitbull" on the ufcstats upcoming page vs "Patricio Freire" stored from a prior run). Without the alias-aware fallback, a new entry is created for the same fight, leaving it with no `espn_competition_id` and stuck as `upcoming` during the live event.
+
 ### Phase 2 Auto-Delete Guard
 
 Prevents deletion of fight records mid-event. **Both conditions required:**
@@ -61,6 +65,10 @@ Prevents deletion of fight records mid-event. **Both conditions required:**
 3. `any_newly_completed` = True if any fight updated upcoming→completed in this Phase 2 run
 
 `any_newly_completed` alone is insufficient: Phase 0.5 re-adds fights already completed in a prior run, so `any_newly_completed` stays False even though the event isn't over.
+
+### Phase 2 Alias-Aware Fallback
+
+Before inserting a new completed fight, Phase 2 falls back to a linear `_bout_matches` scan over `existing_fights`. This handles the case where UFC Stats reports a fighter by a different name post-event than what was stored pre-event (e.g. ufcstats used "Patricio Pitbull" on the completed fights page, but the DB row was "Patricio Freire"). Without this, Phase 2 inserts a duplicate completed fight rather than updating the existing upcoming row.
 
 ### `parse_weight_class(raw)` helper
 

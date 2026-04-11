@@ -1,5 +1,5 @@
 # UFC Web App — Project Plan
-Last updated: 2026-03-30
+Last updated: 2026-04-11 (pre-event scraper run for UFC 327: Prochazka vs Ulberg; alias-aware dedup fix in Phase 0.5 + Phase 2)
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
 
