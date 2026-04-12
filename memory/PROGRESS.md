@@ -1,5 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-11 (pre-event scraper run for UFC 327: Prochazka vs Ulberg; alias-aware dedup fix in Phase 0.5 + Phase 2)
+Last updated: 2026-04-12 (post-event scraper confirmed — UFC 327 all 12/12 fights complete, judge scores present for all 6 decisions)
+Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
 

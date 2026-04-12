@@ -32,7 +32,7 @@
 ### Backend / Database
 | Tool | Role |
 |------|------|
-| Supabase (PostgreSQL) | Primary database — 11 tables, 4 views, 9 RPC functions |
+| Supabase (PostgreSQL) | Primary database — 10 tables, 4 views, 9 RPC functions |
 | Supabase Auth | JWT-based auth (anon + service role) |
 | Supabase Edge Functions | TypeScript — poll-live-fights, record-fight-status |
 | pg_cron + pg_net | Server-side ESPN polling every 60 seconds |
@@ -279,8 +279,8 @@ ufc-web-app/                             # Git root
 4. Add navigation trigger (bottom nav or in-view link)
 
 ### Session Workflow (after any task group)
-1. Mark tasks complete in `PROJECT_PLAN.md`
-2. Add patterns to `LESSONS.md` (under relevant topic section)
+1. Mark tasks complete in `memory/PROGRESS.md`
+2. Add patterns to `memory/LESSONS.md` (under relevant topic section)
 3. Update relevant `context/` file(s) — context/ is the canonical source
 4. Update `MEMORY.md` if stable patterns confirmed
 5. Ask user about commit + push
@@ -355,9 +355,9 @@ ufc-web-app/                             # Git root
 
 ### Documentation Hierarchy
 - **`context/`** — Canonical technical truth; read before task, update after
-- **`LESSONS.md`** — Reusable patterns (200-line limit, organized by topic)
+- **`memory/LESSONS.md`** — Reusable patterns (organized by topic)
 - **`CLAUDE.md`** — Critical always-on conventions only
-- **`PROJECT_PLAN.md`** — Phase tracker with `[x]` / `[ ]` / `[~]` / `[!]` markers
+- **`memory/PROGRESS.md`** — Phase tracker with `[x]` / `[ ]` / `[~]` / `[!]` markers
 - **`MEMORY.md`** — Cross-session memory index (pointers to detail files)
 
 ---
@@ -374,6 +374,7 @@ ufc-web-app/                             # Git root
 | `user_round_scores` | User scoring: user_id, fight_id, round, f1_score, f2_score |
 | `user_fight_scorecard_state` | Scoring metadata: scored_blind, forfeited, leaderboard_eligible (generated) |
 | `user_votes` | Likes/dislikes/favorites: user_id, fight_id, vote_type |
+| `fight_ratings` | Aggregated vote counts per fight: likes_count, dislikes_count, favorites_count |
 | `profiles` | Per-user settings: spoiler_protection (bool, default true) |
 | `fight_dna_metrics` (VIEW) | Computed DNA metrics per fight — frontend reads here |
 | `ufc_baselines` (VIEW) | Average DNA metrics across all fights |
