@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
 Last updated: 2026-04-13 (leaderboard audit + overhaul: decisions-only filter, round accuracy, eligibility bug fix)
-Next session: display_name setter in profile UI (deferred from 6f), or Phase 5 weight class analytics
+Next session: leaderboard row expand dropdown (recent fights + recent rounds)
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -114,6 +114,7 @@ One analytics page per division. All computable from existing tables. Join key: 
 - [x] Eligibility bug fix — `leaderboard_eligible` redefined to `NOT forfeited AND NOT modified_after_reveal`; historical fights no longer incorrectly set `modified_after_reveal`
 - [ ] Weight class filter — deferred
 - [ ] `display_name` setter in profile UI — deferred
+- [ ] **Row expand dropdown** — click a leaderboard row to expand it inline; shows (a) most recent fight results with correct/incorrect badge, (b) toggle to see 5 most recent rounds scored. Needs a new lightweight RPC (or extend `get_leaderboard`) to fetch per-user recent fight + round detail on demand.
 
 ---
 
