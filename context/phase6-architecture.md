@@ -245,10 +245,22 @@ Computed as `GENERATED ALWAYS AS (scored_blind AND NOT forfeited AND NOT modifie
 - Used by leaderboard; falls back to "Scorer #XXXX" (last 4 chars of user_id) in Leaderboard.js
 - TODO: setter in profile UI (deferred)
 
+### `get_leaderboard_user_detail(p_user_id uuid)` RPC
+- Returns `{ fights: [...], rounds: [...] }` for a single user (eligible rows only)
+- `fights` — last 5 eligible decision fights: `fight_id`, `fight_url`, `event_name`, `event_date`, `fighter1_name`, `fighter2_name`, `user_pick`, `official_winner`, `correct` (bool)
+- `rounds` — last 5 eligible rounds with judge majority: `fight_id`, `round`, `fight_url`, `event_name`, `event_date`, `fighter1_name`, `fighter2_name`, `user_winner`, `majority_winner`, `matched` (bool)
+- GRANT to `authenticated, anon`
+- Deploy: `supabase/deploy_leaderboard_detail.py`
+
 ### `Leaderboard.js`
 - Accessed via "🏆 View Leaderboard" button at the bottom of the Judging DNA tab
 - `currentView === 'leaderboard'` → belongs to 'scores' navTab
-- `onBack` navigates to `'dna'`
-- Columns: rank (medal emoji for top 3), name, fights, correct, accuracy %
+- Props: `currentTheme`, `onBack` (→ `'dna'`), `onFightClick` (optional, for fight navigation)
+- Columns: rank (medal emoji for top 3), name + ChevronDown/Up, Dec, Fight%, Rnds, Round%
 - Current user row highlighted with red left border + "You" sub-label
+- **Row expand:** tap any row to toggle inline expand panel
+  - Lazy-fetches `getLeaderboardUserDetail(userId)` on first open; result cached in `detailCache` state
+  - Expand panel has Fights / Rounds tab pills (counts shown on pills)
+  - Each item: green/red/gray dot + last-name vs last-name + event name subline
+  - Tapping a fight/round row calls `onFightClick` to navigate to fight detail
 - Loading: 3 skeleton rows; Empty: trophy icon + message; eligibility note footer

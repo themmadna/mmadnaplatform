@@ -1466,6 +1466,7 @@ export default function UFCFightRating() {
             <Leaderboard
               currentTheme={currentTheme}
               onBack={() => setCurrentView('dna')}
+              onFightClick={handleFightClick}
             />
           </div>
         )}
