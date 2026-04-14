@@ -57,24 +57,25 @@ export default function Leaderboard({ currentTheme, onBack }) {
         </div>
       </div>
       <p className="text-xs text-pulse-text-3 mb-6 ml-12">
-        Fight winner accuracy — blind-scored only
+        Decision accuracy — blind-scored only
       </p>
 
       {/* Loading skeleton */}
       {loading && (
         <div className="bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden">
           {/* Column headers skeleton */}
-          <div className="grid grid-cols-[40px_1fr_56px_56px_64px] gap-2 px-4 py-3 border-b border-white/[0.06]">
-            {['w-4','w-20','w-8','w-8','w-10'].map((w, i) => (
+          <div className="grid grid-cols-[36px_1fr_40px_56px_40px_64px] gap-2 px-4 py-3 border-b border-white/[0.06]">
+            {['w-4','w-20','w-6','w-10','w-6','w-10'].map((w, i) => (
               <div key={i} className={`h-3 ${w} bg-white/[0.06] rounded animate-pulse`} />
             ))}
           </div>
           {[1, 2, 3].map(i => (
-            <div key={i} className="grid grid-cols-[40px_1fr_56px_56px_64px] gap-2 items-center px-4 py-3.5 border-b border-white/[0.04] last:border-0">
+            <div key={i} className="grid grid-cols-[36px_1fr_40px_56px_40px_64px] gap-2 items-center px-4 py-3.5 border-b border-white/[0.04] last:border-0">
               <div className="h-4 w-5 bg-white/[0.06] rounded animate-pulse" />
               <div className="h-4 w-28 bg-white/[0.06] rounded animate-pulse" />
-              <div className="h-4 w-8 bg-white/[0.06] rounded animate-pulse mx-auto" />
-              <div className="h-4 w-8 bg-white/[0.06] rounded animate-pulse mx-auto" />
+              <div className="h-4 w-6 bg-white/[0.06] rounded animate-pulse mx-auto" />
+              <div className="h-5 w-12 bg-white/[0.06] rounded-full animate-pulse mx-auto" />
+              <div className="h-4 w-6 bg-white/[0.06] rounded animate-pulse mx-auto" />
               <div className="h-5 w-12 bg-white/[0.06] rounded-full animate-pulse ml-auto" />
             </div>
           ))}
@@ -94,12 +95,13 @@ export default function Leaderboard({ currentTheme, onBack }) {
       {!loading && rows?.length > 0 && (
         <div className="bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden">
           {/* Column headers */}
-          <div className="grid grid-cols-[40px_1fr_56px_56px_64px] gap-2 px-4 py-3 border-b border-white/[0.06]">
+          <div className="grid grid-cols-[36px_1fr_40px_56px_40px_64px] gap-2 px-4 py-3 border-b border-white/[0.06]">
             <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3">#</span>
             <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3">Scorer</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3 text-center">Fights</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3 text-center">Correct</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3 text-right">Accuracy</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3 text-center">Dec</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3 text-center">Fight%</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3 text-center">Rnds</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-pulse-text-3 text-right">Round%</span>
           </div>
 
           {rows.map((row) => {
@@ -107,7 +109,7 @@ export default function Leaderboard({ currentTheme, onBack }) {
             return (
               <div
                 key={row.user_id}
-                className={`grid grid-cols-[40px_1fr_56px_56px_64px] gap-2 items-center px-4 py-3.5 border-b border-white/[0.04] last:border-0 transition-colors
+                className={`grid grid-cols-[36px_1fr_40px_56px_40px_64px] gap-2 items-center px-4 py-3.5 border-b border-white/[0.04] last:border-0 transition-colors
                   ${isMe ? 'bg-pulse-red/[0.06] border-l-2 border-l-pulse-red' : ''}`}
               >
                 {/* Rank */}
@@ -125,26 +127,42 @@ export default function Leaderboard({ currentTheme, onBack }) {
                   )}
                 </div>
 
-                {/* Fights scored */}
+                {/* Decision fights scored */}
                 <span className="font-heading font-bold text-sm text-pulse-text-2 text-center">
                   {row.fights_scored}
                 </span>
 
-                {/* Correct picks */}
-                <span className="font-heading font-bold text-sm text-pulse-text-2 text-center">
-                  {row.correct_picks}
-                </span>
-
-                {/* Accuracy badge */}
-                <div className="flex justify-end">
-                  <span className={`font-heading font-extrabold text-sm px-2.5 py-1 rounded-full
-                    ${row.accuracy_pct >= 70
+                {/* Fight accuracy badge */}
+                <div className="flex justify-center">
+                  <span className={`font-heading font-extrabold text-sm px-2 py-1 rounded-full
+                    ${row.fight_acc_pct >= 70
                       ? 'bg-pulse-green/[0.12] text-pulse-green'
-                      : row.accuracy_pct >= 55
+                      : row.fight_acc_pct >= 55
                         ? 'bg-yellow-500/[0.12] text-yellow-400'
                         : 'bg-white/[0.06] text-pulse-text-3'}`}>
-                    {row.accuracy_pct}%
+                    {row.fight_acc_pct}%
                   </span>
+                </div>
+
+                {/* Rounds matched */}
+                <span className="font-heading font-bold text-sm text-pulse-text-2 text-center">
+                  {row.rounds_matched > 0 ? row.rounds_matched : '—'}
+                </span>
+
+                {/* Round accuracy badge */}
+                <div className="flex justify-end">
+                  {row.round_acc_pct != null ? (
+                    <span className={`font-heading font-extrabold text-sm px-2 py-1 rounded-full
+                      ${row.round_acc_pct >= 70
+                        ? 'bg-pulse-green/[0.12] text-pulse-green'
+                        : row.round_acc_pct >= 55
+                          ? 'bg-yellow-500/[0.12] text-yellow-400'
+                          : 'bg-white/[0.06] text-pulse-text-3'}`}>
+                      {row.round_acc_pct}%
+                    </span>
+                  ) : (
+                    <span className="text-sm text-pulse-text-3 pr-1">—</span>
+                  )}
                 </div>
               </div>
             );
@@ -155,8 +173,8 @@ export default function Leaderboard({ currentTheme, onBack }) {
       {/* Eligibility note */}
       {!loading && (
         <p className="text-[10px] text-pulse-text-3 text-center mt-4 leading-relaxed">
-          Only scorecards submitted before judges were revealed count.
-          Minimum 3 eligible fights required to appear.
+          Decision fights only · blind-scored · min 3 to appear.<br/>
+          Round% = agreement with judge majority.
         </p>
       )}
     </div>

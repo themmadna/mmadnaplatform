@@ -125,8 +125,10 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
     if (p?.f1_score == null || p?.f2_score == null) return;
     setSaving(s => ({ ...s, [round]: true }));
     try {
-      // Post-reveal edit on historical fight → mark ineligible
-      if (judgesRevealed) {
+      // Post-reveal edit on a live fight → mark ineligible.
+      // Historical fights are always judgesRevealed=true from load, so skip this flag —
+      // eligibility for historical fights is determined by forfeited only.
+      if (judgesRevealed && !isHistorical) {
         if (isGuest) guestStorage.setScorecardState(fight.id, { modified_after_reveal: true });
         else await dataService.upsertScorecardState(fight.id, { modified_after_reveal: true });
         setScorecardState(s => ({ ...(s || {}), modified_after_reveal: true }));

@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-13 (session end — 6b test done, 6c complete, 6f MVP complete; next: leaderboard audit)
-Next session: full breakdown of how leaderboard accuracy works + audit against real data to verify correctness
+Last updated: 2026-04-13 (leaderboard audit + overhaul: decisions-only filter, round accuracy, eligibility bug fix)
+Next session: display_name setter in profile UI (deferred from 6f), or Phase 5 weight class analytics
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -105,12 +105,13 @@ One analytics page per division. All computable from existing tables. Join key: 
   - Green/red dot indicating correct winner pick (normN comparison vs fights.winner)
   - Click navigates to fight detail via onFightClick prop
 
-### 6f. Leaderboard — MVP complete ✅
+### 6f. Leaderboard — complete ✅
 
-- [x] `get_leaderboard()` RPC — fight-winner accuracy, ranked, min 3 eligible fights
+- [x] `get_leaderboard()` RPC — decisions-only fight accuracy + round accuracy vs judge majority, ranked, min 3 eligible fights
 - [x] `display_name` column added to `profiles` (nullable; fallback: "Scorer #XXXX")
-- [x] `Leaderboard.js` — ranked table with skeleton, empty state, current-user highlight
+- [x] `Leaderboard.js` — 6-col table (Dec / Fight% / Rnds / Round%), skeleton, empty state, current-user highlight
 - [x] `dataService.getLeaderboard()` + wired in App.js (scores tab, accessed from Judging DNA)
+- [x] Eligibility bug fix — `leaderboard_eligible` redefined to `NOT forfeited AND NOT modified_after_reveal`; historical fights no longer incorrectly set `modified_after_reveal`
 - [ ] Weight class filter — deferred
 - [ ] `display_name` setter in profile UI — deferred
 

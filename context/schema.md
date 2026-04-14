@@ -167,7 +167,7 @@ Primary key: `(user_id, fight_id)`.
 | `forfeited` | boolean | NULL | default false |
 | `modified_after_reveal` | boolean | NULL | default false |
 | `judges_revealed_at` | timestamptz | NULL | |
-| `leaderboard_eligible` | boolean | GENERATED | `scored_blind AND NOT forfeited AND NOT modified_after_reveal` |
+| `leaderboard_eligible` | boolean | GENERATED | `NOT forfeited AND NOT modified_after_reveal` (changed 2026-04-13 — dropped `scored_blind`; historical fights were incorrectly setting `modified_after_reveal=true` on first round scored) |
 
 ---
 

@@ -14,26 +14,31 @@ Deploy script for leaderboard: `supabase/deploy_leaderboard.py`
 
 ## `get_leaderboard()`
 
-Returns ranked leaderboard of users by fight-winner accuracy on leaderboard-eligible scorecards.
+Returns ranked leaderboard of users by decision fight accuracy and round accuracy vs judge majority.
 
 ```
 Returns: json array [{
-  user_id,         -- uuid
-  display_name,    -- text | null (from profiles.display_name)
-  rank,            -- integer (RANK() window, ties share same rank)
-  fights_scored,   -- count of eligible fights
-  correct_picks,   -- fights where user's total scorecard picked the winner
-  accuracy_pct     -- ROUND(correct/total * 100, 1)
+  user_id,          -- uuid
+  display_name,     -- text | null (from profiles.display_name)
+  rank,             -- integer (RANK() window, ties share same rank)
+  fights_scored,    -- count of eligible decision fights
+  correct_picks,    -- fights where user's total scorecard picked the winner
+  fight_acc_pct,    -- ROUND(correct/total * 100, 1)
+  rounds_matched,   -- rounds from eligible fights that have judge_scores data
+  round_acc_pct     -- % of rounds where user agreed with judge majority (null if no judge data)
 }]
 ```
 
 **Implementation notes:**
-- Fight-level accuracy: user's f1/f2 totals compared to `fights.winner` via `fight_meta_details` full-name then last-name fallback
-- Only `leaderboard_eligible = TRUE` scorecards from `user_fight_scorecard_state` are counted
-- `fights.winner` must be non-null and non-empty; fights with unresolvable winner mapping excluded
-- Minimum 3 eligible fights required to appear
-- Tied on accuracy → ranked by fights_scored DESC
-- GRANT to `authenticated, anon` (public leaderboard, user_ids not exposed beyond display_name)
+- **Decision-only:** `fmd.method ILIKE 'Decision%'` — uses `fight_meta_details.method`, NOT `fights.ended_by_decision` (latter only set by Edge Function for live events, unreliable for historical)
+- **Fight accuracy:** user's f1/f2 totals compared to `fights.winner` via `fight_meta_details` full-name then last-name fallback
+- **Round accuracy:** judge join via `judge_scores date ±1 day + last-name split_part` — same pattern as `get_user_judging_profile`. Pivot → complete pairs → window majority vote → per-user aggregate
+- Only `leaderboard_eligible = TRUE` scorecards counted. Since 2026-04-13, `leaderboard_eligible = NOT forfeited AND NOT modified_after_reveal` (dropped `scored_blind` — see schema notes)
+- `fights.winner` must be non-null and non-empty; unresolvable winner mappings excluded
+- Minimum 3 eligible decision fights required to appear
+- Tied on fight_acc_pct → ranked by fights_scored DESC
+- GRANT to `authenticated, anon` (public leaderboard)
+- Deploy script: `supabase/deploy_leaderboard.py`
 
 ---
 

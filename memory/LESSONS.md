@@ -67,6 +67,16 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Phase 6 — Scoring & Leaderboard
+
+- **`modified_after_reveal` fires on first round scored for historical fights.** `judgesRevealed` is forced `true` at load time for completed fights (`|| isHistorical`), so the `if (judgesRevealed)` guard in `handleSubmitRound` fires immediately on first scoring — incorrectly flagging every historical fight as ineligible. Fix: `if (judgesRevealed && !isHistorical)`. Eligibility for historical fights is determined by `forfeited` only.
+- **`leaderboard_eligible` as a GENERATED column hides bugs when the source booleans are themselves wrong.** The column is consistent with its inputs — but if the inputs are incorrectly set, the generated value is wrong too. Always audit what's writing to `scored_blind`, `forfeited`, and `modified_after_reveal` before debugging the generated column itself.
+- **`handleReveal` never fires for historical fights** — the `!judgesRevealed` guard blocks it because `judgesRevealed` starts as `true`. Any logic that needs to run when a historical fight is "completed" must be triggered differently (e.g. in the last-round score submit path directly).
+- **Decision-only leaderboard uses `fmd.method ILIKE 'Decision%%'`, not `fights.ended_by_decision`.** `ended_by_decision` is only set by the Edge Function for live events — unreliable for historical fights. `fmd.method` is populated by the Phase 2 scraper for all fights.
+- **Round accuracy in the leaderboard reuses the exact judge-join pattern from `get_user_judging_profile`.** Date ±1 day window + last-name split_part match + pivot + window majority vote. Copy from there rather than reinventing.
+
+---
+
 ## RPC / SQL Patterns
 
 - **When two independently-computed percentages don't sum to 100%, normalize for display.** Show `s/(s+g)` and `g/(s+g)` so bar and labels agree. Keep raw values in the RPC; normalize only at the display layer.
