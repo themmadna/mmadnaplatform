@@ -18,6 +18,8 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   const [saving, setSaving]               = useState({});   // { [round]: bool }
   const [loaded, setLoaded]               = useState(false);
   const [activeRound, setActiveRound]     = useState(1);
+  const [showForfeitModal, setShowForfeitModal]     = useState(false);
+  const [pendingEditConfirm, setPendingEditConfirm] = useState(false);
 
   const isHistorical = fight.status === 'completed';
 
@@ -160,11 +162,31 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   };
 
   const handleLockRound = async () => {
+    // Warn before first edit after judges were explicitly revealed
+    const hasExplicitlyRevealed = !!scorecardState?.judges_revealed_at;
+    if (hasExplicitlyRevealed && !scorecardState?.modified_after_reveal && Object.keys(scores).length > 0) {
+      setPendingEditConfirm(true);
+      return;
+    }
     await handleSubmitRound(activeRound);
     // Auto-advance to next unscored round
     const next = rounds.find(r => r > activeRound && !scores[r])
       || rounds.find(r => r !== activeRound && !scores[r]);
     if (next) setActiveRound(next);
+  };
+
+  const confirmEdit = async () => {
+    setPendingEditConfirm(false);
+    await handleSubmitRound(activeRound);
+    const next = rounds.find(r => r > activeRound && !scores[r])
+      || rounds.find(r => r !== activeRound && !scores[r]);
+    if (next) setActiveRound(next);
+  };
+
+  const confirmForfeit = async () => {
+    setShowForfeitModal(false);
+    await handleReveal(scores, true);
+    onAllRoundsScored?.(); // unlock comparison in parent (needed for historical view-without-scoring)
   };
 
   // --- Render guards ---
@@ -423,6 +445,17 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
                 {isGuest ? '✓ Saved locally' : '✓ Saved'}
               </p>
             )}
+            {/* Historical fights: skip scoring and view judges directly */}
+            {isHistorical && scoredCount === 0 && !scorecardState?.judges_revealed_at && (
+              <div className="mt-4 pt-3 border-t border-white/[0.04] text-center">
+                <button
+                  onClick={() => setShowForfeitModal(true)}
+                  className="text-xs text-pulse-text-3 hover:text-pulse-text-2 underline transition-colors"
+                >
+                  Skip scoring — view judges directly
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -468,6 +501,76 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
         </div>
       )}
 
+      {/* Forfeit / View Without Scoring Modal */}
+      {showForfeitModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+          onClick={() => setShowForfeitModal(false)}
+        >
+          <div
+            className="bg-pulse-surface border border-white/[0.08] rounded-t-[20px] w-full max-w-[430px] p-6 pb-8"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="font-heading font-bold text-base uppercase tracking-wider mb-3 text-center">
+              {isHistorical && scoredCount === 0 ? 'Skip Scoring?' : 'Forfeit Scorecard?'}
+            </div>
+            <p className="text-sm text-pulse-text-2 text-center mb-6">
+              {isHistorical && scoredCount === 0
+                ? "You'll view judges without scoring this fight. You can still come back and score it later."
+                : "Viewing judges now will make this scorecard ineligible for the leaderboard."}
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowForfeitModal(false)}
+                className="flex-1 py-3 font-heading font-bold text-sm uppercase tracking-wider bg-pulse-surface-2 border border-white/[0.08] text-pulse-text-2 rounded-card"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmForfeit}
+                className="flex-1 py-3 font-heading font-bold text-sm uppercase tracking-wider bg-pulse-red text-white rounded-card"
+              >
+                View Judges
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit After Reveal Modal */}
+      {pendingEditConfirm && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60"
+          onClick={() => setPendingEditConfirm(false)}
+        >
+          <div
+            className="bg-pulse-surface border border-white/[0.08] rounded-t-[20px] w-full max-w-[430px] p-6 pb-8"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="font-heading font-bold text-base uppercase tracking-wider mb-3 text-center">
+              Edit Score?
+            </div>
+            <p className="text-sm text-pulse-text-2 text-center mb-6">
+              Editing after judges have been revealed will make this scorecard ineligible for the leaderboard.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPendingEditConfirm(false)}
+                className="flex-1 py-3 font-heading font-bold text-sm uppercase tracking-wider bg-pulse-surface-2 border border-white/[0.08] text-pulse-text-2 rounded-card"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmEdit}
+                className="flex-1 py-3 font-heading font-bold text-sm uppercase tracking-wider bg-pulse-red text-white rounded-card"
+              >
+                Edit Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Submit / Progress / Forfeit */}
       {!judgesRevealed && (
         <div className="px-0 pb-2">
@@ -485,7 +588,7 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
           )}
           {!isLocked && !isHistorical && (
             <button
-              onClick={() => handleReveal(scores, true)}
+              onClick={() => setShowForfeitModal(true)}
               className="w-full mt-2 text-xs text-pulse-text-3 hover:text-pulse-text-2 underline text-center py-1 transition-colors"
             >
               Forfeit & view judges

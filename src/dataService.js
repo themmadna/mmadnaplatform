@@ -356,4 +356,11 @@ export const dataService = {
       .upsert({ user_id: user.id, ...updates });
     if (error) console.error('updateProfile error:', error);
   },
+
+  // --- LEADERBOARD ---
+  async getLeaderboard() {
+    const { data, error } = await supabase.rpc('get_leaderboard');
+    if (error) throw error;
+    return Array.isArray(data) ? data : [];
+  },
 };

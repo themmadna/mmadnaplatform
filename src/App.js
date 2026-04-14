@@ -12,6 +12,7 @@ import JudgeDirectory from './components/JudgeDirectory';
 import JudgeProfileView from './components/JudgeProfileView';
 import JudgeComparison from './components/JudgeComparison';
 import UserJudgeComparison from './components/UserJudgeComparison';
+import Leaderboard from './components/Leaderboard';
 
 // --- CombatDNA Card (The 5 Metrics + Intensity) ---
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
@@ -962,13 +963,13 @@ export default function UFCFightRating() {
   // Map views to bottom nav tabs (fightDetail inherits from where the user came from)
   const fightDetailSection = currentView === 'fightDetail'
     ? (previousView === 'profile' ? 'profile'
-      : ['dna', 'userJudgeComparison'].includes(previousView) ? 'scores'
+      : ['dna', 'userJudgeComparison', 'leaderboard'].includes(previousView) ? 'scores'
       : ['judgeComparison', 'judgeProfile', 'judges'].includes(previousView) ? 'analytics'
       : 'events')
     : null;
   const navTab = currentView === 'fightDetail' ? fightDetailSection
     : ['events', 'fights'].includes(currentView) ? 'events'
-    : ['dna', 'userJudgeComparison'].includes(currentView) ? 'scores'
+    : ['dna', 'userJudgeComparison', 'leaderboard'].includes(currentView) ? 'scores'
     : ['judges', 'judgeProfile', 'judgeComparison'].includes(currentView) ? 'analytics'
     : currentView === 'profile' ? 'profile'
     : 'events';
@@ -997,7 +998,7 @@ export default function UFCFightRating() {
         return { total: 3, active: 0 }; // judges directory
       }
       case 'scores':
-        return { total: 2, active: currentView === 'dna' ? 0 : 1 };
+        return { total: 2, active: currentView === 'dna' ? 0 : 1 }; // leaderboard + userJudgeComparison = depth 1
       case 'profile':
         return { total: 2, active: currentView === 'profile' ? 0 : 1 };
       default:
@@ -1401,14 +1402,22 @@ export default function UFCFightRating() {
                )}
 
                {dnaTab === 'judging' && (
-                 <JudgingDNACard
-                   profile={judgingProfile}
-                   scoringInsights={scoringInsights}
-                   currentTheme={currentTheme}
-                   scoredFights={scoredFights}
-                   onFightClick={handleFightClick}
-                   onCompareWithJudge={(name) => { setSelectedJudge(name); setCurrentView('userJudgeComparison'); }}
-                 />
+                 <>
+                   <JudgingDNACard
+                     profile={judgingProfile}
+                     scoringInsights={scoringInsights}
+                     currentTheme={currentTheme}
+                     scoredFights={scoredFights}
+                     onFightClick={handleFightClick}
+                     onCompareWithJudge={(name) => { setSelectedJudge(name); setCurrentView('userJudgeComparison'); }}
+                   />
+                   <button
+                     onClick={() => setCurrentView('leaderboard')}
+                     className="w-full mt-3 py-3.5 flex items-center justify-center gap-2 bg-pulse-surface border border-white/[0.06] rounded-fight font-heading font-bold text-sm uppercase tracking-wider text-pulse-text-2 hover:border-white/[0.15] transition-colors active:scale-[0.98]"
+                   >
+                     🏆 View Leaderboard
+                   </button>
+                 </>
                )}
             </div>
         )}
@@ -1450,6 +1459,15 @@ export default function UFCFightRating() {
             userProfile={judgingProfile}
             initialJudge={selectedJudge}
           />
+        )}
+
+        {currentView === 'leaderboard' && (
+          <div className="pb-20">
+            <Leaderboard
+              currentTheme={currentTheme}
+              onBack={() => setCurrentView('dna')}
+            />
+          </div>
         )}
 
         {/* --- 5. PROFILE PAGE (Reordered) --- */}

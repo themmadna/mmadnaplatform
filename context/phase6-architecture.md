@@ -205,3 +205,50 @@ Collapsible card inside `JudgingDNACard`, positioned after Scoring Tendencies an
 | Scored a historical fight with judges already visible | ❌ false |
 
 Computed as `GENERATED ALWAYS AS (scored_blind AND NOT forfeited AND NOT modified_after_reveal) STORED` — no app-layer enforcement needed for historical case.
+
+---
+
+## 6c — Forfeit UX & Ineligibility Modals (`RoundScoringPanel.js`)
+
+### Forfeit path (live/upcoming fights)
+- "Forfeit & view judges" link now opens `showForfeitModal` (bottom-sheet) instead of calling `handleReveal` directly
+- Modal: "Forfeit Scorecard?" + ineligibility warning → Cancel / View Judges
+- Proceed: calls `handleReveal(scores, true)` + `onAllRoundsScored?.()` to unlock comparison in parent
+
+### View without scoring (historical fights, no prior scores)
+- Shown when `isHistorical && scoredCount === 0 && !scorecardState?.judges_revealed_at`
+- Renders as a "Skip scoring — view judges directly" text link at the bottom of the scoring panel
+- Opens the same `showForfeitModal` with a softer message ("You'll view judges without scoring…")
+- Proceed: calls `handleReveal({}, true)` + `onAllRoundsScored?.()` → unlocks `hasUserScores` in FightDetailView
+
+### Edit after reveal modal
+- Triggered in `handleLockRound` when `scorecardState?.judges_revealed_at` is explicitly set (not just historical default) AND `!scorecardState?.modified_after_reveal` AND `scoredCount > 0`
+- First-edit-only gate — once `modified_after_reveal` is true, no further modal
+- Modal: "Edit Score?" + ineligibility warning → Cancel / Edit Anyway
+- Proceed: calls `confirmEdit()` which runs `handleSubmitRound` + auto-advances round
+
+---
+
+## 6f — Leaderboard
+
+### `get_leaderboard()` RPC
+- Fight-level accuracy: compares user's total scorecard winner pick to `fights.winner` (via `fight_meta_details` name match + last-name fallback)
+- Only `leaderboard_eligible = true` scorecards count
+- Minimum 3 eligible fights to appear
+- Ranked by accuracy_pct DESC, fights_scored DESC (tiebreak)
+- Returns: `user_id`, `display_name` (from profiles, nullable), `rank`, `fights_scored`, `correct_picks`, `accuracy_pct`
+- GRANT to `authenticated, anon`
+- Deploy: `supabase/deploy_leaderboard.py`
+
+### `profiles.display_name`
+- `text`, nullable — added via `deploy_leaderboard.py`
+- Used by leaderboard; falls back to "Scorer #XXXX" (last 4 chars of user_id) in Leaderboard.js
+- TODO: setter in profile UI (deferred)
+
+### `Leaderboard.js`
+- Accessed via "🏆 View Leaderboard" button at the bottom of the Judging DNA tab
+- `currentView === 'leaderboard'` → belongs to 'scores' navTab
+- `onBack` navigates to `'dna'`
+- Columns: rank (medal emoji for top 3), name, fights, correct, accuracy %
+- Current user row highlighted with red left border + "You" sub-label
+- Loading: 3 skeleton rows; Empty: trophy icon + message; eligibility note footer

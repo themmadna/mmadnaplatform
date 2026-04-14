@@ -8,6 +8,32 @@ Deploy script for judge directory: `supabase/deploy_judge_directory.py`
 Deploy script for judge profile: `supabase/deploy_judge_profile.py`
 Deploy script for judge comparison: `supabase/deploy_judge_comparison.py`
 Deploy script for user vs judge comparison: `supabase/deploy_user_judge_comparison.py`
+Deploy script for leaderboard: `supabase/deploy_leaderboard.py`
+
+---
+
+## `get_leaderboard()`
+
+Returns ranked leaderboard of users by fight-winner accuracy on leaderboard-eligible scorecards.
+
+```
+Returns: json array [{
+  user_id,         -- uuid
+  display_name,    -- text | null (from profiles.display_name)
+  rank,            -- integer (RANK() window, ties share same rank)
+  fights_scored,   -- count of eligible fights
+  correct_picks,   -- fights where user's total scorecard picked the winner
+  accuracy_pct     -- ROUND(correct/total * 100, 1)
+}]
+```
+
+**Implementation notes:**
+- Fight-level accuracy: user's f1/f2 totals compared to `fights.winner` via `fight_meta_details` full-name then last-name fallback
+- Only `leaderboard_eligible = TRUE` scorecards from `user_fight_scorecard_state` are counted
+- `fights.winner` must be non-null and non-empty; fights with unresolvable winner mapping excluded
+- Minimum 3 eligible fights required to appear
+- Tied on accuracy → ranked by fights_scored DESC
+- GRANT to `authenticated, anon` (public leaderboard, user_ids not exposed beyond display_name)
 
 ---
 

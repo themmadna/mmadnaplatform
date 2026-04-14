@@ -1,5 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-12 (post-event scraper confirmed — UFC 327 all 12/12 fights complete, judge scores present for all 6 decisions)
+Last updated: 2026-04-13 (session end — 6b test done, 6c complete, 6f MVP complete; next: leaderboard audit)
+Next session: full breakdown of how leaderboard accuracy works + audit against real data to verify correctness
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -60,12 +61,12 @@ One analytics page per division. All computable from existing tables. Join key: 
 - [x] Write `supabase/functions/poll-live-fights/index.ts` — 3 guards + ESPN polling + DB writes
 - [x] Deploy script: `supabase/deploy_poll_live_fights.py` — Supabase CLI + pg_cron + pg_net setup
 - [x] Deployed via CLI (`npx supabase functions deploy`) + pg_cron job active (`* * * * *`)
-- [ ] Test: verify `rounds_fought` is written correctly after a fight ends with no browser open
+- [x] Test: verify `rounds_fought` is written correctly after a fight ends with no browser open
 ### 6c. Scoring UI in FightDetailView — complete ✅
 
 **Deferred UX improvements (to be built during 6e.2):**
-- [ ] "View judges without scoring" option — triggers forfeit path (`forfeited = true`)
-- [ ] Ineligibility warning modal — shown before forfeiting or before editing post-reveal scores. Confirmation step (cancel / proceed), not just dismissible notice
+- [x] "View judges without scoring" option — triggers forfeit path (`forfeited = true`)
+- [x] Ineligibility warning modal — shown before forfeiting or before editing post-reveal scores. Confirmation step (cancel / proceed), not just dismissible notice
 
 ### 6d. Scorecard Reveal View — complete ✅
 ### 6e. Judging DNA Profile — complete ✅
@@ -104,10 +105,14 @@ One analytics page per division. All computable from existing tables. Join key: 
   - Green/red dot indicating correct winner pick (normN comparison vs fights.winner)
   - Click navigates to fight detail via onFightClick prop
 
-### 6f. Leaderboard — deferred
+### 6f. Leaderboard — MVP complete ✅
 
-- [ ] Leaderboard page: rank users by accuracy % — overall and by weight class
-- [ ] Only `leaderboard_eligible = true` scorecards count
+- [x] `get_leaderboard()` RPC — fight-winner accuracy, ranked, min 3 eligible fights
+- [x] `display_name` column added to `profiles` (nullable; fallback: "Scorer #XXXX")
+- [x] `Leaderboard.js` — ranked table with skeleton, empty state, current-user highlight
+- [x] `dataService.getLeaderboard()` + wired in App.js (scores tab, accessed from Judging DNA)
+- [ ] Weight class filter — deferred
+- [ ] `display_name` setter in profile UI — deferred
 
 ---
 
