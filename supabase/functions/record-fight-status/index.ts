@@ -9,6 +9,12 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+    const SERVICE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const ANON_KEY     = Deno.env.get('SUPABASE_ANON_KEY')!
+
+    // --- Auth: validate JWT via Supabase auth endpoint ---
+    // Checking header presence only is insufficient — validate the token.
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -16,6 +22,16 @@ Deno.serve(async (req) => {
       })
     }
 
+    const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      headers: { 'Authorization': authHeader, 'apikey': ANON_KEY },
+    })
+    if (!userRes.ok) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // --- Parse payload ---
     const { fight_id, status, scheduled_rounds, rounds_fought, ended_by_decision } = await req.json()
 
     if (!fight_id) {
@@ -24,15 +40,12 @@ Deno.serve(async (req) => {
       })
     }
 
-    // status is optional — metadata-only calls (scheduled_rounds etc.) pass no status
     if (status && !['in_progress', 'final'].includes(status)) {
       return new Response(JSON.stringify({ error: 'Invalid status: must be in_progress or final' }), {
         status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
-    const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const dbHeaders = {
       'Content-Type': 'application/json',
       'apikey': SERVICE_KEY,
@@ -53,7 +66,6 @@ Deno.serve(async (req) => {
     const fight = fights[0]
 
     // NULL-safe timestamp updates — only write timestamps that haven't been set yet.
-    // Safe against concurrent calls from multiple clients.
     const now = new Date().toISOString()
     const updates: Record<string, unknown> = {}
 

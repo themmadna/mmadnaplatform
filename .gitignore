@@ -3,3 +3,9 @@ node_modules/
 __pycache__/
 *.pyc
 .DS_Store
+.claude/settings.local.json
+build/
+nul
+*.log
+*.csv
+scoring_model/ml_dataset.csv
