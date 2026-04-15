@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-15 (P1 security audit items complete)
-Next session: P2 quick wins (delete CombatScatterPlot.js, IDOR check on get_leaderboard_user_detail, commit untracked deploy_scoring_insights.py), then Phase 5
+Last updated: 2026-04-15 (P2 quick wins complete)
+Next session: Phase 5 — Weight Class Analytics
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -203,6 +203,14 @@ Full 4-round multi-agent audit. Audit files in `memory/audits/2026-04-14/`.
 
 ### P2 — Tech debt backlog
 See `memory/audits/2026-04-14/decisions-and-actions.md` for full list.
+
+**Done (2026-04-15):**
+- [x] #10 Delete `CombatScatterPlot.js` (dead code)
+- [x] #13 Remove `@tailwindcss/postcss` — CRA never invokes it (no postcss.config.js); build confirmed clean
+- [x] #15 Move `@testing-library/*` to `devDependencies`
+- [x] #17 IDOR — reviewed SQL (no raw scores); revoked `anon` grant on `get_leaderboard_user_detail`, redeployed
+- [x] #18 `getLeaderboard` / `getLeaderboardUserDetail` now return safe defaults on error
+- [x] #24 `deploy_scoring_insights.py` confirmed committed (e197894)
 
 ---
 

@@ -359,14 +359,24 @@ export const dataService = {
 
   // --- LEADERBOARD ---
   async getLeaderboard() {
-    const { data, error } = await supabase.rpc('get_leaderboard');
-    if (error) throw error;
-    return Array.isArray(data) ? data : [];
+    try {
+      const { data, error } = await supabase.rpc('get_leaderboard');
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    } catch (e) {
+      console.error('getLeaderboard error:', e);
+      return [];
+    }
   },
 
   async getLeaderboardUserDetail(userId) {
-    const { data, error } = await supabase.rpc('get_leaderboard_user_detail', { p_user_id: userId });
-    if (error) throw error;
-    return data ?? { fights: [], rounds: [] };
+    try {
+      const { data, error } = await supabase.rpc('get_leaderboard_user_detail', { p_user_id: userId });
+      if (error) throw error;
+      return data ?? { fights: [], rounds: [] };
+    } catch (e) {
+      console.error('getLeaderboardUserDetail error:', e);
+      return { fights: [], rounds: [] };
+    }
   },
 };

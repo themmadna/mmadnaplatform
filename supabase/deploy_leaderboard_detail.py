@@ -248,7 +248,8 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION get_leaderboard_user_detail(uuid) TO authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_leaderboard_user_detail(uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION get_leaderboard_user_detail(uuid) FROM anon;
 """
 
 steps = [
