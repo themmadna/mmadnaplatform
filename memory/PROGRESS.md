@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-14 (leaderboard row expand: recent fights + recent rounds)
-Next session: Phase 5 weight class analytics, or deferred 6f items (weight class filter, display_name setter)
+Last updated: 2026-04-14 (full project audit + P0 security fixes)
+Next session: Deploy record-fight-status Edge Function fix, then Phase 5 or deferred 6f items
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -181,6 +181,28 @@ New "Scoring Insights" section in Judging DNA. Compares user's scoring against t
 - [x] **9.8** DriftSparkline UI
 - [x] **9.9** Tier 2/3 UI controls (gender/group splits)
 - [x] **9.10** Polish + context file updates
+
+---
+
+## Security Hardening — 2026-04-14 Audit (CONDITIONAL verdict)
+
+Full 4-round multi-agent audit. Audit files in `memory/audits/2026-04-14/`.
+
+### P0 — Fixed
+- [x] **RLS not enabled** — user_round_scores, user_fight_scorecard_state, user_votes, profiles all had no RLS. Any authenticated user could read any other user's data. Deployed `supabase/deploy_rls_policies.py`.
+- [x] **record-fight-status auth bypass** — Edge Function checked only header presence, not JWT validity. Fixed in `supabase/functions/record-fight-status/index.ts`. **Needs `npx supabase functions deploy record-fight-status` — not yet deployed.**
+- [x] **.gitignore corruption** — line 5 garbled, build/ and .claude/settings.local.json not excluded. Rewritten.
+
+### P1 — Backlog
+- [ ] Create `.env.example` documenting 5 required vars + Python 3.9
+- [ ] Create `requirements.txt` with pinned Python deps
+- [ ] Add `pre-push` git hook running `npm run build`
+- [ ] Version-control `update_fight_ratings` trigger SQL
+- [ ] Add FK constraint on `round_fight_stats` (orphaned rows bias DNA metrics)
+- [ ] ML model: load coefficients from `public/scoring_model.json` at runtime instead of hardcoded
+
+### P2 — Tech debt backlog
+See `memory/audits/2026-04-14/decisions-and-actions.md` for full list.
 
 ---
 

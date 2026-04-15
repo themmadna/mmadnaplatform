@@ -4,6 +4,15 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Security
+
+- **Supabase RLS is not enabled by default.** Tables are world-readable to any authenticated caller with the anon key unless you explicitly `ENABLE ROW LEVEL SECURITY` and add policies. Confirmed: user_round_scores, user_fight_scorecard_state, user_votes, and profiles were all open until 2026-04-14. Always deploy RLS policies in a version-controlled script — they are invisible if only configured in the dashboard.
+- **Supabase Edge Function auth: check header presence ≠ validate JWT.** `if (!authHeader)` only confirms the header exists — it does not validate the token. To validate: call `${SUPABASE_URL}/auth/v1/user` with the Authorization header and SUPABASE_ANON_KEY as apikey. If the response is not 200, reject the request. `SUPABASE_ANON_KEY` is available as a built-in env var in Edge Functions.
+- **`.gitignore` on Windows can silently corrupt to space-separated characters.** A UTF-16/encoding artifact can turn two rules on separate lines into one garbled line. Verify with `git status` — if an intended-excluded file shows as `??` untracked, the gitignore rule failed. Always check gitignore is actually working after editing on Windows.
+- **`build/` must be in `.gitignore` for CRA projects.** CRA bakes `REACT_APP_*` env vars into `build/static/js/*.js` at compile time. The anon key is intentionally public, but committing build artifacts creates unnecessary permanent history exposure.
+
+---
+
 ## Database & Migrations
 
 - **`ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` make migrations idempotent** — safe to re-run without side effects.
