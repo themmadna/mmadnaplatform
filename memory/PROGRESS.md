@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
 Last updated: 2026-04-14 (full project audit + P0 security fixes)
-Next session: Deploy record-fight-status Edge Function fix, then Phase 5 or deferred 6f items
+Next session: P1 quick wins from audit (.env.example, requirements.txt, pre-push hook, trigger SQL), then Phase 5 or deferred 6f items
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -190,7 +190,7 @@ Full 4-round multi-agent audit. Audit files in `memory/audits/2026-04-14/`.
 
 ### P0 — Fixed
 - [x] **RLS not enabled** — user_round_scores, user_fight_scorecard_state, user_votes, profiles all had no RLS. Any authenticated user could read any other user's data. Deployed `supabase/deploy_rls_policies.py`.
-- [x] **record-fight-status auth bypass** — Edge Function checked only header presence, not JWT validity. Fixed in `supabase/functions/record-fight-status/index.ts`. **Needs `npx supabase functions deploy record-fight-status` — not yet deployed.**
+- [x] **record-fight-status auth bypass** — Edge Function checked only header presence, not JWT validity. Fixed in `supabase/functions/record-fight-status/index.ts`. Deployed.
 - [x] **.gitignore corruption** — line 5 garbled, build/ and .claude/settings.local.json not excluded. Rewritten.
 
 ### P1 — Backlog
