@@ -7,38 +7,38 @@ import ScorecardComparison from './ScorecardComparison';
 import * as guestStorage from '../guestStorage';
 
 // --- SCORING MODEL (Logistic Regression, 82.50% holdout accuracy) ---
-// Feature order and scaler values from scoring_model/scoring_model.json
+// Coefficients loaded at runtime from /scoring_model.json (public/).
+// This ensures the UI always reflects the latest trained model without
+// requiring a code change when scoring_model.json is updated.
 
-const MODEL_COEFFICIENTS = [
-  0.5984894,   // kd_diff
-  0.49823478,  // sig_landed_diff
-  -0.04311526, // sig_pct_diff
-  0.60252248,  // head_landed_diff
-  0.06992616,  // body_landed_diff
-  -0.01308783, // leg_landed_diff
-  0.3025662,   // dist_landed_diff
-  0.18665426,  // clinch_landed_diff
-  0.50149266,  // ground_landed_diff
-  0.44193818,  // td_landed_diff
-  0.13082277,  // td_pct_diff
-  1.00686459,  // ctrl_sec_diff  ← #1 feature
-  0.44003705,  // sub_attempts_diff
-  0.50136414,  // sig_landed_ratio
-  0.0610226,   // head_landed_ratio
-  -0.28223356, // td_landed_ratio
-  -0.04561826, // ctrl_sec_ratio
-  0.0333875,   // ground_landed_ratio
-  -0.0,        // post_2016
-];
-const MODEL_INTERCEPT = -0.0;
-const SCALER_MEAN = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.77731692];
-const SCALER_STD  = [0.29094502, 12.68527486, 21.57676883, 10.05561868, 4.61613633, 4.68220269, 9.50068422, 3.8118023, 5.45206403, 1.2199469, 53.55316046, 116.89020126, 0.50086893, 0.1769014, 0.21193544, 0.41433619, 0.40837406, 0.43765438, 0.41604726];
+let _modelCoefficients = null;
+let _modelIntercept    = null;
+let _scalerMean        = null;
+let _scalerStd         = null;
+let _modelPromise      = null;
+
+function loadScoringModel() {
+  if (_modelPromise) return _modelPromise;
+  _modelPromise = fetch('/scoring_model.json')
+    .then(r => r.json())
+    .then(data => {
+      _modelCoefficients = data.coefficients;
+      _modelIntercept    = data.intercept;
+      _scalerMean        = data.scaler_mean;
+      _scalerStd         = data.scaler_std;
+    })
+    .catch(err => {
+      console.error('[ScoringModel] Failed to load scoring_model.json:', err);
+    });
+  return _modelPromise;
+}
 
 function sigmoid(x) { return 1 / (1 + Math.exp(-x)); }
 
 function scoreRound(f1Stats, f2Stats, eventYear) {
-  // No stats available — skip model
+  // No stats available, or model not yet loaded — skip model
   if (!f1Stats && !f2Stats) return { f1Score: 10, f2Score: 10, winner: 'draw', confidence: null };
+  if (!_modelCoefficients) return { f1Score: 10, f2Score: 10, winner: 'draw', confidence: null };
 
   const g = (s, k) => s?.[k] || 0;
 
@@ -76,9 +76,9 @@ function scoreRound(f1Stats, f2Stats, eventYear) {
   const features = [...diffs, ...ratios, post2016];
 
   const score = features.reduce((sum, f, i) => {
-    const scaled = (f - SCALER_MEAN[i]) / SCALER_STD[i];
-    return sum + MODEL_COEFFICIENTS[i] * scaled;
-  }, MODEL_INTERCEPT);
+    const scaled = (f - _scalerMean[i]) / _scalerStd[i];
+    return sum + _modelCoefficients[i] * scaled;
+  }, _modelIntercept);
 
   const p = sigmoid(score); // P(f1 wins round)
   const winner = p >= 0.5 ? 'f1' : 'f2';
@@ -404,6 +404,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
           console.log(`[FightDetail] Looking for: "${m.fighter1_name}" / "${m.fighter2_name}"`);
           console.log(`[FightDetail] normName f1="${normName(m.fighter1_name)}" f2="${normName(m.fighter2_name)}"`);
         }
+        await loadScoringModel();
         const eventYear = fight.event_date ? new Date(fight.event_date).getFullYear() : new Date().getFullYear();
         const roundData = buildRoundData(m, roundStats, judgeScores, eventYear);
         setRounds(roundData);

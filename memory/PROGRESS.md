@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-14 (full project audit + P0 security fixes)
-Next session: P1 quick wins from audit (.env.example, requirements.txt, pre-push hook, trigger SQL), then Phase 5 or deferred 6f items
+Last updated: 2026-04-15 (P1 security audit items complete)
+Next session: P2 quick wins (delete CombatScatterPlot.js, IDOR check on get_leaderboard_user_detail, commit untracked deploy_scoring_insights.py), then Phase 5
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -194,12 +194,12 @@ Full 4-round multi-agent audit. Audit files in `memory/audits/2026-04-14/`.
 - [x] **.gitignore corruption** — line 5 garbled, build/ and .claude/settings.local.json not excluded. Rewritten.
 
 ### P1 — Backlog
-- [ ] Create `.env.example` documenting 5 required vars + Python 3.9
-- [ ] Create `requirements.txt` with pinned Python deps
-- [ ] Add `pre-push` git hook running `npm run build`
-- [ ] Version-control `update_fight_ratings` trigger SQL
-- [ ] Add FK constraint on `round_fight_stats` (orphaned rows bias DNA metrics)
-- [ ] ML model: load coefficients from `public/scoring_model.json` at runtime instead of hardcoded
+- [x] Create `.env.example` documenting 4 required vars + Python 3.9 note
+- [x] Create `requirements.txt` with pinned Python deps
+- [x] Add `pre-push` git hook running `npm run build`
+- [x] Version-control `update_fight_ratings` trigger SQL → `supabase/deploy_triggers.py`
+- [x] Add FK constraint on `round_fight_stats` → `supabase/migrate_round_stats_fk.py`; backfilled 40,616 rows; patched UFC 327 Freire/Pitbull naming mismatch; FK + UNIQUE constraint on fights.fight_url deployed
+- [x] ML model: load coefficients from `public/scoring_model.json` at runtime; scoring_model.json copied to public/
 
 ### P2 — Tech debt backlog
 See `memory/audits/2026-04-14/decisions-and-actions.md` for full list.

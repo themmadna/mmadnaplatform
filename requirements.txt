@@ -1,0 +1,19 @@
+# Requires Python 3.9
+# Install: pip install -r requirements.txt
+
+# HTTP + scraping
+requests==2.32.5
+beautifulsoup4==4.11.1
+
+# Environment variables
+python-dotenv==1.2.1
+
+# Supabase client
+supabase==2.27.2
+
+# Date parsing (scraper pipeline)
+python-dateutil==2.8.2
+
+# ML model training (scoring_model/ scripts only)
+scikit-learn==1.0.1
+pandas==1.5.3
