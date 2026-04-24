@@ -6,6 +6,10 @@ import RoundScoringPanel from './RoundScoringPanel';
 import ScorecardComparison from './ScorecardComparison';
 import * as guestStorage from '../guestStorage';
 
+// 10-8 detection threshold: empirically derived from judge_scores data.
+// 83% of real 10-8 rounds had zero KD advantage, so KD alone is not the signal.
+const TEN_EIGHT_CONFIDENCE_THRESHOLD = 0.99;
+
 // --- SCORING MODEL (Logistic Regression, 82.50% holdout accuracy) ---
 // Coefficients loaded at runtime from /scoring_model.json (public/).
 // This ensures the UI always reflects the latest trained model without
@@ -84,9 +88,7 @@ function scoreRound(f1Stats, f2Stats, eventYear) {
   const winner = p >= 0.5 ? 'f1' : 'f2';
   const confidence = Math.max(p, 1 - p);
 
-  // 10-8 detection: model confidence >= 0.99 (empirically derived from judge_scores data —
-  // 83% of real 10-8 rounds had zero KD advantage, so KD alone is not the signal)
-  const is10_8 = confidence >= 0.99;
+  const is10_8 = confidence >= TEN_EIGHT_CONFIDENCE_THRESHOLD;
   const f1Score = winner === 'f1' ? 10 : (is10_8 ? 8 : 9);
   const f2Score = winner === 'f2' ? 10 : (is10_8 ? 8 : 9);
 

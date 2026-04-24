@@ -13,6 +13,10 @@ const STAT_LABELS = {
 const TIER_LABELS = ['Locked', 'Base', 'Gender Split', 'Group Split'];
 const TIER_COLORS = ['text-pulse-text-3', 'text-pulse-amber', 'text-pulse-blue', 'text-pulse-green'];
 
+const TIER1_MIN_ROUNDS = 15;          // matched rounds required to unlock Scoring Insights
+const CONSISTENCY_HIGH_THRESHOLD = 70; // normalized score above this → Highly Consistent
+const CONSISTENCY_MID_THRESHOLD = 40;  // normalized score above this → Moderately Consistent
+
 const lastName = (name) => name ? name.split(' ').pop() : '?';
 
 // --- Sub-components ---
@@ -30,7 +34,7 @@ const TierBadge = ({ tier, roundsWithStats, tier2Progress, tier3Progress }) => {
 
   let progressText = null;
   if (tier === 0) {
-    progressText = `${roundsWithStats} / 15 matched rounds to unlock`;
+    progressText = `${roundsWithStats} / ${TIER1_MIN_ROUNDS} matched rounds to unlock`;
   } else if (tier === 1 && tier2Progress) {
     const needed = tier2Progress.total_needed;
     progressText = needed > 0
@@ -45,7 +49,7 @@ const TierBadge = ({ tier, roundsWithStats, tier2Progress, tier3Progress }) => {
 
   let progressFrac = 0;
   if (tier === 0) {
-    progressFrac = Math.min(roundsWithStats / 15, 1);
+    progressFrac = Math.min(roundsWithStats / TIER1_MIN_ROUNDS, 1);
   } else if (tier === 1 && tier2Progress?.total_needed > 0) {
     progressFrac = roundsWithStats / (roundsWithStats + tier2Progress.total_needed);
   } else if (tier === 2 && tier3Progress?.groups_needed > 0) {
@@ -303,8 +307,8 @@ const ConsistencyGauge = ({ consistency }) => {
 
   // Normalize to 0-100: score ranges 0.5 (random) to 1.0 (perfectly consistent)
   const normalized = Math.max(0, Math.round(((score || 0.5) - 0.5) * 200));
-  const gaugeColor = normalized >= 70 ? 'text-pulse-green' : normalized >= 40 ? 'text-pulse-amber' : 'text-pulse-red';
-  const gaugeLabel = normalized >= 70 ? 'Highly Consistent' : normalized >= 40 ? 'Moderately Consistent' : 'Variable';
+  const gaugeColor = normalized >= CONSISTENCY_HIGH_THRESHOLD ? 'text-pulse-green' : normalized >= CONSISTENCY_MID_THRESHOLD ? 'text-pulse-amber' : 'text-pulse-red';
+  const gaugeLabel = normalized >= CONSISTENCY_HIGH_THRESHOLD ? 'Highly Consistent' : normalized >= CONSISTENCY_MID_THRESHOLD ? 'Moderately Consistent' : 'Variable';
 
   return (
     <div>
@@ -451,15 +455,15 @@ const ScoringInsightsCard = ({ insights }) => {
       <div className="bg-pulse-surface border border-dashed border-white/[0.06] rounded-fight p-6 text-center">
         <Lock className="mx-auto mb-2 text-pulse-text-3" size={20} />
         <p className="text-sm text-pulse-text-2 mb-3">
-          Score {15 - (rounds_with_stats || 0)} more matched round{15 - (rounds_with_stats || 0) === 1 ? '' : 's'} to unlock Scoring Insights
+          Score {TIER1_MIN_ROUNDS - (rounds_with_stats || 0)} more matched round{TIER1_MIN_ROUNDS - (rounds_with_stats || 0) === 1 ? '' : 's'} to unlock Scoring Insights
         </p>
-        <div className="w-48 mx-auto h-[4px] bg-pulse-surface-2 rounded-full overflow-hidden" role="progressbar" aria-valuenow={rounds_with_stats || 0} aria-valuemin={0} aria-valuemax={15}>
+        <div className="w-48 mx-auto h-[4px] bg-pulse-surface-2 rounded-full overflow-hidden" role="progressbar" aria-valuenow={rounds_with_stats || 0} aria-valuemin={0} aria-valuemax={TIER1_MIN_ROUNDS}>
           <div
             className="h-full bg-pulse-red rounded-full transition-all duration-700"
-            style={{ width: `${Math.round(((rounds_with_stats || 0) / 15) * 100)}%` }}
+            style={{ width: `${Math.round(((rounds_with_stats || 0) / TIER1_MIN_ROUNDS) * 100)}%` }}
           />
         </div>
-        <p className="text-[11px] text-pulse-text-3 mt-2">{rounds_with_stats || 0} / 15 rounds</p>
+        <p className="text-[11px] text-pulse-text-3 mt-2">{rounds_with_stats || 0} / {TIER1_MIN_ROUNDS} rounds</p>
       </div>
     );
   }

@@ -1,5 +1,8 @@
 import { Activity, Swords, Zap } from 'lucide-react';
 
+const INTENSITY_MAULER_THRESHOLD = 12;
+const INTENSITY_ACTIVE_THRESHOLD = 7;
+
 const CombatDNACard = ({ dna, currentTheme, baselines }) => {
 
   if (!dna) return (
@@ -23,8 +26,8 @@ const CombatDNACard = ({ dna, currentTheme, baselines }) => {
 
   const intensityScore = dna.intensityScore || 0;
   const getIntensityLabel = (score) => {
-      if (score > 12) return { text: "MAULER", color: "text-pulse-red" };
-      if (score > 7) return { text: "ACTIVE GRAPPLER", color: "text-pulse-amber" };
+      if (score > INTENSITY_MAULER_THRESHOLD) return { text: "MAULER", color: "text-pulse-red" };
+      if (score > INTENSITY_ACTIVE_THRESHOLD) return { text: "ACTIVE GRAPPLER", color: "text-pulse-amber" };
       return { text: "CONTROL FOCUSED", color: "text-pulse-blue" };
   };
   const intensityLabel = getIntensityLabel(intensityScore);
