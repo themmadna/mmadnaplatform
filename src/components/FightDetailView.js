@@ -97,8 +97,10 @@ function scoreRound(f1Stats, f2Stats, eventYear) {
 
 // --- DATA JOIN ---
 
-// Normalize fighter names for fuzzy matching across data sources
+// Normalize fighter names for fuzzy matching across data sources.
 // Strips punctuation and lowercases so "Lone'er" matches "Loner", etc.
+// CANONICAL copy — supabase/functions/poll-live-fights/index.ts mirrors this exactly.
+// If you change this, update that file too (and vice versa).
 function normName(name) {
   return (name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
 }

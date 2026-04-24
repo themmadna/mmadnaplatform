@@ -9,7 +9,9 @@
 //
 // Uses native fetch + Supabase REST API only — NO esm.sh imports.
 
-// ---------- helpers (mirrors FightDetailView.js) ----------
+// ---------- helpers ----------
+// normName + matchesFighter mirror src/components/FightDetailView.js exactly.
+// If you change either copy, update the other too.
 
 function normName(name: string): string {
   return (name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim()
