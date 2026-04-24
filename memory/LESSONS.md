@@ -13,6 +13,13 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Testing
+
+- **CRA's Jest ships with jsdom — `sessionStorage` works in tests with no mocking.** `beforeEach(() => sessionStorage.clear())` is the only setup needed for `guestStorage.js` tests. No manual mock or `jest.fn()` required.
+- **`CREATE INDEX IF NOT EXISTS` makes index deploy scripts idempotent** — safe to re-run at any time without checking whether the index already exists. Use this pattern in all `deploy_indexes.py` style scripts.
+
+---
+
 ## Database & Migrations
 
 - **`ALTER TABLE ... ADD COLUMN IF NOT EXISTS` and `CREATE TABLE IF NOT EXISTS` make migrations idempotent** — safe to re-run without side effects.
@@ -32,6 +39,7 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **Cancelled bouts don't get UFCStats fight pages** — they remain in the DB as `upcoming` indefinitely unless manually deleted. The scraper has no mechanism to detect cancellations.
 - **Replaced matchups leave two rows at the same `card_position`** — one `upcoming` (original opponent), one `completed` (replacement). The `upcoming` one should be deleted.
 - **No Contest results appear as `nc` in UFCStats HTML** — the scraper doesn't currently parse these, so NCs land as `completed` with `winner: null`. Fix by setting `winner: 'NC'` manually after auditing the fight page.
+- **Draw detection: count completed-status updates vs winner writes.** If Phase 2 updates N fights to `completed` but Phase 3 only writes N-1 winners, the missing fight is a draw (scraper skips winner writes for draws). Confirm with a DB query (`winner: null, status: completed`) and manually set `winner: 'Draw'`. Catch weight bouts are especially prone to draws.
 
 ---
 
