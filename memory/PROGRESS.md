@@ -1,5 +1,5 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-15 (P2 quick wins complete)
+Last updated: 2026-04-23 (audit #12, #16)
 Next session: Phase 5 — Weight Class Analytics
 Last refreshed: 2026-04-12
 
@@ -211,6 +211,10 @@ See `memory/audits/2026-04-14/decisions-and-actions.md` for full list.
 - [x] #17 IDOR — reviewed SQL (no raw scores); revoked `anon` grant on `get_leaderboard_user_detail`, redeployed
 - [x] #18 `getLeaderboard` / `getLeaderboardUserDetail` now return safe defaults on error
 - [x] #24 `deploy_scoring_insights.py` confirmed committed (e197894)
+
+**Done (2026-04-23):**
+- [x] #12 Extract `CombatDNACard` to `src/components/CombatDNACard.js`; removed 3 unused lucide imports from App.js; build confirmed clean
+- [x] #16 Created `supabase/deploy_indexes.py` — 6 indexes version-controlled: `judge_scores(date)`, `judge_scores(judge)`, `fight_meta_details(fight_url)`, `fight_meta_details(weight_class_clean)`, `round_fight_stats(event_name, bout)`, `user_round_scores(user_id, fight_id)`
 
 ---
 
