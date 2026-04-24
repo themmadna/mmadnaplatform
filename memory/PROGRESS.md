@@ -1,5 +1,5 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-23 (audit #11, #12, #16, #21)
+Last updated: 2026-04-23 (audit #11, #12, #14, #16, #21)
 Next session: Phase 5 — Weight Class Analytics
 Last refreshed: 2026-04-12
 
@@ -215,7 +215,8 @@ See `memory/audits/2026-04-14/decisions-and-actions.md` for full list.
 **Done (2026-04-23):**
 - [x] #12 Extract `CombatDNACard` to `src/components/CombatDNACard.js`; removed 3 unused lucide imports from App.js; build confirmed clean
 - [x] #16 Created `supabase/deploy_indexes.py` — 6 indexes version-controlled: `judge_scores(date)`, `judge_scores(judge)`, `fight_meta_details(fight_url)`, `fight_meta_details(weight_class_clean)`, `round_fight_stats(event_name, bout)`, `user_round_scores(user_id, fight_id)`
-- [x] #11 Cross-reference comments added to both `normName()` copies: FightDetailView.js (canonical) ↔ poll-live-fights/index.ts (mirror)
+- [x] #11 Cross-reference comments added to both `normName()` copies
+- [x] #14 First test file: `src/guestStorage.test.js` — 21 tests across all 8 exports, 21/21 passing: FightDetailView.js (canonical) ↔ poll-live-fights/index.ts (mirror)
 - [x] #21 Magic number thresholds extracted to named constants: `INTENSITY_MAULER_THRESHOLD`/`INTENSITY_ACTIVE_THRESHOLD` (CombatDNACard), `TEN_EIGHT_CONFIDENCE_THRESHOLD` (FightDetailView), `TIER1_MIN_ROUNDS`/`CONSISTENCY_HIGH_THRESHOLD`/`CONSISTENCY_MID_THRESHOLD` (ScoringInsightsCard)
 
 ---
