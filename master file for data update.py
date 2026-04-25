@@ -2,8 +2,10 @@ import os
 import sys
 import time
 import subprocess
+import argparse
+from typing import Optional
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import requests
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
@@ -34,6 +36,53 @@ stats_summary = {
     "new_metadata": 0,
     "new_round_rows": 0
 }
+
+def is_live_window():
+    """Return (True, event_name, msg) if in the active live-event window, else (False, None, msg)."""
+    today_utc     = datetime.now(timezone.utc).date().isoformat()
+    yesterday_utc = (datetime.now(timezone.utc) - timedelta(days=1)).date().isoformat()
+
+    # 2-day window mirrors poll-live-fights Edge Function — handles events that
+    # start late US time and cross UTC midnight (e.g. Saturday 11pm ET = Sunday UTC)
+    result = (
+        supabase_db.table("ufc_events")
+        .select("id, event_name, start_time, event_date")
+        .gte("event_date", yesterday_utc)
+        .lte("event_date", today_utc)
+        .order("event_date", desc=True)
+        .limit(1)
+        .execute()
+    )
+    if not result.data:
+        return False, None, "No event today or yesterday (UTC)"
+
+    event = result.data[0]
+    start_str = event.get("start_time")
+
+    # Fail-safe: if Phase 5 hasn't run, start_time is NULL — do not proceed
+    if not start_str:
+        return False, None, f"start_time not set for {event['event_name']} — run full pipeline first (Phase 5)"
+
+    start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+    now_utc  = datetime.now(timezone.utc)
+    window_open = start_dt + timedelta(minutes=20)
+
+    if now_utc < window_open:
+        mins = int((window_open - now_utc).total_seconds() / 60)
+        return False, None, f"Window opens in {mins} min ({event['event_name']})"
+
+    # Upper bound: check if any fight is still open (fight_ended_at IS NULL)
+    open_fights = (
+        supabase_db.table("fights")
+        .select("id")
+        .eq("event_name", event["event_name"])
+        .is_("fight_ended_at", "null")
+        .execute()
+    )
+    if not open_fights.data:
+        return False, None, f"All fights concluded for {event['event_name']}"
+
+    return True, event["event_name"], event["event_name"]
 
 # --- 2. UTILITY FUNCTIONS ---
 def get_texts(td): 
@@ -420,11 +469,19 @@ def sync_fights():
 
         # 4. AUTO-DELETE LOGIC
         # Only delete if: fights found on ufcstats AND nothing newly completed this
-        # run AND event date is strictly before today (local time, not UTC).
-        # Using local date avoids false positives when UTC has rolled over midnight
-        # but the event is still live in the user's timezone.
-        from datetime import date as _date
-        event_is_past = event.get('event_date', '') < _date.today().isoformat()
+        # run AND event is safely in the past (UTC datetime + 34-hour buffer).
+        # The 34-hour buffer covers UTC-8 events plus a 2-hour card overrun,
+        # preventing false deletions on GitHub Actions runners where date.today()
+        # is UTC rather than local time.
+        event_date_str = event.get('event_date', '')
+        if event_date_str:
+            event_day_end_utc = datetime(
+                *[int(x) for x in event_date_str.split('-')],
+                tzinfo=timezone.utc
+            ) + timedelta(days=1, hours=10)
+            event_is_past = datetime.now(timezone.utc) > event_day_end_utc
+        else:
+            event_is_past = False
         if len(scraped_ids) > 0 and not any_newly_completed and event_is_past:
             for f in existing_fights:
                 if f['status'] == 'upcoming' and f['id'] not in scraped_ids:
@@ -432,10 +489,21 @@ def sync_fights():
                     supabase_db.table("user_votes").delete().eq("fight_id", f['id']).execute()
                     supabase_db.table("fights").delete().eq("id", f['id']).execute()
 
-def sync_meta():
-    print("🚀 Phase 3: Syncing Metadata & Winners...")
-    # Fetch ALL completed fights — per-fight URL check skips already-processed ones
-    fights = supabase_db.table("fights").select("bout, fight_url").eq("status", "completed").order("id", desc=True).execute()
+def sync_meta(event_name: Optional[str] = None):
+    if event_name:
+        print(f"🚀 Phase 3: Syncing Metadata & Winners for event: {event_name}...")
+        fights = (
+            supabase_db.table("fights")
+            .select("bout, fight_url")
+            .eq("status", "completed")
+            .eq("event_name", event_name)
+            .order("id", desc=True)
+            .execute()
+        )
+    else:
+        print("🚀 Phase 3: Syncing Metadata & Winners...")
+        # Fetch ALL completed fights — per-fight URL check skips already-processed ones
+        fights = supabase_db.table("fights").select("bout, fight_url").eq("status", "completed").order("id", desc=True).execute()
     
     for f in fights.data:
         # Check if meta already exists to avoid duplicates
@@ -478,20 +546,24 @@ def sync_round_stats():
         
         for task in tasks.data:
             res = requests.get(task['fight_url'])
-            if res.status_code != 200: continue
+            if res.status_code != 200:
+                print(f"   ⚠️  Phase 4: HTTP {res.status_code} for {task['fight_url']} — skipping")
+                time.sleep(1)
+                continue
             soup = BeautifulSoup(res.text, 'html.parser')
             tables = soup.find_all('table', class_='b-fight-details__table js-fight-table')
             if len(tables) < 2: continue
-            
+
             cleaned_bout = clean_bout_name(task['bout'])
             main = parse_base_stats_table(tables[0], task['event_name'], cleaned_bout)
             zone = parse_zone_stats_table(tables[1], task['event_name'], cleaned_bout)
-            
+
             z_map = {(z["fighter_name"], z["round"]): z for z in zone}
             merged = [{**m, **z_map.get((m["fighter_name"], m["round"]), {})} for m in main]
-            
+
             supabase_db.table("round_fight_stats").upsert(merged, on_conflict="event_name,bout,round,fighter_name").execute()
             stats_summary["new_round_rows"] += len(merged)
+            time.sleep(1)
     except Exception as e:
         print(f"Skipping Round Stats (View might be missing): {e}")
 
@@ -654,20 +726,35 @@ def sync_judge_scores():
 
 # --- 6. EXECUTION ---
 if __name__ == "__main__":
-    start_time = time.time()
-    
-    # 1. Upcoming First
-    sync_upcoming_events()
-    sync_upcoming_fights()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--live", action="store_true",
+                        help="Live-event mode: Phases 2-4 only, guarded by start_time check")
+    args = parser.parse_args()
 
-    # 2. Completed/Updates Second
-    sync_events()
-    sync_fights()
-    sync_meta()
-    sync_round_stats()
-    sync_judge_scores()
-    sync_event_times()
-    
+    start_time = time.time()
+
+    if args.live:
+        in_window, event_name, detail = is_live_window()
+        if not in_window:
+            print(f"⏸  Live mode: skipping — {detail}")
+            sys.exit(0)
+        print(f"⚡ Live mode active — {detail}")
+        sync_fights()
+        sync_meta(event_name=event_name)
+        sync_round_stats()
+    else:
+        # 1. Upcoming First
+        sync_upcoming_events()
+        sync_upcoming_fights()
+
+        # 2. Completed/Updates Second
+        sync_events()
+        sync_fights()
+        sync_meta()
+        sync_round_stats()
+        sync_judge_scores()
+        sync_event_times()
+
     duration = round(time.time() - start_time, 2)
     print("\n" + "="*30)
     print(f"📊 SCRAPE SUMMARY ({duration}s)")

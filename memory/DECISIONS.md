@@ -101,6 +101,13 @@ Alternatives considered: Concept B — rejected after full mockup (too desktop-c
 
 ---
 
+## [2026-04-25] — GitHub Actions for live-event auto-scraping (`--live` mode)
+Decision: Added `--live` flag to the master scraper (Phases 2-4 only), triggered by a GitHub Actions cron every 25 minutes. A `is_live_window()` guard queries `ufc_events.start_time` (UTC) and exits safely if the event hasn't started or has concluded.
+Reasoning: Live-event stats scraping needs to run automatically without Bastian's machine being on. GitHub Actions is free for public repos (unlimited minutes). The existing Python scraper is reused as-is — no Deno/TypeScript rewrite needed. The guard mirrors the `poll-live-fights` Edge Function's 2-day UTC window logic exactly.
+Alternatives considered: Supabase Edge Function rewrite (Deno/TypeScript) — rejected, high cost to rewrite HTML scraping logic. Windows Task Scheduler — rejected, requires machine to be on. No automation — rejected, defeats the purpose.
+
+---
+
 ## [2026-03-28] — Separate `get_scoring_insights()` RPC from `get_user_judging_profile()`
 Decision: Phase 9 Scoring Insights use a dedicated `get_scoring_insights()` RPC, lazy-loaded on user action, not bundled into `get_user_judging_profile()`.
 Reasoning: Insights are computationally heavier (fingerprint + pattern break + disconnect + consistency + drift — all joined to `round_fight_stats`). Keeping the base DNA load fast matters because it runs on every DNA view open. Lazy loading insights only when the user expands the section avoids unnecessary DB load for users who don't engage with it.

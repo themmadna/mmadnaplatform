@@ -37,7 +37,8 @@ requests, beautifulsoup4, python-dotenv, supabase, python-dateutil
 Single canonical pipeline. Run after each UFC event to update the DB.
 
 ```bash
-python "master file for data update.py"
+python "master file for data update.py"          # Full pipeline (post-event, day-of)
+python "master file for data update.py" --live   # Live-event mode: Phases 2-4 only (see below)
 ```
 
 ### Phases
@@ -47,10 +48,27 @@ python "master file for data update.py"
 | **0** | Upcoming events & fights |
 | **1** | Completed events — consecutive-skip counter `STOP_AFTER=5` handles gaps |
 | **2** | Completed fights — includes auto-delete guard (see below) |
-| **3** | Fight metadata & winners — `sync_meta` scans ALL completed fights, no limit |
-| **4** | Round-by-round stats — upsert with `on_conflict` |
+| **3** | Fight metadata & winners — `sync_meta` scans ALL completed fights unless scoped by `event_name` |
+| **4** | Round-by-round stats — upsert with `on_conflict`; `time.sleep(1)` between requests |
 | **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights |
 | **6** | Judge scores — `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` |
+
+### `--live` Mode (GitHub Actions automated)
+
+Runs only Phases 2, 3, 4. Self-guarding via `is_live_window()`:
+
+1. Queries `ufc_events` for today or yesterday (UTC) — 2-day window handles events crossing UTC midnight
+2. **Fails safe** if `ufc_events.start_time` is NULL — Phase 5 must have run first (prerequisite)
+3. Checks `now >= start_time + 20 min` (UTC)
+4. Checks that at least one fight still has `fight_ended_at IS NULL` (upper bound — natural stop)
+
+**Triggered automatically** via `.github/workflows/live-event-scraper.yml` on a `*/25 * * * *` cron. On non-event days exits after one DB query. Stop condition is natural: once all fights have `fight_ended_at` set, the function returns False and the run exits cleanly.
+
+**Phase 3 scoping in `--live` mode:** `sync_meta(event_name=...)` limits the scan to today's event fights only, avoiding a full-history N+1 query scan. Full pipeline calls `sync_meta()` with no argument — unchanged behaviour.
+
+**Required GitHub Secrets:** `REACT_APP_SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (repo Settings → Secrets → Actions)
+
+**Phase 5 prerequisite:** `ufc_events.start_time` must be populated before live mode activates. Run the full pipeline at least once on event day before the event starts.
 
 ### Phase 0.5 Duplicate Detection
 
@@ -61,7 +79,7 @@ Uses `_bout_matches(f1, f2, existing_bout)` as a fallback after exact-string che
 Prevents deletion of fight records mid-event. **Both conditions required:**
 
 1. `len(scraped_ids) > 0 and not any_newly_completed and event_is_past`
-2. `event_is_past` uses `date.today().isoformat()` (local time, NOT `datetime.utcnow()`) — UTC rolls to next day before US events end
+2. `event_is_past` uses a UTC datetime + 34-hour buffer: `event_date midnight UTC + timedelta(days=1, hours=10)`. This covers UTC-8 (Hawaii) events plus a 2-hour card overrun. **Do not use `date.today()` — GitHub Actions runners are UTC and would falsely trigger the guard mid-event.**
 3. `any_newly_completed` = True if any fight updated upcoming→completed in this Phase 2 run
 
 `any_newly_completed` alone is insufficient: Phase 0.5 re-adds fights already completed in a prior run, so `any_newly_completed` stays False even though the event isn't over.

@@ -1,5 +1,5 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-25 (share button, Vercel deploy fix, spoiler toggle fix)
+Last updated: 2026-04-25 (live-event auto-scraper: --live flag, GitHub Actions workflow)
 Next session: Phase 5 — Weight Class Analytics
 Last refreshed: 2026-04-12
 
