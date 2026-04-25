@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, MapPin, Search, X, Dna, Sparkles, Settings2, Calendar, Scale } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, MapPin, Search, X, Dna, Sparkles, Settings2, Calendar, Scale, Share2, Check } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
@@ -263,6 +263,22 @@ export default function UFCFightRating() {
   const [scoringInsights, setScoringInsights] = useState(null);
   const [scoredFights, setScoredFights] = useState(null);
   const [spoilerDefault, setSpoilerDefault] = useState(true);
+  const [shareAppCopied, setShareAppCopied] = useState(false);
+
+  const handleShareApp = async () => {
+    const url = window.location.origin;
+    if (navigator.share) {
+      navigator.share({ title: 'MMA DNA', text: 'UFC fight analytics & scoring', url }).catch(() => {});
+      return;
+    }
+    try { await navigator.clipboard.writeText(url); } catch {
+      const el = document.createElement('textarea');
+      el.value = url; document.body.appendChild(el); el.select();
+      document.execCommand('copy'); document.body.removeChild(el);
+    }
+    setShareAppCopied(true);
+    setTimeout(() => setShareAppCopied(false), 2000);
+  };
   const savedScrollRef = useRef(0);
   const prevViewRef = useRef(null);
   const eventFightsRef = useRef([]);
@@ -1416,6 +1432,14 @@ export default function UFCFightRating() {
                 <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${spoilerDefault ? 'translate-x-7' : 'translate-x-1'}`} />
               </button>
             </div>
+
+            <button
+              onClick={handleShareApp}
+              className="w-full mt-4 py-4 bg-pulse-surface border border-white/[0.06] rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:border-white/20 transition-all text-pulse-text"
+            >
+              {shareAppCopied ? <Check size={16} className="text-green-400" /> : <Share2 size={16} />}
+              {shareAppCopied ? 'Link copied!' : 'Share MMA DNA'}
+            </button>
 
             {isGuest ? (
               <button onClick={handleGuestSignUp} className="w-full mt-4 py-4 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-xl font-bold hover:bg-yellow-500 hover:text-black transition-all">SIGN UP / LOG IN</button>
