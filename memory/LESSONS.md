@@ -33,6 +33,12 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Deployment
+
+- **Vercel auto-detects `requirements.txt` and tries to install Python deps — even for React projects.** If a `requirements.txt` exists, Vercel runs `uv pip install` on it before the Node build. Pinned old packages (e.g. `pandas==1.5.3`) break on Vercel's current Python (3.14+). Fix: add a `vercel.json` that explicitly sets `installCommand: "npm install"` to prevent Vercel ever touching the Python packages. The scraper deps are local-only and have no place in a Vercel build.
+
+---
+
 ## Post-Event Data Ops
 
 - **After every master scraper run, audit the updated event card before presenting the summary.** Check for: stale `upcoming` fights (cancelled bouts), duplicate `card_position` rows (replaced matchups — delete the upcoming one), and `completed` fights with `winner: null` (scrape the `fight_url` for No Contest or draw). Report findings to Bastian before making any changes.
