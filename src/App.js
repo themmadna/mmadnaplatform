@@ -1426,10 +1426,10 @@ export default function UFCFightRating() {
               </div>
               <button
                 onClick={() => handleSpoilerDefaultChange(!spoilerDefault)}
-                className={`relative w-12 h-6 rounded-full transition-colors flex-shrink-0 ${spoilerDefault ? 'bg-pulse-red' : 'bg-white/10'}`}
+                className={`inline-flex items-center w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${spoilerDefault ? 'bg-blue-500' : 'bg-white/25'}`}
                 aria-label={spoilerDefault ? 'Disable spoiler protection' : 'Enable spoiler protection'}
               >
-                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-transform ${spoilerDefault ? 'translate-x-7' : 'translate-x-1'}`} />
+                <span className={`inline-block w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 ${spoilerDefault ? 'translate-x-7' : 'translate-x-1'}`} />
               </button>
             </div>
 
