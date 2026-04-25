@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-25 (live-event auto-scraper: --live flag, GitHub Actions workflow)
-Next session: Phase 5 — Weight Class Analytics
+Last updated: 2026-04-25 (post-event automation: --post-event flag, post-event-scraper.yml GitHub Actions workflow)
+Next session: Phase 5 Weight Class Analytics
 Last refreshed: 2026-04-12
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
@@ -221,6 +221,14 @@ See `memory/audits/2026-04-14/decisions-and-actions.md` for full list.
 
 ---
 
+## Post-Event Automation ✅
+
+- [x] `is_post_event_window()` guard — `start_time + 5h` to `start_time + 48h`; fails safe if `start_time` NULL
+- [x] `--post-event` argparse flag — runs Phases 0/0.5/1/5/6 (not 2/3/4 — those are handled by `--live`)
+- [x] `.github/workflows/post-event-scraper.yml` — `0 */2 * * *` cron, same secrets as live scraper
+
+---
+
 ## Build Order
 
-6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5 → **Phase 8** ✅ → **Phase 9** ✅
+6e.2 Step 3 → Step 4 → Step 5 → User vs Judge ✅ → 6f (deferred) → Phase 5 → **Phase 8** ✅ → **Phase 9** ✅ → Post-Event Automation ✅

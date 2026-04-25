@@ -37,6 +37,52 @@ stats_summary = {
     "new_round_rows": 0
 }
 
+def is_post_event_window():
+    """Return (True, event_name, msg) if in the post-event processing window, else (False, None, msg).
+
+    Window: start_time + 5h  →  start_time + 48h
+    - Lower bound covers even long cards/overruns before mmadecisions posts scorecards.
+    - Upper bound gives 2 days for late scorecard uploads.
+    - start_time must be populated (Phase 5 prerequisite) — fails safe if NULL.
+    - Uses a 3-day lookback so events that cross UTC midnight are still found.
+    """
+    now_utc = datetime.now(timezone.utc)
+    three_days_ago = (now_utc - timedelta(days=3)).date().isoformat()
+    today_utc = now_utc.date().isoformat()
+
+    result = (
+        supabase_db.table("ufc_events")
+        .select("id, event_name, start_time, event_date")
+        .gte("event_date", three_days_ago)
+        .lte("event_date", today_utc)
+        .order("event_date", desc=True)
+        .limit(1)
+        .execute()
+    )
+
+    if not result.data:
+        return False, None, "No event in last 3 days"
+
+    event = result.data[0]
+    start_str = event.get("start_time")
+
+    if not start_str:
+        return False, None, f"start_time not set for {event['event_name']} — run Phase 5 first"
+
+    start_dt = datetime.fromisoformat(start_str.replace("Z", "+00:00"))
+    window_open  = start_dt + timedelta(hours=5)
+    window_close = start_dt + timedelta(hours=48)
+
+    if now_utc < window_open:
+        hrs = round((window_open - now_utc).total_seconds() / 3600, 1)
+        return False, None, f"Post-event window opens in {hrs}h ({event['event_name']})"
+
+    if now_utc > window_close:
+        return False, None, f"Post-event window expired ({event['event_name']})"
+
+    return True, event["event_name"], event["event_name"]
+
+
 def is_live_window():
     """Return (True, event_name, msg) if in the active live-event window, else (False, None, msg)."""
     today_utc     = datetime.now(timezone.utc).date().isoformat()
@@ -729,6 +775,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--live", action="store_true",
                         help="Live-event mode: Phases 2-4 only, guarded by start_time check")
+    parser.add_argument("--post-event", action="store_true",
+                        help="Post-event mode: Phases 0/0.5/1/5/6, window start_time+5h to +48h")
     args = parser.parse_args()
 
     start_time = time.time()
@@ -742,6 +790,17 @@ if __name__ == "__main__":
         sync_fights()
         sync_meta(event_name=event_name)
         sync_round_stats()
+    elif args.post_event:
+        in_window, event_name, detail = is_post_event_window()
+        if not in_window:
+            print(f"⏸  Post-event mode: skipping — {detail}")
+            sys.exit(0)
+        print(f"🔧 Post-event mode active — {detail}")
+        sync_upcoming_events()
+        sync_upcoming_fights()
+        sync_events()
+        sync_event_times()
+        sync_judge_scores()
     else:
         # 1. Upcoming First
         sync_upcoming_events()

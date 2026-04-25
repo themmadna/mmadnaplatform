@@ -37,8 +37,9 @@ requests, beautifulsoup4, python-dotenv, supabase, python-dateutil
 Single canonical pipeline. Run after each UFC event to update the DB.
 
 ```bash
-python "master file for data update.py"          # Full pipeline (post-event, day-of)
-python "master file for data update.py" --live   # Live-event mode: Phases 2-4 only (see below)
+python "master file for data update.py"              # Full pipeline (manual / day-of)
+python "master file for data update.py" --live       # Live-event mode: Phases 2-4 only (see below)
+python "master file for data update.py" --post-event # Post-event mode: Phases 0/0.5/1/5/6 (see below)
 ```
 
 ### Phases
@@ -69,6 +70,21 @@ Runs only Phases 2, 3, 4. Self-guarding via `is_live_window()`:
 **Required GitHub Secrets:** `REACT_APP_SUPABASE_URL`, `SUPABASE_SERVICE_KEY` (repo Settings → Secrets → Actions)
 
 **Phase 5 prerequisite:** `ufc_events.start_time` must be populated before live mode activates. Run the full pipeline at least once on event day before the event starts.
+
+### `--post-event` Mode (GitHub Actions automated)
+
+Runs Phases 0, 0.5, 1, 5, 6. Self-guarding via `is_post_event_window()`:
+
+1. Queries `ufc_events` for any event in the past 3 days (3-day lookback handles UTC-midnight crossings)
+2. **Fails safe** if `ufc_events.start_time` is NULL — Phase 5 must have run first (prerequisite)
+3. Window open: `start_time + 5h` — event safely over even accounting for overruns
+4. Window close: `start_time + 48h` — gives 2 days for late mmadecisions scorecard uploads
+
+**Triggered automatically** via `.github/workflows/post-event-scraper.yml` on a `0 */2 * * *` cron (every 2 hours). On non-event days exits after one DB query. All phases are idempotent — re-runs within the window are safe. Phase 6 (`scrape_mmadecisions.py`) stops after 10 consecutive existing records, so later runs in the window are fast.
+
+**Phase order:** sync_upcoming_events (0) → sync_upcoming_fights (0.5) → sync_events (1) → sync_event_times (5) → sync_judge_scores (6). Phases 2/3/4 are excluded — they were handled by `--live` during the event.
+
+**Required GitHub Secrets:** Same as live mode — `REACT_APP_SUPABASE_URL`, `SUPABASE_SERVICE_KEY`.
 
 ### Phase 0.5 Duplicate Detection
 
