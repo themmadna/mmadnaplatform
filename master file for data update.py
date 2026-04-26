@@ -449,7 +449,12 @@ def sync_fights():
         scraped_ids = []
         any_newly_completed = False
 
-        res = requests.get(event['event_url'], timeout=15)
+        try:
+            res = requests.get(event['event_url'], timeout=30)
+            res.raise_for_status()
+        except Exception as e:
+            print(f"   ⚠️  Phase 2: could not fetch {event['event_url']}: {e} — skipping event")
+            continue
         soup = BeautifulSoup(res.text, 'html.parser')
         tbody = soup.find('tbody')
 
@@ -799,6 +804,9 @@ if __name__ == "__main__":
         sync_upcoming_events()
         sync_upcoming_fights()
         sync_events()
+        sync_fights()
+        sync_meta(event_name=event_name)
+        sync_round_stats()
         sync_event_times()
         sync_judge_scores()
     else:
