@@ -494,6 +494,8 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
   const f2First = f2Name.split(' ').slice(0, -1).join(' ');
   const weightClass = meta?.weight_class_clean || meta?.weight_class || fight.weight_class || '';
 
+  const hasStats = rounds.some(rd => rd.f1Stats || rd.f2Stats);
+
   // Aggregate totals across all rounds for overview stats
   const overviewStats = rounds.length > 0 ? (() => {
     const sum = (key) => rounds.reduce((t, rd) => t + (rd.f1Stats?.[key] || 0), 0);
@@ -769,7 +771,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
               {/* === OVERVIEW TAB === */}
               {detailTab === 'overview' && (
                 <div className="animate-in fade-in duration-300">
-                  {overviewStats.length > 0 ? (
+                  {overviewStats.length > 0 && hasStats ? (
                     <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 mb-3">
                       <h3 className="font-heading font-bold text-sm uppercase tracking-widest text-pulse-text-2 mb-4">Fight Statistics</h3>
                       {overviewStats.map(row => (
@@ -783,7 +785,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
                   )}
 
                   {/* Round Breakdown Summary */}
-                  {rounds.length > 0 && (
+                  {rounds.length > 0 && hasStats && (
                     <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 mb-3">
                       <h3 className="font-heading font-bold text-sm uppercase tracking-widest text-pulse-text-2 mb-1">Round Breakdown</h3>
                       <p className="text-[11px] text-pulse-text-3 mb-4 flex items-center gap-1.5">
@@ -839,12 +841,12 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
               {/* === BY ROUND TAB === */}
               {detailTab === 'byRound' && (
                 <div className="animate-in fade-in duration-300">
-                  {rounds.length === 0 && (
+                  {(rounds.length === 0 || !hasStats) && (
                     <div className="bg-pulse-surface border border-white/[0.06] rounded-card p-6 text-center">
                       <p className="text-sm text-pulse-text-3 uppercase tracking-widest">Round stats not yet available for this fight.</p>
                     </div>
                   )}
-                  {rounds.map(rd => (
+                  {hasStats && rounds.map(rd => (
                     <div key={rd.round} className="bg-pulse-surface border border-white/[0.06] rounded-fight mb-3 overflow-hidden">
                       <div className="px-4 py-2.5 border-b border-white/[0.06]">
                         <p className="text-xs font-heading font-bold uppercase tracking-widest text-pulse-text-2">Round {rd.round}</p>
