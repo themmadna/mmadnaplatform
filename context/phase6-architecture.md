@@ -22,7 +22,7 @@ New tables: `user_round_scores`, `user_fight_scorecard_state` — see [schema.md
 ## RoundScoringPanel (`src/components/RoundScoringPanel.js`)
 
 ### Key props
-- `totalRoundsOverride` — used for live/upcoming fights to pass `scorableRounds` (bypasses meta-derived round count)
+- `totalRoundsOverride` — used for live/upcoming fights to pass `scorableRounds`, and for historical fights under spoiler protection to pass scheduled rounds (bypasses meta-derived round count)
 - `readOnly` — `judgesRevealed && !isHistorical && isLocked` — stays editable mid-fight for new rounds
 - `onAllRoundsScored` — fires when `Object.keys(newScores).length >= totalRounds`
 
@@ -35,6 +35,7 @@ New tables: `user_round_scores`, `user_fight_scorecard_state` — see [schema.md
 - Decisions → all `meta.round` rounds
 - Finishes → `meta.round - 1` (partial finishing round excluded from judging)
 - Live/upcoming → `totalRoundsOverride` from `scorableRounds`
+- Historical under spoiler protection → `totalRoundsOverride` from `fight.scheduled_rounds || parseInt(meta?.time_format?.match(/^(\d+)\s*Rnd/)?.[1]) || 3` (avoids revealing finish round from actual round count)
 
 ### Historical fights
 - `judgesRevealed = true` from the start

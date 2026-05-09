@@ -1,5 +1,5 @@
 # UFC Web App — Project Plan
-Last updated: 2026-04-25 (post-event automation: --post-event flag, post-event-scraper.yml GitHub Actions workflow)
+Last updated: 2026-05-09 (spoiler round count fix + Tier 1 progress badge fix)
 Next session: Phase 5 Weight Class Analytics
 Last refreshed: 2026-04-12
 
