@@ -728,22 +728,15 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
                     <p className="font-heading font-bold text-sm uppercase tracking-widest text-pulse-text mb-1">Results Hidden</p>
                     <p className="text-xs text-pulse-text-3">Score the fight to reveal stats, judges &amp; result.</p>
                   </div>
-                  {(() => {
-                    const isDecision = meta?.method?.toLowerCase().includes('decision');
-                    const roundsFought = parseInt((meta?.round || '').split(' ')[0]) || 0;
-                    const scoreableRounds = isDecision ? roundsFought : Math.max(0, roundsFought - 1);
-                    if (scoreableRounds === 0) return null;
-                    return (
-                      <RoundScoringPanel
-                        fight={fight}
-                        meta={meta}
-                        isLocked={false}
-                        currentTheme={currentTheme}
-                        onAllRoundsScored={() => { setHasUserScores(true); setSpoilerActive(false); }}
-                        isGuest={isGuest}
-                      />
-                    );
-                  })()}
+                  <RoundScoringPanel
+                    fight={fight}
+                    meta={meta}
+                    isLocked={false}
+                    currentTheme={currentTheme}
+                    onAllRoundsScored={() => { setHasUserScores(true); setSpoilerActive(false); }}
+                    totalRoundsOverride={fight.scheduled_rounds || parseInt(meta?.time_format?.match(/^(\d+)\s*Rnd/)?.[1]) || 3}
+                    isGuest={isGuest}
+                  />
                 </>
               )}
 
