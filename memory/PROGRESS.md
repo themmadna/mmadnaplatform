@@ -1,5 +1,5 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-09 (spoiler round count fix + Tier 1 progress badge fix)
+Last updated: 2026-05-09 (live fight auto-reveal + remove submit button)
 Next session: Phase 5 Weight Class Analytics
 Last refreshed: 2026-04-12
 

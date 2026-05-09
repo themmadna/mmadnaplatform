@@ -49,6 +49,12 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 
 ---
 
+## Scoring UI
+
+- **A "submit" step is only needed if the reveal timing matters for eligibility AND auto-reveal can't cover all paths.** If you add a `useEffect` that auto-reveals when the fight locks (covering the case where all rounds were saved before the final bell), the explicit submit button becomes dead UI and can be removed entirely. Check all trigger paths before adding any manual step.
+
+---
+
 ## Scrapers
 
 - **`.limit(N)` on a query that claims to be "incremental" is usually a bug.** The per-record existence check is the deduplication mechanism, not the limit.

@@ -47,7 +47,11 @@ New tables: `user_round_scores`, `user_fight_scorecard_state` — see [schema.md
 - Shows "✓ Saved locally" instead of DB confirmation
 
 ### Auto-reveal
-Only fires when `isLocked || isHistorical` — prevents premature lockout between live rounds.
+Two paths:
+1. **Saving the last round** (`handleSubmitRound`) — fires immediately if `isLocked || isHistorical` at save time.
+2. **Fight locks after all rounds already saved** — `useEffect` watching `isLocked` fires `handleReveal` when `isLocked` flips to true and `scoredCount >= totalRounds`. Covers the gap where a user finishes scoring before the final bell and then closes the app.
+
+The "Submit Full Scorecard" button was removed. Scorecard finalization is fully automatic. The "Forfeit & view judges" link remains for live in-progress fights only.
 
 ---
 

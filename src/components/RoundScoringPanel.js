@@ -97,6 +97,15 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
 
+  // Auto-reveal when fight locks and all rounds were already saved
+  useEffect(() => {
+    if (!loaded || judgesRevealed || isHistorical || !isLocked) return;
+    if (totalRounds > 0 && Object.keys(scores).length >= totalRounds) {
+      handleReveal(scores, false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLocked]);
+
   const handleReveal = async (currentScores, forfeited) => {
     const allDone = Object.keys(currentScores).length >= totalRounds;
     const scoredBlind = !forfeited && allDone;
@@ -573,29 +582,15 @@ const RoundScoringPanel = ({ fight, meta, isLocked, currentTheme, onAllRoundsSco
         </div>
       )}
 
-      {/* Submit / Progress / Forfeit */}
-      {!judgesRevealed && (
+      {/* Forfeit — live in-progress fights only */}
+      {!judgesRevealed && !isLocked && !isHistorical && (
         <div className="px-0 pb-2">
-          {scoredCount >= totalRounds && totalRounds > 0 ? (
-            <button
-              onClick={() => handleReveal(scores, false)}
-              className="w-full py-4 font-heading font-bold text-base uppercase tracking-wider bg-pulse-red text-white rounded-card transition-all active:scale-[0.98]"
-            >
-              Submit Full Scorecard
-            </button>
-          ) : (
-            <div className="w-full py-4 font-heading font-bold text-base uppercase tracking-wider bg-pulse-surface-2 text-pulse-text-3 border-2 border-dashed border-white/[0.06] rounded-card text-center">
-              Submit Scorecard ({totalRounds - scoredCount} remaining)
-            </div>
-          )}
-          {!isLocked && !isHistorical && (
-            <button
-              onClick={() => setShowForfeitModal(true)}
-              className="w-full mt-2 text-xs text-pulse-text-3 hover:text-pulse-text-2 underline text-center py-1 transition-colors"
-            >
-              Forfeit & view judges
-            </button>
-          )}
+          <button
+            onClick={() => setShowForfeitModal(true)}
+            className="w-full text-xs text-pulse-text-3 hover:text-pulse-text-2 underline text-center py-1 transition-colors"
+          >
+            Forfeit & view judges
+          </button>
         </div>
       )}
     </div>
