@@ -36,10 +36,16 @@ const TierBadge = ({ tier, roundsWithStats, tier2Progress, tier3Progress }) => {
   if (tier === 0) {
     progressText = `${roundsWithStats} / ${TIER1_MIN_ROUNDS} matched rounds to unlock`;
   } else if (tier === 1 && tier2Progress) {
-    const needed = tier2Progress.total_needed;
-    progressText = needed > 0
-      ? `${roundsWithStats} / ${roundsWithStats + needed} rounds for Gender Split`
-      : null;
+    const { mens = 0, womens = 0, mens_needed: mensMin = 15, womens_needed: womensMin = 15, total_needed: totalMin = 40 } = tier2Progress;
+    if (roundsWithStats < totalMin) {
+      progressText = `${roundsWithStats} / ${totalMin} rounds for Gender Split`;
+    } else if (womens < womensMin) {
+      const n = womensMin - womens;
+      progressText = `${n} more women's round${n === 1 ? '' : 's'} for Gender Split`;
+    } else if (mens < mensMin) {
+      const n = mensMin - mens;
+      progressText = `${n} more men's round${n === 1 ? '' : 's'} for Gender Split`;
+    }
   } else if (tier === 2 && tier3Progress) {
     const needed = tier3Progress.total_needed;
     progressText = needed > 0
@@ -50,8 +56,17 @@ const TierBadge = ({ tier, roundsWithStats, tier2Progress, tier3Progress }) => {
   let progressFrac = 0;
   if (tier === 0) {
     progressFrac = Math.min(roundsWithStats / TIER1_MIN_ROUNDS, 1);
-  } else if (tier === 1 && tier2Progress?.total_needed > 0) {
-    progressFrac = roundsWithStats / (roundsWithStats + tier2Progress.total_needed);
+  } else if (tier === 1 && tier2Progress) {
+    const { mens = 0, womens = 0, mens_needed: mensMin = 15, womens_needed: womensMin = 15, total_needed: totalMin = 40 } = tier2Progress;
+    if (roundsWithStats < totalMin) {
+      progressFrac = roundsWithStats / totalMin;
+    } else if (womens < womensMin) {
+      progressFrac = womens / womensMin;
+    } else if (mens < mensMin) {
+      progressFrac = mens / mensMin;
+    } else {
+      progressFrac = 1;
+    }
   } else if (tier === 2 && tier3Progress?.groups_needed > 0) {
     progressFrac = tier3Progress.qualifying_groups / (tier3Progress.qualifying_groups + tier3Progress.groups_needed);
   } else {
