@@ -39,11 +39,14 @@ This keeps token usage low while preserving specialized depth.
 ---
 name: your-skill-name          # kebab-case, no spaces, no capitals
 description: What it does. Use when user asks to [specific phrases]. # MUST include WHAT + WHEN
-license: MIT                   # optional
+version: 1.0.0                 # top-level; used for sync drift-detection
+claude_native_features:        # empty list = portable; list actual Claude dependencies used
+  - sub_agents                 # example entries: sub_agents, thinking, extended_thinking
+validates_with: |              # completion signal — what "done" looks like for this skill
+  BRAIN-USAGE.md logged, output artifact written, no step blocked by missing data
 metadata:                      # optional
   author: Name
-  version: 1.0.0
-  mcp-server: server-name
+  mcp-server: server-name      # omit if not applicable; version promoted to top level
 ---
 ```
 
@@ -52,6 +55,8 @@ metadata:                      # optional
 - No `README.md` inside the skill folder
 - No XML angle brackets (`< >`) anywhere in frontmatter
 - Description must be under 1024 characters and include trigger phrases
+- `claude_native_features` should list only features the skill actually depends on — empty list `[]` if the skill is portable
+- Every proposed field in `claude_native_features` or `validates_with` must have a named consumer before shipping
 
 ---
 
@@ -92,8 +97,8 @@ Workflow guidance layered on top of an existing MCP integration.
 
 **Good:**
 ```
-Analyzes Figma design files and generates developer handoff documentation. 
-Use when user uploads .fig files, asks for "design specs", "component documentation", 
+Analyzes Figma design files and generates developer handoff documentation.
+Use when user uploads .fig files, asks for "design specs", "component documentation",
 or "design-to-code handoff".
 ```
 
@@ -174,6 +179,9 @@ Suggest starting with the single most impactful skill — the one that reduces t
 - [ ] YAML frontmatter has `---` delimiters
 - [ ] `name` is kebab-case, no spaces, no capitals
 - [ ] `description` includes WHAT the skill does AND WHEN to use it (with trigger phrases)
+- [ ] `version` is a top-level field (not inside `metadata`)
+- [ ] `claude_native_features` present — empty list `[]` if no Claude-specific dependencies
+- [ ] `validates_with` describes the completion signal for this skill
 - [ ] No XML `< >` tags anywhere
 - [ ] Instructions are clear, actionable, and concise
 - [ ] Error handling is included

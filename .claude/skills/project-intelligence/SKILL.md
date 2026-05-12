@@ -1,9 +1,14 @@
 ---
 name: project-intelligence
 description: Initializes and maintains the Project Intelligence System — a two-brain memory architecture that gives Claude persistent context across a project's lifespan. Use when the user asks to set up project memory, initialize a new project, onboard Claude to an existing codebase, run a session start or session end, update project files, or reconcile existing Skills against the framework. Trigger phrases include: "set up project memory", "initialize project", "read my project context", "session start", "session end", "update progress", "reconcile skills", "audit skills".
+version: 0.1.0
+claude_native_features: []
+validates_with: |
+  memory/ files written after explicit approval,
+  CLAUDE.md router includes tier system and session contract
+division: Project Intelligence
 metadata:
   author: Bastian
-  version: 0.1.0
 ---
 
 # Project Intelligence System
@@ -77,6 +82,12 @@ These prompts are baked into CLAUDE.md for every project.
 **Session start:**
 Before we begin, read PROGRESS.md to orient yourself on current state.
 Summarize where we left off and confirm you're ready to proceed.
+
+Also check `Last refreshed:` in PROGRESS.md. If the line is missing or more than
+30 days old, flag: "Memory refresh is overdue — run /memory-refresh when ready."
+Non-blocking — proceed with the session regardless.
+
+Also check `provisional/` in the global brain (`~/bastian-global-brain/provisional/`). If any `.md` files are present (excluding README.md), flag: "[N] dreaming candidate(s) pending review — run /dreaming-review when ready." Non-blocking — proceed with the session regardless.
 
 **First session only (cold start):**
 If PROGRESS.md is empty or this is the first session, read PROJECT.md
@@ -230,6 +241,7 @@ When setting up the Project Intelligence System on a new project:
 2. Draft all memory files (see output instructions below)
 3. After approval, write final versions to disk
 4. Run Skill Reconciliation if a `.claude/skills/` directory exists
+5. **Audits migration:** If an `audits/` directory exists at the project root (written there by `/full-project-audit` before PIS was set up), move it to `memory/audits/` as part of initialization. Flag this to Bastian before moving.
 
 ### For a new project:
 
@@ -255,3 +267,8 @@ Never write files to their final destinations without explicit approval.
 **Malformed SKILL.md (cannot parse frontmatter):** Flag the file in the inventory as unreadable. Do not attempt to fix it automatically — surface it to the user with the raw content and ask how to proceed.
 
 **Conflicting Skills (significant overlap between two existing Skills):** Flag both in Section C with a merge recommendation. Describe what the merged Skill would cover and ask the user to decide.
+
+## Anti-rationalization — do NOT
+- Do not write any file to its final location before receiving explicit approval — the inline-chat review step is the human gate this skill depends on.
+- Do not auto-run Skill Reconciliation during initialization — it fires only when claude-skills-guide.md is being introduced to a project that already has skills.
+- Do not rate a missing skill's build priority without reading the project context — High/Medium/Low is a project-specific judgment, not an inherent property of the skill type.

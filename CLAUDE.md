@@ -116,7 +116,7 @@ Then read the relevant `context/` file(s) for the task area before writing any c
 
 ### REQUIRED concluding steps — do not skip
 After every task group:
-1. **Update `/memory/PROGRESS.md`** — mark completed tasks `[x]`. Add a `Last updated: [date]` line at the top.
+1. **Update `/memory/PROGRESS.md`** — mark completed tasks `[x]`. Add a `Last updated: [date]` line at the top. Use the five-field checkpoint format: **Goal · Constraints · Progress · Decisions · NextSteps**. Full field definitions in `~/bastian-global-brain/OPERATING.md`.
 2. **Update `memory/LESSONS.md`** — add entry under the relevant topic section (not chronologically)
 3. **Update `context/` files** — if the task changed anything covered by a context file, update it (see sync table below)
 4. **Flag anything else in `memory/` that needs updating** — list for Bastian's review, do not write unilaterally

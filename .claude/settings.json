@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$HOME/bastian-global-brain/.claude/hooks/session-start.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

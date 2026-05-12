@@ -4,6 +4,7 @@ __pycache__/
 *.pyc
 .DS_Store
 .claude/settings.local.json
+memory/.last-session-id
 build/
 nul
 *.log
