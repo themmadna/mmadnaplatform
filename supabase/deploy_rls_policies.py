@@ -107,6 +107,15 @@ CREATE POLICY "ufss_delete_own"
 -- ============================================================
 ALTER TABLE user_votes ENABLE ROW LEVEL SECURITY;
 
+-- Strip legacy permissive policies left over from before the April 2026 migration
+-- (audit memory/audits/2026-05-16/01-security.md §2). The "Votes are viewable by
+-- everyone" policy had qual=true and OR-combined with user_votes_select_own,
+-- effectively leaking every user's vote history. DROP IF EXISTS keeps this idempotent.
+DROP POLICY IF EXISTS "Votes are viewable by everyone" ON user_votes;
+DROP POLICY IF EXISTS "Authenticated users can vote"   ON user_votes;
+DROP POLICY IF EXISTS "Users can update own vote"      ON user_votes;
+DROP POLICY IF EXISTS "Users can delete own vote"      ON user_votes;
+
 DROP POLICY IF EXISTS "user_votes_select_own" ON user_votes;
 CREATE POLICY "user_votes_select_own"
   ON user_votes FOR SELECT

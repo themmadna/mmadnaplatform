@@ -26,6 +26,13 @@ MGMT_QUERY_URL = f"https://api.supabase.com/v1/projects/{project_ref}/database/q
 HEADERS = {"Authorization": f"Bearer {mgmt_key}", "Content-Type": "application/json"}
 
 SQL = """
+-- Drop the deprecated (p_user_id uuid) overload left over from before the
+-- no-arg refactor (audit memory/audits/2026-05-16/01-security.md §3).
+-- It was SECURITY DEFINER, granted to anon, and read user_round_scores for
+-- arbitrary UUIDs — broken today by renamed columns but a future "cleanup"
+-- pass could silently re-enable IDOR. Idempotent on redeploy.
+DROP FUNCTION IF EXISTS public.get_user_judging_profile(uuid);
+
 CREATE OR REPLACE FUNCTION get_user_judging_profile()
 RETURNS json
 LANGUAGE plpgsql

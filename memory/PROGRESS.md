@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-16 (App audit — 0 P0s, 8 P1s, 15 P2s identified, no fixes applied)
-Next session: triage app audit findings (see App Audit Backlog below) + outstanding Supabase backlog before Phase 5
+Last updated: 2026-05-16 (Phase A complete — all 3 Supabase P0s closed)
+Next session: Phase B — S-P1-4 backfill NULL winners, then S-P1-5/6/7
 Last refreshed: 2026-05-16
 
 ---
@@ -42,9 +42,16 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 - **NextSteps:** triage the P0s next session. Order: (1) drop `user_votes_backup`/`fight_ratings_backup`; (2) drop 4 stale `user_votes` policies; (3) drop deprecated `get_user_judging_profile(uuid)` overload. Then P1 scraper fixes.
 
 **P0 audit findings — fix before next user-facing release**
-- [ ] **A1.** Drop `user_votes_backup` + `fight_ratings_backup` (anon SELECT+DELETE, contains real user UUIDs) — `01-security.md §1`
-- [ ] **A2.** Drop 4 stale `user_votes` policies including `"Votes are viewable by everyone" qual=true` which OR-overrides own-only — `01-security.md §2`
-- [ ] **A3.** Drop deprecated `get_user_judging_profile(p_user_id uuid)` — SECURITY DEFINER, granted to anon, reads `user_round_scores` for any UUID — `01-security.md §3`
+- [x] **A1.** Drop `user_votes_backup` + `fight_ratings_backup` (anon SELECT+DELETE, contains real user UUIDs) — `01-security.md §1` ✅ 2026-05-16 via `supabase/cleanup_backup_tables.py`; pre-flight live=240/8560 vs backup=130/8500
+- [x] **A2.** Drop 4 stale `user_votes` policies including `"Votes are viewable by everyone" qual=true` which OR-overrides own-only — `01-security.md §2` ✅ 2026-05-16 via patched `deploy_rls_policies.py`; verified pg_policies returns only the 4 `_own` policies
+- [x] **A3.** Drop deprecated `get_user_judging_profile(p_user_id uuid)` — SECURITY DEFINER, granted to anon, reads `user_round_scores` for any UUID — `01-security.md §3` ✅ 2026-05-16 via patched `deploy_judging_profile.py`; pg_proc verified no-arg overload only
+
+**Phase A — Supabase P0 security batch — Checkpoint**
+- **Goal:** Close the 3 P0 leaks identified in the 2026-05-16 Supabase audit (anon-readable backup tables, stale permissive RLS on user_votes, deprecated SECURITY DEFINER overload).
+- **Constraints:** Destructive ops (DROP TABLE / DROP POLICY / DROP FUNCTION) — each requires Bastian's go-ahead and a pre-flight check. Tracking lives in `memory/audits/REMEDIATION-PLAN.md`.
+- **Progress:** Phase A complete. S-P0-1 dropped both backup tables (pre-flight live=240/8560 vs backup=130/8500). S-P0-2 stripped 4 legacy `user_votes` policies via patched `deploy_rls_policies.py` (pg_policies now shows only the 4 `_own`). S-P0-3 dropped the deprecated `get_user_judging_profile(uuid)` overload via patched `deploy_judging_profile.py` (pg_proc shows no-arg overload only).
+- **Decisions:** Established a consistent pattern across all 3 fixes — bake the destructive DROP into the existing deploy script (with `IF EXISTS`) rather than a one-off script. Future redeploys are self-healing: anyone re-running these scripts on a fresh environment will not reintroduce the deprecated objects.
+- **NextSteps:** Phase B — Supabase P1 data fixes. Start with S-P1-4 (backfill `fights.winner` for ids 8281, 8269, 8761 after verifying each against `fmd.method_details`). Then S-P1-6 (fight 8754 alias), S-P1-5 (rfs.fight_url scraper fix + 270-row backfill), S-P1-7 (user_votes FK CASCADE).
 
 **P1 audit findings**
 - [ ] **A4.** Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761) + audit Phase 3 `sync_meta` — `04-data-quality.md §2`

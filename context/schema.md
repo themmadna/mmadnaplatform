@@ -6,8 +6,6 @@ Full table and view definitions. Update this file whenever a migration adds, rem
 
 ## Tables
 
-> Backup tables `fight_ratings_backup` and `user_votes_backup` exist but are not actively used.
-
 ### `ufc_events`
 | Column | Type | Nullable |
 |---|---|---|
