@@ -10,6 +10,10 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **Supabase Edge Function auth: check header presence ≠ validate JWT.** `if (!authHeader)` only confirms the header exists — it does not validate the token. To validate: call `${SUPABASE_URL}/auth/v1/user` with the Authorization header and SUPABASE_ANON_KEY as apikey. If the response is not 200, reject the request. `SUPABASE_ANON_KEY` is available as a built-in env var in Edge Functions.
 - **`.gitignore` on Windows can silently corrupt to space-separated characters.** A UTF-16/encoding artifact can turn two rules on separate lines into one garbled line. Verify with `git status` — if an intended-excluded file shows as `??` untracked, the gitignore rule failed. Always check gitignore is actually working after editing on Windows.
 - **`build/` must be in `.gitignore` for CRA projects.** CRA bakes `REACT_APP_*` env vars into `build/static/js/*.js` at compile time. The anon key is intentionally public, but committing build artifacts creates unnecessary permanent history exposure.
+- **PostgreSQL RLS OR-combines PERMISSIVE policies for the same command.** A leftover `qual = true` SELECT policy on `user_votes` made the new `user_id = auth.uid()` own-only policy moot — `true OR own_only` reduces to `true`. When deploying RLS, always `DROP POLICY IF EXISTS` for any prior policy on the same (table, cmd) before `CREATE POLICY`, or run `pg_policies` after deploy to confirm only the intended policies remain.
+- **A new deploy script does not replace old policies/functions** unless it explicitly drops them. April's `deploy_rls_policies.py` added 4 new `user_votes_*_own` policies but left 4 pre-existing policies untouched. Same trap for `get_user_judging_profile(uuid)`: redeploying the no-arg overload doesn't drop the deprecated arg overload — Postgres treats them as separate signatures. Audit `pg_policies` and `information_schema.role_routine_grants` after every redeploy.
+- **Deprecated SECURITY DEFINER overloads remain exploitable.** A function granted to `anon` that takes `user_id` as a parameter and `SELECT`s from a user-data table under DEFINER privs is an IDOR vector even if the function later errors on renamed columns — the privileged SELECT runs before the error. Treat deprecated DEFINER functions as live security surface until DROPPED, not until "no longer called by the frontend."
+- **Supabase backup tables created by migrations need explicit RLS + grant treatment.** `user_votes_backup` and `fight_ratings_backup` were left with `relrowsecurity = false` and full anon CRUD grants. The default `CREATE TABLE` in Supabase gives `anon` SELECT+INSERT+UPDATE+DELETE+TRUNCATE. Either drop the backup table immediately after the migration succeeds, or apply the same RLS treatment as the source table.
 
 ---
 
@@ -30,6 +34,7 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **Don't change a DB schema mid-session without immediately updating both the data layer and the component.** The gap creates silent runtime errors (upsert inserts NULL into NOT NULL columns).
 - **Storing `f1_score`/`f2_score` (both sides explicitly) is cleaner than `fighter_scored_for`/`points`.** Makes community scorecard aggregation trivial (just avg the columns); no need to know fighter names in the query. Convert at DB boundaries only — keep component internal logic in UI terms.
 - **`accuracy_by_class` in RPCs must use a subquery to pre-aggregate before `json_agg`.** Cannot nest `AVG`/`COUNT` inside `json_agg(ORDER BY COUNT(*))` — PostgreSQL error 42803.
+- **Nullable FK columns silently rot.** `round_fight_stats.fight_url` was added with a FK (April migration) but kept nullable. The scraper's Phase 4 insert never started populating it, so 270 recent rows have NULL fight_url and the FK never fires. Either tighten to `NOT NULL` after the backfill, or pair the FK migration with a same-PR scraper change. A nullable FK does not enforce what its name suggests.
 
 ---
 
@@ -123,6 +128,14 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **`agreement_breakdown` using `COUNT(*) FILTER (WHERE ...)` in a single aggregation** over `round_accuracy` is cleaner than a separate CTE — eliminates one CTE entirely.
 - **Don't use `EXISTS` referencing a CTE name inside another CTE's WHERE clause.** SQL sees the CTE name as the table it's being filtered against, creating confusing scope. Use a JOIN instead.
 - **`agreement_breakdown` and `accuracy` have different denominators by design:** agreement uses all rounds with judge data (including split-decision rounds where majority_winner IS NULL); accuracy uses only rounds with a clear majority. If the UI surfaces both totals, add a tooltip.
+
+---
+
+## Audits
+
+- **"Phase complete" in PROGRESS.md is not proof; grep the code.** The 2026-05-16 app audit found Phase 8 (Pulse redesign) marked ✅ but 5 components (Login, JudgeDirectory, JudgeProfileView, JudgeComparison, UserJudgeComparison) still shipped `#D4AF37` gold + `text-white/40` failing-contrast tokens. Phase 8f.4 a11y marked ✅ but the RoundScoringPanel modals had no focus trap, no Escape handler, no focus restoration. When a phase touches many files and ships in stages, the checklist drifts ahead of the actual code. For any "phase ✅" claim that spans >3 files, audit by `grep`ing for the old pattern before declaring done.
+- **Static audits can verify everything except rendering and a11y interaction.** Static-only finds: token regressions (grep), debug `console.log`s left behind, dead code, dep drift, RPC signature drift, env var prefix discipline, service-key absence in build output. Cannot find without a browser: actual layout on mobile viewports, color contrast in computed CSS, modal focus behavior, screen-reader announcements, animation timing. State both halves explicitly in the audit deliverable rather than implying everything was checked. The 2026-05-16 app audit's `05-ui-ux.md` and `06-accessibility.md` headers both note "static-only" up front.
+- **Verify service-key absence in the compiled bundle, not just `src/`.** `grep SUPABASE_SERVICE src/` returning 0 matches is necessary but not sufficient — a transitive import could pull a fixture or copy-paste from a backup file. Confirm by `grep "service_role" build/static/js/main.*.js` after `npm run build`. (The string may appear in the `.map` sourcemap as a library identifier, which is fine — sourcemaps don't contain `.env` values, only variable names.)
 
 ---
 

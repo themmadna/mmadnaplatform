@@ -1,7 +1,60 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-09 (live fight auto-reveal + remove submit button)
-Next session: Phase 5 Weight Class Analytics
+Last updated: 2026-05-16 (App audit — 0 P0s, 8 P1s, 15 P2s identified, no fixes applied)
+Next session: triage app audit findings (see App Audit Backlog below) + outstanding Supabase backlog before Phase 5
 Last refreshed: 2026-05-16
+
+---
+
+## App Audit Backlog — 2026-05-16
+
+Full report in `memory/audits/2026-05-16-app/`. Read-only audit, no fixes applied.
+
+**Checkpoint**
+- **Goal:** comprehensive frontend audit — functional bugs, data fetching, components, perf, UI/UX (Pulse), a11y, auth/security, build/deps, tests, Playwright recommendation
+- **Constraints:** read-only — no code changes, no deploys; output a written report, fixes come after Bastian reviews
+- **Progress:** audit complete; 11 report files written; 0 P0s + 8 P1s + 15 P2s catalogued with proposed (unapplied) fixes in `99-followups.md`
+- **Decisions:** none yet — Bastian to triage. Two PROGRESS.md claims overstated reality: Phase 8 (Pulse) is partially regressed across 5 components, and Phase 8f.4 modal focus management is not implemented.
+- **NextSteps:** triage the P1s next session. Suggested order: (F3) delete debug `console.log`s — trivial; (F4) delete `App.test.js` non-test; (F5) delete `src/*copys/` dead code; (F6) clear guest sessionStorage on sign-out; (F1) Pulse token sweep across 5 judge/login components; (F2) modal focus trap.
+
+**P1 audit findings** (full detail in `memory/audits/2026-05-16-app/99-followups.md`)
+- [ ] **F1.** Pulse design regression in 5 components — `#D4AF37` gold + `text-white/40` failing contrast in JudgeDirectory / JudgeProfileView / JudgeComparison / UserJudgeComparison / Login.js
+- [ ] **F2.** RoundScoringPanel modals (forfeit + edit-after-reveal) lack focus trap, Escape handling, and focus restoration
+- [ ] **F3.** Verbose `console.log` debug block in FightDetailView.js:407-409 fires on every fight detail load
+- [ ] **F4.** `src/App.test.js` is a stale 200-line App snapshot, not a real test — Jest picks it up via the `.test.js` glob
+- [ ] **F5.** `src/App.js copys/` + `src/dataService.JS copys/` — 220 KB of committed dead code inside `src/`
+- [ ] **F6.** `handleSignOut` does not clear guest sessionStorage — leaks votes/scores to next visitor on shared device
+- [ ] **F7.** Zero memoization across `src/` — render thrash on every state change
+- [ ] **F8.** `For You` re-fetches recommendations on every vote (effect re-fires on userHistory change)
+
+**P2 audit findings:** 15 items — `npm audit fix` (40 vulns), inert `web-vitals`, duplicate `index.css` import, three name normalizers, modal aria, expandable-row `aria-expanded`, ESPN poll on hidden tab, etc. See `99-followups.md`.
+
+---
+
+## Supabase Audit Backlog — 2026-05-16
+
+Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
+
+**Checkpoint**
+- **Goal:** verify the live Supabase project for security, schema integrity, and data quality after recent changes (Post-Event Automation, etc.)
+- **Constraints:** read-only — no migrations, no grant changes, no key rotation; output a written report, fixes come after Bastian reviews
+- **Progress:** audit complete; 7 report files written; 3 P0s + 4 P1s + 7 P2s catalogued with proposed (undeployed) fixes in `99-followups.md`
+- **Decisions:** none yet — Bastian to triage. P0s are all stale-grant fallout from before the April migration, not new bugs.
+- **NextSteps:** triage the P0s next session. Order: (1) drop `user_votes_backup`/`fight_ratings_backup`; (2) drop 4 stale `user_votes` policies; (3) drop deprecated `get_user_judging_profile(uuid)` overload. Then P1 scraper fixes.
+
+**P0 audit findings — fix before next user-facing release**
+- [ ] **A1.** Drop `user_votes_backup` + `fight_ratings_backup` (anon SELECT+DELETE, contains real user UUIDs) — `01-security.md §1`
+- [ ] **A2.** Drop 4 stale `user_votes` policies including `"Votes are viewable by everyone" qual=true` which OR-overrides own-only — `01-security.md §2`
+- [ ] **A3.** Drop deprecated `get_user_judging_profile(p_user_id uuid)` — SECURITY DEFINER, granted to anon, reads `user_round_scores` for any UUID — `01-security.md §3`
+
+**P1 audit findings**
+- [ ] **A4.** Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761) + audit Phase 3 `sync_meta` — `04-data-quality.md §2`
+- [ ] **A5.** Populate `round_fight_stats.fight_url` in Phase 4 scraper + backfill 270 NULL rows — `02-schema.md §3`
+- [ ] **A6.** Resolve fight 8754 duplicate rfs (Pitbull/Freire alias) — `04-data-quality.md §4`
+- [ ] **A7.** Switch `user_votes.fight_id` FK to ON DELETE CASCADE for consistency — `02-schema.md §1`
+
+**P2 audit findings:** 7 items — `search_path` lock on SECURITY DEFINER fns, anon-grant drift, view refactor to `fight_url`, indexes. See `99-followups.md`.
+
+---
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
 
