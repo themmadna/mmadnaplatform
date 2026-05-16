@@ -108,6 +108,13 @@ Alternatives considered: Supabase Edge Function rewrite (Deno/TypeScript) — re
 
 ---
 
+## [2026-04-28] — `--post-event` flag + 2-hourly GitHub Actions cron for post-event scraping
+Decision: Added `--post-event` argparse flag (runs Phases 0/0.5/1/5/6, skips 2/3/4 which are handled by `--live`) plus a separate workflow `post-event-scraper.yml` running `0 */2 * * *`. Guarded by `is_post_event_window()` (event `start_time + 5h` to `start_time + 48h`, fails safe on NULL).
+Reasoning: Live-mode scraping covers the event window but post-event metadata, judge scorecards, and stats fill-ins continue arriving for ~48h. A separate slower cadence avoids hammering UFCStats/mmadecisions while still closing data gaps without manual triggering. Two-hour interval is enough to catch mmadecisions publishes (which trickle in over Sunday–Monday).
+Alternatives considered: Single combined cron with mode detection — rejected because the guards are time-window-different (live = `start_time` to `fight_ended_at`; post-event = `+5h` to `+48h`) and merging would muddy both. Manual trigger only — rejected, was the existing pain point.
+
+---
+
 ## [2026-03-28] — Separate `get_scoring_insights()` RPC from `get_user_judging_profile()`
 Decision: Phase 9 Scoring Insights use a dedicated `get_scoring_insights()` RPC, lazy-loaded on user action, not bundled into `get_user_judging_profile()`.
 Reasoning: Insights are computationally heavier (fingerprint + pattern break + disconnect + consistency + drift — all joined to `round_fight_stats`). Keeping the base DNA load fast matters because it runs on every DNA view open. Lazy loading insights only when the user expands the section avoids unnecessary DB load for users who don't engage with it.

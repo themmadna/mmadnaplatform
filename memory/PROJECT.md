@@ -198,9 +198,7 @@ ufc-web-app/                             # Git root
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Phase 6f — Leaderboard | Deferred | UI drafted; `leaderboard_eligible` column in DB; needs frontend |
 | CombatDNAVisual body map | Deferred | Landed vs attempted strike data investigation needed before completion |
-| "View judges without scoring" | Deferred | Forfeit path UX + ineligibility warning modal |
 
 ---
 
@@ -213,7 +211,6 @@ ufc-web-app/                             # Git root
 - **5d.** Most controversial division analysis
 
 ### Other Deferred
-- Automated scraper scheduling (post-event cron trigger)
 - Edge Function health-check / verification test for poll-live-fights
 - Additional body map granularity (landed vs attempted per zone)
 
@@ -403,7 +400,8 @@ ufc-web-app/                             # Git root
 | 4 | Judge analytics | Complete |
 | 4.5 | Fight recommendations | Complete |
 | 5 | Weight class analytics | **Not started** |
-| 6 | Live events + round scoring | 6b.2 complete; 6f (Leaderboard) deferred |
+| 6 | Live events + round scoring + Leaderboard | Complete |
 | 7 | Judge Directory + profiles + comparison | Complete |
-| 8 | UI overhaul (Pulse design system) | Complete; CombatDNAVisual deferred |
+| 8 | UI overhaul (Pulse design system) | Complete; CombatDNAVisual landed/attempted deferred |
 | 9 | Scoring Insights | Complete |
+| — | Post-Event Automation (`--post-event` GH Actions cron) | Complete |

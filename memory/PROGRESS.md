@@ -1,7 +1,7 @@
 # UFC Web App — Project Plan
 Last updated: 2026-05-09 (live fight auto-reveal + remove submit button)
 Next session: Phase 5 Weight Class Analytics
-Last refreshed: 2026-04-12
+Last refreshed: 2026-05-16
 
 Completed phases archived in `context/completed-phases.md`. Active and upcoming phases below.
 
