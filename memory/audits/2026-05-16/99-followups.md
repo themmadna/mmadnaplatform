@@ -35,15 +35,15 @@ Backlog with proposed fixes. **No deploy scripts written.** Build them only afte
 
 ## P1 — fix before next scraper run
 
-### 4. Backfill `fights.winner` for 3 NULL-winner decision fights
-```sql
--- Verify each first with method_details, then:
-UPDATE fights SET winner = 'Jan Blachowicz' WHERE id = 8281;
-UPDATE fights SET winner = 'Kennedy Nzechukwu' WHERE id = 8269;
-UPDATE fights SET winner = 'Chris Padilla' WHERE id = 8761;  -- verify against fmd.method_details
-```
-**Long-term:** audit Phase 3 `sync_meta()` for the "winner parsing fails silently on certain decision page variants" case.
-**Ref:** `04-data-quality.md §2`
+### 4. ~~Backfill `fights.winner` for 3 NULL-winner decision fights~~ — **RESOLVED 2026-05-23**
+The audit premise was wrong. Bastian verified on ufcstats: all 3 fights (8281, 8269, 8761) are genuine **draws** — both fighters have "D" status. `fights.winner = NULL` is correct.
+
+Actions taken instead:
+- `supabase/fix_fmd_result_draws.py` — set `fmd.result = 'draw'` for 8269 + 8281 (8761 already had it)
+- `ScorecardComparison.js` + `FightDetailView.js` — render "Draw — {method}" instead of just method text when winner is NULL on a decision
+- `master file for data update.py` — added `rescrape_null_winner_decisions()` called from `sync_meta` so future stale rows get re-checked
+- See `04-data-quality.md §2` for the resolution writeup
+- New follow-ups split out: **#16** (method_details parser bug), **#17** (judge_scores fighter-inversion bug)
 
 ### 5. Populate `round_fight_stats.fight_url` on new inserts + backfill
 - **Scraper change:** include `fight_url` in Phase 4 upsert column list in `master file for data update.py`.
@@ -144,6 +144,23 @@ REVOKE EXECUTE ON FUNCTION update_fight_ratings() FROM PUBLIC, anon, authenticat
 -- service_role and the trigger continue to work
 ```
 **Ref:** `03-views-rpcs.md §1`
+
+---
+
+## Discovered 2026-05-23 during S-P1-4 investigation
+
+### 16. `fmd.method_details` parser drops the loser's score
+ufcstats renders judge scorecard text as `Junichiro Kamijo 28 - 29.` but the DB stores `Junichiro Kamijo: 29.` — the first number (loser's side) is lost and a colon is injected between name and score. Affects all draws and likely many wins too. Blocks the frontend "Judges total" comparison in ScorecardComparison for any fight scraped by the current parser.
+
+- **Investigate:** the parser at [master file for data update.py:191-194](master file for data update.py#L191-L194). The likely culprit is how `i.b-fight-details__text-item` / `i.b-fight-details__text-item_first` are zipped against labels, combined with the `v.text.replace(l.text, "")` strip. Need to fetch the actual HTML structure (blocked locally by ufcstats' Cloudflare JS challenge) to design the fix.
+- **Backfill:** after parser fix, re-scrape all fmd rows where method_details matches `r'^[A-Z][a-z]+ [A-Z][a-z]+: \d+\.'` (single-number-per-judge pattern) — and `IS NULL OR = ''` for fights where the details weren't captured at all.
+
+### 17. `judge_scores` has Solimar Miranda's fighters inverted on fight 8761
+DB stores Miranda's R1/R2/R3 as `Padilla 10/9/10, Mederos 9/10/8` (totals 29-27 Padilla); ufcstats shows `27 - 29` (i.e., the 29 went to Mederos, 27 to Padilla). Only this one judge on this one fight — Cleary and Rodriguez are correct.
+
+- **Investigate:** `scrape_mmadecisions.py` — under what condition would one judge's fighter columns get swapped? Possibly a layout variant on the mmadecisions scorecard page.
+- **Scope:** scan for similar inversions across the table. Compare each judge's total to the fight's "Decision - {X}" method label and flag inconsistencies.
+- **Fix:** patch scraper, then re-scrape affected scorecards.
 
 ---
 

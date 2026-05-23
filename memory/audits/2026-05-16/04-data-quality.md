@@ -22,7 +22,9 @@ The one "neither" bout is fight 8754 (UFC 327: Patricio Freire vs Aaron Pico) �
 
 ---
 
-## §2 P1 — 3 completed decision fights have NULL `fights.winner`
+## §2 ~~P1 — 3 completed decision fights have NULL `fights.winner`~~ — **RESOLVED 2026-05-23**
+
+**Original finding (incorrect premise):**
 
 ```
 id    event                                bout                                    method                method_details
@@ -31,25 +33,22 @@ id    event                                bout                                 
 8269  UFC Fight Night: Royval vs Kape      Kennedy Nzechukwu vs Marcus Buchecha    Decision - Unanimous  Mike Bell: 28., Ron McCarthy: 28., Tony Weeks: 28.
 ```
 
-The other two NULL-winner fights are legitimate (`method = 'Could Not Continue'` — id 8344 Aspinall vs Gane, id 8418 Reese vs Dumas).
+**Resolution (2026-05-23 investigation):**
+The audit assumed these were Phase 3 parser failures. Verification against ufcstats (screenshots from Bastian) showed **all 3 fights are genuine draws** — both fighters have "D" status on the ufcstats fight page. `fights.winner = NULL` is correct. No backfill needed.
 
-**Evidence query:**
-```sql
-SELECT f.id, f.event_name, f.bout, fmd.method, fmd.method_details
-FROM fights f LEFT JOIN fight_meta_details fmd ON fmd.fight_url = f.fight_url
-WHERE f.status='completed' AND (f.winner IS NULL OR f.winner='')
-  AND fmd.method ILIKE 'Decision%';
-```
+What this investigation actually uncovered (now tracked separately):
 
-**Impact:** `get_leaderboard()` excludes fights with NULL winner from its `correct_picks` count, so users who scored these 3 fights get fight_acc denominator without numerator credit. Frontend "Result banner" can't render a green/red dot.
+1. **`fmd.method_details` parser drops the loser's score** on draws (and possibly other fights). ufcstats renders `Junichiro Kamijo 28 - 29.` but the DB has `Junichiro Kamijo: 29.` — first score lost, colon injected. See `99-followups.md` item **#16**.
 
-**Root cause hypothesis:** Phase 3 (`sync_meta`) parses the per-fight detail page and writes `winner` to BOTH `fights` and `fight_meta_details`. The fmd row has correct `method_details` showing the judges' scorecards. Either:
-- `winner` parsing failed silently when the fight URL was first ingested (HTML structure variant on certain fights), and the row never got rescraped.
-- The scraper writes `winner` only when the row is created, never on update.
+2. **`fmd.result = 'unknown'`** for 8269 + 8281 (`unknown` is not a value the current parser emits — `parse_fight_meta_details` only sets `"win"` or `"draw"`). Fixed via `supabase/fix_fmd_result_draws.py`: both rows now `result = 'draw'`. 8761 already had `result = 'draw'`.
 
-**Suggested fix (not deployed):**
-- Backfill these 3 rows manually: `UPDATE fights SET winner = '<name>' WHERE id IN (8281, 8269, 8761);`
-- Audit Phase 3 to handle the "majority decision blank method_details" case.
+3. **Frontend rendered "Decision - Majority" as the official result** for draws (no "Draw" wording). Fixed in `ScorecardComparison.js` and `FightDetailView.js` — draws now show "Draw — {method}" with a neutral pulse-surface banner.
+
+4. **Phase 3 had no re-scrape path** for fmd rows where the first scrape ran while ufcstats hadn't published the W/L status yet. Added `rescrape_null_winner_decisions()` to `master file for data update.py`; called from `sync_meta` after the existing insert loop. Re-scrapes any `winner IS NULL AND method ILIKE 'Decision%'` row; updates only if the parse now returns a winner (real draws stay untouched).
+
+5. **`judge_scores` for fight 8761 has Solimar Miranda's fighters inverted** vs ufcstats (DB says 29-27 Padilla, ufcstats says 27-29 / Mederos side higher). See `99-followups.md` item **#17**.
+
+**Other two NULL-winner fights** (`method = 'Could Not Continue'` — id 8344 Aspinall vs Gane, id 8418 Reese vs Dumas) are also legitimately winnerless.
 
 ---
 

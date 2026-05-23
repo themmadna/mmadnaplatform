@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-23 (F3/F4/F5/F6 closed — guest sessionStorage leak fixed + dead code purged)
-Next session: F1 Pulse contrast sweep, F2 modal focus trap, or Supabase Phase B (S-P1-4 backfill NULL winners)
+Last updated: 2026-05-23 (S-P1-4 resolved — 3 "NULL winner" fights are genuine draws; frontend now renders draws; Phase 3 has re-scrape guard)
+Next session: F1 Pulse contrast sweep, F2 modal focus trap, or Phase B continued (S-P1-5 rfs.fight_url backfill / S-P1-6 fight 8754 alias / S-P1-7 user_votes CASCADE)
 Last refreshed: 2026-05-16
 
 ---
@@ -53,8 +53,15 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 - **Decisions:** Established a consistent pattern across all 3 fixes — bake the destructive DROP into the existing deploy script (with `IF EXISTS`) rather than a one-off script. Future redeploys are self-healing: anyone re-running these scripts on a fresh environment will not reintroduce the deprecated objects.
 - **NextSteps:** Phase B — Supabase P1 data fixes. Start with S-P1-4 (backfill `fights.winner` for ids 8281, 8269, 8761 after verifying each against `fmd.method_details`). Then S-P1-6 (fight 8754 alias), S-P1-5 (rfs.fight_url scraper fix + 270-row backfill), S-P1-7 (user_votes FK CASCADE).
 
+**Phase B — S-P1-4 resolved (2026-05-23) — Checkpoint**
+- **Goal:** Close S-P1-4 (3 NULL-winner decision fights flagged by the 2026-05-16 audit).
+- **Constraints:** Verify each fight against ufcstats before writing winners; data-correctness fixes only — no schema changes.
+- **Progress:** Audit premise was wrong. Bastian's ufcstats screenshots confirmed all 3 fights (8281, 8269, 8761) are genuine draws — both fighters have "D" status. `fights.winner = NULL` is correct. **Real fixes done:** (b) `supabase/fix_fmd_result_draws.py` set `fmd.result = 'draw'` for 8269 + 8281 (8761 already had it); (c) `ScorecardComparison.js` + `FightDetailView.js` now render "Draw — {method}" when winner NULL on a decision; (e) `master file for data update.py` got `rescrape_null_winner_decisions()` called from `sync_meta` after the insert loop — re-scrapes NULL-winner decisions and updates only when the parse returns a winner. Frontend build clean (+150B JS, +11B CSS), 23/23 tests pass.
+- **Decisions:** Avoided the trap of "blindly trusting the audit" — re-verified against the source. The audit's `correct_picks` impact concern is moot because draws shouldn't count toward fight accuracy anyway.
+- **NextSteps:** Two new follow-ups (S-P1-16 method_details parser drops loser score; S-P1-17 judge_scores Miranda fighter inversion on fight 8761) added to REMEDIATION-PLAN.md Phase K. Resume Phase B with S-P1-5 (rfs.fight_url) next.
+
 **P1 audit findings**
-- [ ] **A4.** Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761) + audit Phase 3 `sync_meta` — `04-data-quality.md §2`
+- [x] **A4.** ~~Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761)~~ — **RESOLVED 2026-05-23**: audit premise wrong, all 3 are genuine draws (both fighters "D" on ufcstats). Frontend draw rendering added, Phase 3 re-scrape guard added, `fmd.result` cleaned up. Two new follow-ups split out (S-P1-16 method_details parser, S-P1-17 judge_scores Miranda inversion). See `04-data-quality.md §2`.
 - [ ] **A5.** Populate `round_fight_stats.fight_url` in Phase 4 scraper + backfill 270 NULL rows — `02-schema.md §3`
 - [ ] **A6.** Resolve fight 8754 duplicate rfs (Pitbull/Freire alias) — `04-data-quality.md §4`
 - [ ] **A7.** Switch `user_votes.fight_id` FK to ON DELETE CASCADE for consistency — `02-schema.md §1`

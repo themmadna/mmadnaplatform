@@ -649,11 +649,13 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
           </div>
 
           {/* RESULT BANNER */}
-          {meta?.winner && fight.status === 'completed' && !spoilerActive && (
-            <div className="mx-0 mb-3 bg-pulse-green/[0.08] border border-pulse-green/20 rounded-card px-4 py-3 flex items-center gap-2.5">
-              <div className="w-2 h-2 rounded-full bg-pulse-green shrink-0" />
-              <span className="font-heading font-semibold text-[15px] text-pulse-green tracking-wider">
-                {meta.winner} wins{meta.method ? ` via ${meta.method}` : ''}
+          {fight.status === 'completed' && !spoilerActive && meta && (meta.winner || meta.result === 'draw' || (!meta.winner && meta.method?.toLowerCase().startsWith('decision'))) && (
+            <div className={`mx-0 mb-3 rounded-card px-4 py-3 flex items-center gap-2.5 ${meta.winner ? 'bg-pulse-green/[0.08] border border-pulse-green/20' : 'bg-pulse-surface border border-white/[0.06]'}`}>
+              <div className={`w-2 h-2 rounded-full shrink-0 ${meta.winner ? 'bg-pulse-green' : 'bg-pulse-text-3'}`} />
+              <span className={`font-heading font-semibold text-[15px] tracking-wider ${meta.winner ? 'text-pulse-green' : 'text-pulse-text-2'}`}>
+                {meta.winner
+                  ? `${meta.winner} wins${meta.method ? ` via ${meta.method}` : ''}`
+                  : `Draw${meta.method ? ` — ${meta.method}` : ''}`}
                 {meta.round ? ` (R${meta.round}` : ''}
                 {meta.time ? `, ${meta.time})` : meta.round ? ')' : ''}
               </span>

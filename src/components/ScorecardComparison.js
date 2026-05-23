@@ -360,6 +360,15 @@ const ScorecardComparison = ({ fight, rounds, meta, currentTheme, hasUserScores,
                   {meta.method}{judgeScoreStrings.length > 0 && ` · ${judgeScoreStrings.join(', ')}`}
                 </div>
               </>
+            ) : (meta.result === 'draw' || meta.method?.toLowerCase().startsWith('decision')) ? (
+              <>
+                <div className="font-heading font-bold text-lg text-pulse-text-2">
+                  Draw
+                </div>
+                <div className="text-[13px] text-pulse-text-2 mt-1">
+                  {meta.method}{judgeScoreStrings.length > 0 && ` · ${judgeScoreStrings.join(', ')}`}
+                </div>
+              </>
             ) : (
               <div className="font-heading font-bold text-lg text-pulse-text-2">
                 {meta.method || 'No Contest'}

@@ -555,24 +555,24 @@ def sync_meta(event_name: Optional[str] = None):
         print("🚀 Phase 3: Syncing Metadata & Winners...")
         # Fetch ALL completed fights — per-fight URL check skips already-processed ones
         fights = supabase_db.table("fights").select("bout, fight_url").eq("status", "completed").order("id", desc=True).execute()
-    
+
     for f in fights.data:
         # Check if meta already exists to avoid duplicates
-        if supabase_db.table("fight_meta_details").select("id").eq("fight_url", f['fight_url']).execute().data: 
+        if supabase_db.table("fight_meta_details").select("id").eq("fight_url", f['fight_url']).execute().data:
             continue
-            
+
         data = parse_fight_meta_details(f['fight_url'])
         if data:
             data['bout'] = clean_bout_name(data.get('bout', ''))
-            
+
             # --- THE FIX ---
-            # Remove 'status' from the dictionary because the fight_meta_details table 
+            # Remove 'status' from the dictionary because the fight_meta_details table
             # doesn't have a 'status' column. (It only exists on the parent 'fights' table).
-            data.pop('status', None) 
+            data.pop('status', None)
 
             # 1. Insert the detailed metadata
             supabase_db.table("fight_meta_details").insert(data).execute()
-            
+
             # 2. Update the main 'fights' table with winner + weight_class
             fights_update = {}
             if data.get('winner'):
@@ -583,9 +583,61 @@ def sync_meta(event_name: Optional[str] = None):
                 if data.get('winner'):
                     print(f"🏆 Updating Winner for {data['bout']}: {data['winner']}")
                 supabase_db.table("fights").update(fights_update).eq("fight_url", f['fight_url']).execute()
-            
+
             stats_summary["new_metadata"] += 1
             time.sleep(1)
+
+    # Re-scrape pass — catches fights whose first scrape ran while ufcstats
+    # hadn't published the W/L status yet (winner came back None, fmd was
+    # inserted with winner=NULL and result='draw' by mistake). Filter excludes
+    # confirmed draws (result='draw') only once a re-scrape has corroborated
+    # them; on first re-scrape these still match and either get a real winner
+    # set or get reaffirmed as a draw.
+    rescrape_null_winner_decisions(event_name)
+
+
+def rescrape_null_winner_decisions(event_name: Optional[str] = None):
+    """Re-scrape fmd rows where winner is NULL on a completed Decision fight.
+    Updates fmd + fights.winner if the page now exposes a winner; leaves rows
+    untouched if the parse still returns winner=None (a real draw).
+    """
+    q = (
+        supabase_db.table("fight_meta_details")
+        .select("id, fight_url, method")
+        .is_("winner", "null")
+        .ilike("method", "Decision%")
+    )
+    stale = q.execute().data or []
+    if not stale:
+        return
+
+    if event_name:
+        event_urls = {
+            f['fight_url'] for f in (
+                supabase_db.table("fights")
+                .select("fight_url")
+                .eq("event_name", event_name)
+                .eq("status", "completed")
+                .execute().data or []
+            )
+        }
+        stale = [s for s in stale if s['fight_url'] in event_urls]
+        if not stale:
+            return
+
+    print(f"🔁 Phase 3 rescrape: {len(stale)} null-winner decision row(s) to re-check")
+    for s in stale:
+        data = parse_fight_meta_details(s['fight_url'])
+        if not data or not data.get('winner'):
+            time.sleep(1)
+            continue
+        supabase_db.table("fight_meta_details").update({
+            "winner": data['winner'],
+            "result": data.get('result', 'win'),
+        }).eq("id", s['id']).execute()
+        supabase_db.table("fights").update({"winner": data['winner']}).eq("fight_url", s['fight_url']).execute()
+        print(f"   🏆 Re-scrape filled winner for {s['fight_url']}: {data['winner']}")
+        time.sleep(1)
 
 def sync_round_stats():
     print("🚀 Phase 4: Syncing Round Stats...")

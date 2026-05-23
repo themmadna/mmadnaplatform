@@ -49,7 +49,7 @@ python "master file for data update.py" --post-event # Post-event mode: Phases 0
 | **0** | Upcoming events & fights |
 | **1** | Completed events — consecutive-skip counter `STOP_AFTER=5` handles gaps |
 | **2** | Completed fights — includes auto-delete guard (see below) |
-| **3** | Fight metadata & winners — `sync_meta` scans ALL completed fights unless scoped by `event_name` |
+| **3** | Fight metadata & winners — `sync_meta` scans ALL completed fights unless scoped by `event_name`. After the insert loop, calls `rescrape_null_winner_decisions()` to re-check any `winner IS NULL AND method ILIKE 'Decision%'` rows; updates only when the parse now returns a winner (real draws stay untouched). |
 | **4** | Round-by-round stats — upsert with `on_conflict`; `time.sleep(1)` between requests |
 | **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights |
 | **6** | Judge scores — `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` |
@@ -99,6 +99,12 @@ Prevents deletion of fight records mid-event. **Both conditions required:**
 3. `any_newly_completed` = True if any fight updated upcoming→completed in this Phase 2 run
 
 `any_newly_completed` alone is insufficient: Phase 0.5 re-adds fights already completed in a prior run, so `any_newly_completed` stays False even though the event isn't over.
+
+### Phase 3 NULL-Winner Decision Rescrape
+
+`sync_meta` runs `rescrape_null_winner_decisions(event_name)` after the main insert loop. The function selects `fight_meta_details` rows where `winner IS NULL AND method ILIKE 'Decision%'`, optionally filtered to the current event's URLs, and re-fetches each via `parse_fight_meta_details`. If the parse returns a winner, both `fmd.winner`/`fmd.result` and `fights.winner` are updated. If the parse still returns `winner=None` (a genuine draw — both fighters have "D" status on ufcstats), no update fires.
+
+**Why it exists:** the first scrape during `--live` mode can run before ufcstats has published the W/L status text for a just-finished fight. Without the re-scrape pass, the original skip-if-fmd-exists guard means the row never gets re-checked — the fight ends up permanently `winner=NULL` even when the page is updated minutes later. See `memory/LESSONS.md` "Post-Event Data Ops" for the verification protocol that prevents misclassifying real draws as a parser bug.
 
 ### Phase 2 Alias-Aware Fallback
 

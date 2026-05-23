@@ -5,7 +5,7 @@ Consolidated execution plan for the two May 16 audits:
 - App frontend: [`memory/audits/2026-05-16-app/`](2026-05-16-app/)
 
 **Status markers:** `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]` blocked
-**Last updated:** 2026-05-16
+**Last updated:** 2026-05-23
 
 ---
 
@@ -40,9 +40,12 @@ Consolidated execution plan for the two May 16 audits:
 
 ## Phase B — Supabase P1 data fixes
 
-- [ ] **S-P1-4** Backfill `fights.winner` for ids 8281, 8269, 8761
-  - Verify each against `fmd.method_details` first
-  - Followups #4
+- [x] **S-P1-4** ~~Backfill `fights.winner` for ids 8281, 8269, 8761~~ — **RESOLVED 2026-05-23**
+  - Audit premise was wrong: all 3 are genuine draws (both fighters "D" on ufcstats). `fights.winner = NULL` is correct.
+  - `supabase/fix_fmd_result_draws.py` corrected `fmd.result` from `'unknown'` → `'draw'` for 8269 + 8281 (8761 already had it).
+  - Frontend: `ScorecardComparison` + `FightDetailView` now render "Draw — {method}" when winner NULL on a decision.
+  - Scraper: added `rescrape_null_winner_decisions()` in `master file for data update.py`; called from `sync_meta` after the insert loop. Re-scrapes any NULL-winner decision; updates only if parse returns a winner (real draws untouched).
+  - Two new follow-ups split out: **#16** method_details parser bug, **#17** judge_scores fighter inversion on fight 8761.
 - [ ] **S-P1-6** Resolve fight 8754 Patricio Pitbull alias duplicate rfs rows
   - Followups #6
 - [ ] **S-P1-5** Add `fight_url` to Phase 4 upsert in `master file for data update.py` + one-time backfill of ~270 rows
@@ -116,6 +119,11 @@ Files: `Login.js`, `JudgeDirectory.js`, `JudgeProfileView.js`, `JudgeComparison.
 - [ ] **A-F24** Surface toast/banner on persistent search/recs failure
 - [ ] **A-F27** Review every `eslint-disable react-hooks/exhaustive-deps`
 
+## Phase K — New follow-ups from 2026-05-23 (S-P1-4 investigation)
+
+- [ ] **S-P1-16** `fmd.method_details` parser drops the loser's score (`28 - 29.` → `29.`). Needs ufcstats HTML access to design fix. Followups #16.
+- [ ] **S-P1-17** `judge_scores` has Solimar Miranda's fighters inverted on fight 8761. Investigate `scrape_mmadecisions.py` for the layout variant + scan for other affected scorecards. Followups #17.
+
 ---
 
 ## Progress log
@@ -124,3 +132,4 @@ Files: `Login.js`, `JudgeDirectory.js`, `JudgeProfileView.js`, `JudgeComparison.
 - 2026-05-16 — **S-P0-1 done.** Dropped `user_votes_backup` (130 rows) and `fight_ratings_backup` (8500 rows). Pre-flight confirmed live ≥ backup. Updated `context/schema.md`.
 - 2026-05-16 — **S-P0-2 done.** Dropped 4 legacy `user_votes` policies via `deploy_rls_policies.py` (DROPs now baked in for idempotent redeploy). `pg_policies` verified: only `user_votes_{select,insert,update,delete}_own` remain. Trigger `update_fight_ratings` unaffected (SECURITY DEFINER, bypasses RLS).
 - 2026-05-16 — **S-P0-3 done.** Dropped deprecated `get_user_judging_profile(uuid)` overload via patched `deploy_judging_profile.py`. `pg_proc` verified: only the no-arg overload remains. Frontend was already on the no-arg call (`dataService.js:271`). **Phase A complete.**
+- 2026-05-23 — **S-P1-4 resolved (audit premise was wrong).** Investigation against ufcstats screenshots: all 3 NULL-winner fights (8281, 8269, 8761) are genuine draws — both fighters have "D" status, no winner should be set. Real fixes: (b) `fmd.result = 'draw'` SQL update for 8269 + 8281 via `supabase/fix_fmd_result_draws.py`; (c) `ScorecardComparison` + `FightDetailView` now render "Draw — {method}" when winner NULL on a decision; (e) added `rescrape_null_winner_decisions()` to Phase 3 `sync_meta` so future stale rows get re-checked. Two new follow-ups discovered: S-P1-16 (method_details parser drops loser score) + S-P1-17 (judge_scores fighter inversion on fight 8761).
