@@ -42,3 +42,13 @@ const SPOILER_KEY = 'ufc_guest_spoiler_protection';
 // Default true — returns false only if explicitly set to 'false'
 export const getSpoilerDefault = () => sessionStorage.getItem(SPOILER_KEY) !== 'false';
 export const setSpoilerDefault = (val) => sessionStorage.setItem(SPOILER_KEY, String(val));
+
+// Wipes every ufc_guest_* key. Called on sign-out so the next visitor on a
+// shared device doesn't inherit the previous user's votes / scores / state.
+export const clearAll = () => {
+  sessionStorage.removeItem(GUEST_MODE_KEY);
+  sessionStorage.removeItem(VOTES_KEY);
+  sessionStorage.removeItem(SCORES_KEY);
+  sessionStorage.removeItem(STATE_KEY);
+  sessionStorage.removeItem(SPOILER_KEY);
+};

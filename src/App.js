@@ -784,7 +784,16 @@ export default function UFCFightRating() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [isGuest, userHistory]);
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); setSession(null); setCurrentView('events'); };
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    guestStorage.clearAll();
+    setIsGuest(false);
+    setSession(null);
+    setUserHistory([]);
+    setCombatDNA(null);
+    setComparisonData([]);
+    setCurrentView('events');
+  };
   const handleGuestSignUp = () => {
     guestStorage.setGuest(false);
     setIsGuest(false);

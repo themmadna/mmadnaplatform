@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-16 (Phase A complete — all 3 Supabase P0s closed)
-Next session: Phase B — S-P1-4 backfill NULL winners, then S-P1-5/6/7
+Last updated: 2026-05-23 (F6 closed — sign-out now clears guest sessionStorage)
+Next session: F3/F4/F5 trivial cleanups, or Supabase Phase B — S-P1-4 backfill NULL winners
 Last refreshed: 2026-05-16
 
 ---
@@ -22,7 +22,7 @@ Full report in `memory/audits/2026-05-16-app/`. Read-only audit, no fixes applie
 - [ ] **F3.** Verbose `console.log` debug block in FightDetailView.js:407-409 fires on every fight detail load
 - [ ] **F4.** `src/App.test.js` is a stale 200-line App snapshot, not a real test — Jest picks it up via the `.test.js` glob
 - [ ] **F5.** `src/App.js copys/` + `src/dataService.JS copys/` — 220 KB of committed dead code inside `src/`
-- [ ] **F6.** `handleSignOut` does not clear guest sessionStorage — leaks votes/scores to next visitor on shared device
+- [x] **F6.** `handleSignOut` does not clear guest sessionStorage — leaks votes/scores to next visitor on shared device ✅ 2026-05-23 — added `guestStorage.clearAll()` wiping all 5 `ufc_guest_*` keys; `handleSignOut` calls it + resets userHistory/combatDNA/comparisonData/isGuest state; 2 new tests (23/23 passing); build clean (+31 B)
 - [ ] **F7.** Zero memoization across `src/` — render thrash on every state change
 - [ ] **F8.** `For You` re-fetches recommendations on every vote (effect re-fires on userHistory change)
 

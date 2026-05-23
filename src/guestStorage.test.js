@@ -137,3 +137,32 @@ describe('getSpoilerDefault / setSpoilerDefault', () => {
     expect(gs.getSpoilerDefault()).toBe(true);
   });
 });
+
+// ── clearAll ──────────────────────────────────────────────────────────────────
+
+describe('clearAll', () => {
+  test('wipes every ufc_guest_* key', () => {
+    gs.setGuest(true);
+    gs.setVote(1, 'like');
+    gs.setScore(1, 1, 10, 9);
+    gs.setScorecardState(1, { scored_blind: true });
+    gs.setSpoilerDefault(false);
+
+    gs.clearAll();
+
+    expect(gs.isGuest()).toBe(false);
+    expect(gs.getVotes()).toEqual({});
+    expect(gs.getFightScores(1)).toEqual({});
+    expect(gs.getScorecardState(1)).toBeNull();
+    expect(gs.getSpoilerDefault()).toBe(true);
+  });
+
+  test('leaves unrelated sessionStorage entries alone', () => {
+    sessionStorage.setItem('unrelated_key', 'keep me');
+    gs.setVote(1, 'like');
+
+    gs.clearAll();
+
+    expect(sessionStorage.getItem('unrelated_key')).toBe('keep me');
+  });
+});
