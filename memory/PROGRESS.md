@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-23 (F6 closed — sign-out now clears guest sessionStorage)
-Next session: F3/F4/F5 trivial cleanups, or Supabase Phase B — S-P1-4 backfill NULL winners
+Last updated: 2026-05-23 (F3/F4/F5/F6 closed — guest sessionStorage leak fixed + dead code purged)
+Next session: F1 Pulse contrast sweep, F2 modal focus trap, or Supabase Phase B (S-P1-4 backfill NULL winners)
 Last refreshed: 2026-05-16
 
 ---
@@ -19,9 +19,9 @@ Full report in `memory/audits/2026-05-16-app/`. Read-only audit, no fixes applie
 **P1 audit findings** (full detail in `memory/audits/2026-05-16-app/99-followups.md`)
 - [ ] **F1.** Pulse design regression in 5 components — `#D4AF37` gold + `text-white/40` failing contrast in JudgeDirectory / JudgeProfileView / JudgeComparison / UserJudgeComparison / Login.js
 - [ ] **F2.** RoundScoringPanel modals (forfeit + edit-after-reveal) lack focus trap, Escape handling, and focus restoration
-- [ ] **F3.** Verbose `console.log` debug block in FightDetailView.js:407-409 fires on every fight detail load
-- [ ] **F4.** `src/App.test.js` is a stale 200-line App snapshot, not a real test — Jest picks it up via the `.test.js` glob
-- [ ] **F5.** `src/App.js copys/` + `src/dataService.JS copys/` — 220 KB of committed dead code inside `src/`
+- [x] **F3.** Verbose `console.log` debug block in FightDetailView.js:407-409 fires on every fight detail load ✅ 2026-05-23 — deleted 3 lines; kept `console.warn` for the no-judge-scores-yet ops case
+- [x] **F4.** `src/App.test.js` is a stale 200-line App snapshot, not a real test — Jest picks it up via the `.test.js` glob ✅ 2026-05-23 — deleted; `npm test` now runs only `guestStorage.test.js` (23/23)
+- [x] **F5.** `src/App.js copys/` + `src/dataService.JS copys/` — 220 KB of committed dead code inside `src/` ✅ 2026-05-23 — `git rm -r` both directories (13 + 6 = 19 files)
 - [x] **F6.** `handleSignOut` does not clear guest sessionStorage — leaks votes/scores to next visitor on shared device ✅ 2026-05-23 — added `guestStorage.clearAll()` wiping all 5 `ufc_guest_*` keys; `handleSignOut` calls it + resets userHistory/combatDNA/comparisonData/isGuest state; 2 new tests (23/23 passing); build clean (+31 B)
 - [ ] **F7.** Zero memoization across `src/` — render thrash on every state change
 - [ ] **F8.** `For You` re-fetches recommendations on every vote (effect re-fires on userHistory change)

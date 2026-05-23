@@ -399,14 +399,8 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
         );
         if (!m) return; // meta not yet available — render handles it gracefully
         setMeta(m);
-        // Debug: log judge_scores coverage for this fight
         if (judgeScores.length === 0) {
           console.warn(`[FightDetail] No judge_scores rows for date=${fight.event_date} — event may not be in DB yet`);
-        } else {
-          const jsNames = [...new Set(judgeScores.map(js => js.fighter))];
-          console.log(`[FightDetail] judge_scores fighters on ${fight.event_date}:`, jsNames);
-          console.log(`[FightDetail] Looking for: "${m.fighter1_name}" / "${m.fighter2_name}"`);
-          console.log(`[FightDetail] normName f1="${normName(m.fighter1_name)}" f2="${normName(m.fighter2_name)}"`);
         }
         await loadScoringModel();
         const eventYear = fight.event_date ? new Date(fight.event_date).getFullYear() : new Date().getFullYear();
