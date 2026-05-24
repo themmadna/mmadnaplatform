@@ -93,6 +93,7 @@ One row per (fighter, round). Unique constraint: `(event_name, bout, round, figh
 | `sig_strikes_clinch_attempted` | integer | NULL |
 | `sig_strikes_ground_landed` | integer | NULL |
 | `sig_strikes_ground_attempted` | integer | NULL |
+| `fight_url` | text | NULL | FK → `fights.fight_url` ON DELETE CASCADE. Added April 2026, backfilled May 2026 (S-P1-5). Phase 4 scraper stamps this on every new insert. |
 | `inserted_at` | timestamp | NULL (default now()) |
 
 ### `judge_scores`

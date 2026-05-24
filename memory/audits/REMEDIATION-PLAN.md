@@ -5,7 +5,7 @@ Consolidated execution plan for the two May 16 audits:
 - App frontend: [`memory/audits/2026-05-16-app/`](2026-05-16-app/)
 
 **Status markers:** `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]` blocked
-**Last updated:** 2026-05-23
+**Last updated:** 2026-05-24
 
 ---
 
@@ -48,7 +48,11 @@ Consolidated execution plan for the two May 16 audits:
   - Two new follow-ups split out: **#16** method_details parser bug, **#17** judge_scores fighter inversion on fight 8761.
 - [ ] **S-P1-6** Resolve fight 8754 Patricio Pitbull alias duplicate rfs rows
   - Followups #6
-- [ ] **S-P1-5** Add `fight_url` to Phase 4 upsert in `master file for data update.py` + one-time backfill of ~270 rows
+- [x] **S-P1-5** Add `fight_url` to Phase 4 upsert in `master file for data update.py` + one-time backfill of ~270 rows ✅ 2026-05-24
+  - Phase 4 upsert stamps `fight_url` from `task['fight_url']` (already returned by `fight_scraping_status`); zero extra HTTP
+  - `supabase/backfill_rfs_fight_url.py` cleared 334 rows across 6 events (270 from audit + 64 from a 6th event); pre-flight aborts if any (event, bout) can't be matched
+  - Post-state: 0 NULL `fight_url` rows in rfs
+  - Unblocks Phase C: S-P2-11 (view refactor) + S-P2-13 (index)
   - Followups #5
 - [ ] **S-P1-7** Switch `user_votes.fight_id` FK to `ON DELETE CASCADE`
   - Followups #7
@@ -133,3 +137,4 @@ Files: `Login.js`, `JudgeDirectory.js`, `JudgeProfileView.js`, `JudgeComparison.
 - 2026-05-16 — **S-P0-2 done.** Dropped 4 legacy `user_votes` policies via `deploy_rls_policies.py` (DROPs now baked in for idempotent redeploy). `pg_policies` verified: only `user_votes_{select,insert,update,delete}_own` remain. Trigger `update_fight_ratings` unaffected (SECURITY DEFINER, bypasses RLS).
 - 2026-05-16 — **S-P0-3 done.** Dropped deprecated `get_user_judging_profile(uuid)` overload via patched `deploy_judging_profile.py`. `pg_proc` verified: only the no-arg overload remains. Frontend was already on the no-arg call (`dataService.js:271`). **Phase A complete.**
 - 2026-05-23 — **S-P1-4 resolved (audit premise was wrong).** Investigation against ufcstats screenshots: all 3 NULL-winner fights (8281, 8269, 8761) are genuine draws — both fighters have "D" status, no winner should be set. Real fixes: (b) `fmd.result = 'draw'` SQL update for 8269 + 8281 via `supabase/fix_fmd_result_draws.py`; (c) `ScorecardComparison` + `FightDetailView` now render "Draw — {method}" when winner NULL on a decision; (e) added `rescrape_null_winner_decisions()` to Phase 3 `sync_meta` so future stale rows get re-checked. Two new follow-ups discovered: S-P1-16 (method_details parser drops loser score) + S-P1-17 (judge_scores fighter inversion on fight 8761).
+- 2026-05-24 — **S-P1-5 done.** Phase 4 upsert in `master file for data update.py` now stamps `fight_url` from the `fight_scraping_status` task dict (zero extra HTTP). `supabase/backfill_rfs_fight_url.py` cleared 334 NULL `fight_url` rows across 6 events (audit said 270; a 6th event had landed in the 8-day gap). Pre-flight sanity check confirmed every NULL row mapped to a fights row under bidirectional bout matching. Post-state verified: 0 NULL `fight_url` rows in rfs. Phase C deps (S-P2-11, S-P2-13) now unblocked.

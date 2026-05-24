@@ -50,7 +50,7 @@ python "master file for data update.py" --post-event # Post-event mode: Phases 0
 | **1** | Completed events — consecutive-skip counter `STOP_AFTER=5` handles gaps |
 | **2** | Completed fights — includes auto-delete guard (see below) |
 | **3** | Fight metadata & winners — `sync_meta` scans ALL completed fights unless scoped by `event_name`. After the insert loop, calls `rescrape_null_winner_decisions()` to re-check any `winner IS NULL AND method ILIKE 'Decision%'` rows; updates only when the parse now returns a winner (real draws stay untouched). |
-| **4** | Round-by-round stats — upsert with `on_conflict`; `time.sleep(1)` between requests |
+| **4** | Round-by-round stats — upsert with `on_conflict`; `time.sleep(1)` between requests. Stamps `fight_url` from `task['fight_url']` onto every merged row before upsert so the FK link is set at insert time (S-P1-5 fix). |
 | **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights |
 | **6** | Judge scores — `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` |
 

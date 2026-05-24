@@ -664,6 +664,12 @@ def sync_round_stats():
             z_map = {(z["fighter_name"], z["round"]): z for z in zone}
             merged = [{**m, **z_map.get((m["fighter_name"], m["round"]), {})} for m in main]
 
+            # Stamp fight_url on every row so the FK link to fights.fight_url is set
+            # at insert time. Without this, rfs.fight_url silently stays NULL on new
+            # events (S-P1-5 from the 2026-05-16 audit).
+            for row in merged:
+                row["fight_url"] = task['fight_url']
+
             supabase_db.table("round_fight_stats").upsert(merged, on_conflict="event_name,bout,round,fighter_name").execute()
             stats_summary["new_round_rows"] += len(merged)
             time.sleep(1)

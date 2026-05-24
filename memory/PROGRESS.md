@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-23 (S-P1-4 resolved — 3 "NULL winner" fights are genuine draws; frontend now renders draws; Phase 3 has re-scrape guard)
-Next session: F1 Pulse contrast sweep, F2 modal focus trap, or Phase B continued (S-P1-5 rfs.fight_url backfill / S-P1-6 fight 8754 alias / S-P1-7 user_votes CASCADE)
+Last updated: 2026-05-24 (S-P1-5 resolved — Phase 4 upsert stamps fight_url; 334 historical rows backfilled)
+Next session: F1 Pulse contrast sweep, F2 modal focus trap, or Phase B continued (S-P1-6 fight 8754 alias / S-P1-7 user_votes CASCADE)
 Last refreshed: 2026-05-16
 
 ---
@@ -60,9 +60,16 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 - **Decisions:** Avoided the trap of "blindly trusting the audit" — re-verified against the source. The audit's `correct_picks` impact concern is moot because draws shouldn't count toward fight accuracy anyway.
 - **NextSteps:** Two new follow-ups (S-P1-16 method_details parser drops loser score; S-P1-17 judge_scores Miranda fighter inversion on fight 8761) added to REMEDIATION-PLAN.md Phase K. Resume Phase B with S-P1-5 (rfs.fight_url) next.
 
+**Phase B — S-P1-5 resolved (2026-05-24) — Checkpoint**
+- **Goal:** Close S-P1-5 (270 rfs rows with NULL fight_url + scraper not populating the column on new inserts).
+- **Constraints:** No HTTP request increase — value must be sourceable from data already in flight. Backfill must be reversible.
+- **Progress:** Phase 4 upsert in `master file for data update.py` now stamps `fight_url` from `task['fight_url']` (already returned by the `fight_scraping_status` view) onto every merged row before upsert. `supabase/backfill_rfs_fight_url.py` cleared 334 historical rows across 6 events (audit's 270 + a 6th event that landed in the interim). Pre-flight sanity check confirmed every NULL row mapped to a fights row under bidirectional bout matching (Convention #9). Post-state: 0 NULL fight_url rows in rfs.
+- **Decisions:** Bake the fix into the upsert site, not a post-insert UPDATE — the value was already in the task dict, so it's a zero-cost stamp. Backfill script aborts if any (event, bout) combo can't be matched, so we never end up half-migrated.
+- **NextSteps:** Phase C dependencies are now unblocked — S-P2-11 (refactor `fight_dna_metrics` view to join via `fight_url`) and S-P2-13 (add `idx_round_fight_stats_fight_url`) can proceed when ready. Resume Phase B with S-P1-6 (fight 8754 alias) or S-P1-7 (user_votes CASCADE).
+
 **P1 audit findings**
 - [x] **A4.** ~~Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761)~~ — **RESOLVED 2026-05-23**: audit premise wrong, all 3 are genuine draws (both fighters "D" on ufcstats). Frontend draw rendering added, Phase 3 re-scrape guard added, `fmd.result` cleaned up. Two new follow-ups split out (S-P1-16 method_details parser, S-P1-17 judge_scores Miranda inversion). See `04-data-quality.md §2`.
-- [ ] **A5.** Populate `round_fight_stats.fight_url` in Phase 4 scraper + backfill 270 NULL rows — `02-schema.md §3`
+- [x] **A5.** ~~Populate `round_fight_stats.fight_url` in Phase 4 scraper + backfill 270 NULL rows~~ — **RESOLVED 2026-05-24**: Phase 4 upsert now stamps `fight_url` from the `fight_scraping_status` task dict; `supabase/backfill_rfs_fight_url.py` cleared 334 historical rows (270 from audit + 64 from a 6th event that landed in the interim). Pre-flight verified every NULL row mapped to a fights row. See `02-schema.md §3`.
 - [ ] **A6.** Resolve fight 8754 duplicate rfs (Pitbull/Freire alias) — `04-data-quality.md §4`
 - [ ] **A7.** Switch `user_votes.fight_id` FK to ON DELETE CASCADE for consistency — `02-schema.md §1`
 
