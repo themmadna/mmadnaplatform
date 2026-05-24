@@ -5,7 +5,7 @@ Consolidated execution plan for the two May 16 audits:
 - App frontend: [`memory/audits/2026-05-16-app/`](2026-05-16-app/)
 
 **Status markers:** `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]` blocked
-**Last updated:** 2026-05-24 (S-P1-6 done — fight 8754 Pitbull alias deduped; **Phase B complete**)
+**Last updated:** 2026-05-24 (S-P2-11 view refactor + S-P1-18 misstamp fix — discovered pre-existing April-backfill bug during pre-flight, deployed corrective then refactor)
 
 ---
 
@@ -63,13 +63,22 @@ Consolidated execution plan for the two May 16 audits:
   - Sibling parity restored: `user_round_scores` / `user_fight_scorecard_state` / `fight_ratings` / `user_votes` all CASCADE on `fight_id`
   - `context/schema.md` updated with `ON DELETE CASCADE` on all four `fight_id` FK rows
   - Followups #7
+- [x] **S-P1-18** Re-stamp 1237 misstamped `rfs.fight_url` rows (April backfill bug) ✅ 2026-05-24
+  - Root cause: `supabase/migrate_round_stats_fk.py` (April 2026) backfilled `rfs.fight_url` from `fmd` using bout-text-only join, no `event_name` filter. For rematches and recurring fighter pairs (220 distinct fights), Postgres picked the wrong `fmd` row and stamped its URL.
+  - Discovered 2026-05-24 during S-P2-11 pre-flight: per-fight aggregate diff between text-join and url-join showed 215 fights would lose all stats under a naïve switch to `fight_url`.
+  - `supabase/fix_rfs_fight_url_misstamps.py` — single-tx UPDATE with event-aware bidirectional bout match. `NOT EXISTS` guard skips Ultimate Japan no-contest (the only ambiguous row, already correctly stamped). Post-verify: 0 remaining misstamps; `fight_dna_metrics` values unchanged for all 219 affected fights (dormant data, as expected).
+  - Discovered via pre-flight diff bucketing (identical / new-only / old-only / partial drift) on per-fight aggregates. New lesson logged in `memory/LESSONS.md` (Database & Migrations).
 
 ## Phase C — Supabase P2 tech debt (depends on B)
 
-- [ ] **S-P2-11** Refactor `fight_dna_metrics` view to join via `fight_url` (needs S-P1-5)
+- [x] **S-P2-11** Refactor `fight_dna_metrics` view to join via `fight_url` ✅ 2026-05-24
+  - `supabase/deploy_fight_dna_metrics.py` — CREATE OR REPLACE VIEW with rfs aggregated by `fight_url`. Pre-flight requires 0 NULL fight_url + 0 cross-event misstamps (gated on S-P1-5 + S-P1-18).
+  - Column list + types preserved → `ufc_baselines` view and frontend queries need no migration.
+  - Post-verify: 8712 rows (unchanged), 11 sampled fights identical, `ufc_baselines` identical to 6 decimals.
+  - 1 known-good divergence: fight 3436 (UFC Ultimate Japan, Sakuraba/Silveira "Overturned" no-contest). Old view double-counted same-card rematch's stats (text-joined on identical bout), new view correctly attributes 0. Whitelisted via `EXPECTED_DIVERGENCES = {3436}` in the deploy script.
   - Followups #11
 - [ ] **S-P2-13** Add `idx_round_fight_stats_fight_url` + `idx_user_votes_fight_id`
-  - Followups #13
+  - Followups #13. Now genuinely useful since the view actually joins on `fight_url`.
 - [ ] **S-P2-8** Lock `search_path` on all 7 SECURITY DEFINER functions
   - Followups #8
 - [ ] **S-P2-9** Revoke anon EXECUTE on user-scoped RPCs (4 functions)
@@ -147,3 +156,4 @@ Files: `Login.js`, `JudgeDirectory.js`, `JudgeProfileView.js`, `JudgeComparison.
 - 2026-05-24 — **S-P1-5 done.** Phase 4 upsert in `master file for data update.py` now stamps `fight_url` from the `fight_scraping_status` task dict (zero extra HTTP). `supabase/backfill_rfs_fight_url.py` cleared 334 NULL `fight_url` rows across 6 events (audit said 270; a 6th event had landed in the 8-day gap). Pre-flight sanity check confirmed every NULL row mapped to a fights row under bidirectional bout matching. Post-state verified: 0 NULL `fight_url` rows in rfs. Phase C deps (S-P2-11, S-P2-13) now unblocked.
 - 2026-05-24 — **S-P1-7 done.** `supabase/migrate_user_votes_cascade.py` flipped `user_votes_fight_id_fkey` from `NO ACTION` to `ON DELETE CASCADE` via a single-transaction DROP/ADD. Pre-flight (240 rows, 0 orphans, current=NO ACTION) and post-verify (`pg_constraint.confdeltype='c'`) both passed. All 4 user-data tables (`user_round_scores` / `user_fight_scorecard_state` / `fight_ratings` / `user_votes`) now share the same `fight_id` delete behavior. `context/schema.md` updated. Scope held: `user_votes.user_id → auth.users` is also NO ACTION but wasn't in the audit's S-P1-7 ask.
 - 2026-05-24 — **S-P1-6 done.** Pre-flight via `supabase/.temp/probe_fight_8754.py` re-verified the audit's claim and added richer detail (both rfs sets use `fighter_name='Patricio Pitbull'` — so the per-fighter double-count was Pitbull-on-Pitbull, not Freire-as-distinct-fighter; `fmd.bout` was already canonical; 0 user data attached). `supabase/fix_fight_8754_alias.py` ran a single-transaction `UPDATE fights.bout` to "Patricio Pitbull vs Aaron Pico" followed by `DELETE` of the 6 alias rfs rows. Post-verify: bout-reversal "neither" census = 0 (was 1), `fight_dna_metrics` returns identical numbers (216 head strikes, 15 min). No frontend bout-string equality checks exist in `src/` — soft cross-effect note was a no-op. **Phase B complete.** Phase C dependencies (S-P2-11 view refactor, S-P2-13 indexes, S-P2-8 search_path) all unblocked.
+- 2026-05-24 — **S-P2-11 + S-P1-18 done (paired deploy).** Pre-flighting S-P2-11 with a per-fight diff between text-join and url-join aggregates surfaced 215 fights that would lose stats under a naïve switch — root-caused to `supabase/migrate_round_stats_fk.py` (April 2026) which had backfilled `rfs.fight_url` with bout-text-only matching, no `event_name` filter. For 1237 rows across 220 rematches/recurring fighter pairs, Postgres picked the wrong `fmd` row. Live view masked the bug because it joined on `(event_name, bout)` text. Surfaced to Bastian with three options; chose the two-step deploy. **(1)** `supabase/fix_rfs_fight_url_misstamps.py` — single-tx UPDATE with event-aware bidirectional bout match + `NOT EXISTS` guard for Ultimate Japan no-contest. 1237 rows re-stamped, 0 misstamps remain, all 219 affected `fight_dna_metrics` rows unchanged (proves the misstamp was dormant data). **(2)** `supabase/deploy_fight_dna_metrics.py` — CREATE OR REPLACE VIEW with rfs aggregated by `fight_url`. Row count + `ufc_baselines` + 11 sampled values all identical pre/post. 1 known-good divergence (fight 3436 = Ultimate Japan overturned no-contest; old view double-counted rematch stats onto it, new view correctly attributes 0). `context/schema.md` + `context/combat-dna.md` updated to reflect new view definition. Three new LESSONS entries (text-aliased FK backfill needs natural key, view that masks a backfill bug, expected vs unexpected divergence in refactor parity checks).

@@ -93,7 +93,7 @@ One row per (fighter, round). Unique constraint: `(event_name, bout, round, figh
 | `sig_strikes_clinch_attempted` | integer | NULL |
 | `sig_strikes_ground_landed` | integer | NULL |
 | `sig_strikes_ground_attempted` | integer | NULL |
-| `fight_url` | text | NULL | FK → `fights.fight_url` ON DELETE CASCADE. Added April 2026, backfilled May 2026 (S-P1-5). Phase 4 scraper stamps this on every new insert. |
+| `fight_url` | text | NULL | FK → `fights.fight_url` ON DELETE CASCADE. Added April 2026, backfilled May 2026 (S-P1-5 for NULLs + S-P1-18 for 1237 misstamps where the April backfill ignored `event_name` and matched rematches to the wrong fights row). Phase 4 scraper stamps this on every new insert. Canonical join key from `fight_dna_metrics` view (S-P2-11). |
 | `inserted_at` | timestamp | NULL (default now()) |
 
 ### `judge_scores`
@@ -173,7 +173,7 @@ Primary key: `(user_id, fight_id)`.
 ## Views
 
 ### `fight_dna_metrics`
-Computed live from `fights` LEFT JOIN `round_fight_stats` (aggregated by event_name+bout) LEFT JOIN `fight_meta_details` (joined on fight_url). **This is a view, not a table — frontend reads from here, not raw stats.**
+Computed live from `fights` LEFT JOIN `round_fight_stats` (aggregated by `fight_url`) LEFT JOIN `fight_meta_details` (joined on `fight_url`). **This is a view, not a table — frontend reads from here, not raw stats.** The rfs aggregation moved from `(event_name, bout)` to `fight_url` on 2026-05-24 (S-P2-11) — eliminates Convention #9 bout-reversal risk at the view layer. DDL in `supabase/deploy_fight_dna_metrics.py`.
 
 | Column | Type | Formula |
 |---|---|---|

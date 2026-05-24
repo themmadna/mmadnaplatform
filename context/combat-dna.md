@@ -9,7 +9,7 @@ Update this file if new DNA metrics are added or the view formula changes.
 
 DNA metrics describe a fight's character without hardcoded categories. They power fight identity fingerprints and personalised recommendations via a user's average DNA across rated fights (`dataService.getCombatDNA()`).
 
-All metrics are pre-calculated in the `fight_dna_metrics` **view** (computed live — not a table). Frontend always reads from this view, not raw stats tables.
+All metrics are pre-calculated in the `fight_dna_metrics` **view** (computed live — not a table). Frontend always reads from this view, not raw stats tables. As of 2026-05-24 (S-P2-11), the view aggregates `round_fight_stats` by `fight_url` rather than `(event_name, bout)` — removes the bout-reversal trap from the view layer. DDL deploy script: `supabase/deploy_fight_dna_metrics.py`.
 
 ---
 
