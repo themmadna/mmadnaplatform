@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-24 (S-P1-7 resolved — user_votes.fight_id FK now CASCADE; sibling parity restored)
-Next session: F1 Pulse contrast sweep, F2 modal focus trap, or S-P1-6 (fight 8754 alias dedup — last open P1)
+Last updated: 2026-05-24 (S-P1-6 resolved — fight 8754 Pitbull alias deduped; Phase B complete; Phase C unblocked)
+Next session: Phase C kickoff (S-P2-11 fight_dna_metrics refactor to fight_url + S-P2-13 indexes), or jump to app-side F1 Pulse contrast sweep / F2 modal focus trap
 Last refreshed: 2026-05-16
 
 ---
@@ -74,10 +74,17 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 - **Decisions:** Scope held to `fight_id` only — the audit didn't flag `user_votes.user_id` (also NO ACTION on `auth.users`), so leaving it as a future call. No data written or removed; this is a constraint swap, not a backfill.
 - **NextSteps:** Phase B has one P1 left: S-P1-6 (fight 8754 Pitbull/Freire alias — 6 duplicate rfs rows + bout-string rewrite on `fights` + `fmd`). After that, Phase C unblocks (view refactor, indexes, search_path hardening).
 
+**Phase B — S-P1-6 resolved (2026-05-24) — Checkpoint**
+- **Goal:** Close S-P1-6 — resolve fight 8754 (UFC 327 Pico vs Pitbull) Patricio Pitbull/Patricio Freire alias mismatch. Two name variants in the DB: `fights.bout` said "Freire", `fmd.bout` said "Pitbull", `round_fight_stats` had 12 rows (6 per bout variant, both sets identical). Per-fighter analytics that GROUP BY `fighter_name` double-counted this fight's strikes.
+- **Constraints:** Read-only pre-flight to verify audit premise before any DELETE/UPDATE; single-transaction UPDATE-then-DELETE so the `fight_dna_metrics` view never briefly returns no rows; idempotent (re-running after success is a no-op).
+- **Progress:** `supabase/fix_fight_8754_alias.py` deployed. Pre-flight confirmed: `fights.bout='Freire...'`, `fmd.bout='Pitbull...'` (already canonical), 6 alias rfs rows + 6 canonical rfs rows, 0 user data attached (no votes/scores/state/ratings). Single-tx swap landed: `fights.bout` updated to "Patricio Pitbull vs Aaron Pico"; the 6 alias rfs rows deleted. Post-verify: bout-reversal census "neither" count = 0 (was 1), `fight_dna_metrics` for fight 8754 unchanged (216 head strikes, 15 min duration — same as before, picked up from the surviving Pitbull set).
+- **Decisions:** Canonical = "Patricio Pitbull" (matches `fmd.bout`, both rfs sets' `fighter_name`, current ufcstats page). Held scope to fight 8754 only — the two other Patricio Freire fights (UFC 314 Yair Rodriguez vs Patricio Freire, UFC 318 Patricio Freire vs Dan Ige) use "Freire" consistently across `fights`/`fmd`/`rfs.fighter_name` and were never in the "neither" census, so leaving them. `judge_scores.bout="Aaron Pico vs Patricio Freire"` left as-is — joins via date, not bout. **Phase B complete** (all 4 P1 Supabase items resolved).
+- **NextSteps:** Phase C now fully unblocked. Recommended order: S-P2-11 (`fight_dna_metrics` view refactor to join via `fight_url` — removes the (event_name, bout) join entirely and makes this whole class of alias-duplicate bug impossible at the view layer), then S-P2-13 (`idx_round_fight_stats_fight_url` + `idx_user_votes_fight_id`), then S-P2-8 (search_path hardening on 7 SECURITY DEFINER fns) or S-P2-9 (revoke anon EXECUTE).
+
 **P1 audit findings**
 - [x] **A4.** ~~Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761)~~ — **RESOLVED 2026-05-23**: audit premise wrong, all 3 are genuine draws (both fighters "D" on ufcstats). Frontend draw rendering added, Phase 3 re-scrape guard added, `fmd.result` cleaned up. Two new follow-ups split out (S-P1-16 method_details parser, S-P1-17 judge_scores Miranda inversion). See `04-data-quality.md §2`.
 - [x] **A5.** ~~Populate `round_fight_stats.fight_url` in Phase 4 scraper + backfill 270 NULL rows~~ — **RESOLVED 2026-05-24**: Phase 4 upsert now stamps `fight_url` from the `fight_scraping_status` task dict; `supabase/backfill_rfs_fight_url.py` cleared 334 historical rows (270 from audit + 64 from a 6th event that landed in the interim). Pre-flight verified every NULL row mapped to a fights row. See `02-schema.md §3`.
-- [ ] **A6.** Resolve fight 8754 duplicate rfs (Pitbull/Freire alias) — `04-data-quality.md §4`
+- [x] **A6.** ~~Resolve fight 8754 duplicate rfs (Pitbull/Freire alias)~~ — **RESOLVED 2026-05-24** via `supabase/fix_fight_8754_alias.py`. Single-tx UPDATE `fights.bout` to canonical "Patricio Pitbull vs Aaron Pico" + DELETE the 6 alias rfs rows. Bout-reversal "neither" census now 0; view stats unchanged. **Phase B complete.** See `04-data-quality.md §4`.
 - [x] **A7.** ~~Switch `user_votes.fight_id` FK to ON DELETE CASCADE for consistency~~ — **RESOLVED 2026-05-24** via `supabase/migrate_user_votes_cascade.py`. Sibling parity now holds across all 4 user-data tables on `fight_id`. See `02-schema.md §1`.
 
 **P2 audit findings:** 7 items — `search_path` lock on SECURITY DEFINER fns, anon-grant drift, view refactor to `fight_url`, indexes. See `99-followups.md`.
