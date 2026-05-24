@@ -5,7 +5,7 @@ Consolidated execution plan for the two May 16 audits:
 - App frontend: [`memory/audits/2026-05-16-app/`](2026-05-16-app/)
 
 **Status markers:** `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]` blocked
-**Last updated:** 2026-05-24
+**Last updated:** 2026-05-24 (S-P1-7 done — user_votes.fight_id now CASCADE)
 
 ---
 
@@ -54,7 +54,10 @@ Consolidated execution plan for the two May 16 audits:
   - Post-state: 0 NULL `fight_url` rows in rfs
   - Unblocks Phase C: S-P2-11 (view refactor) + S-P2-13 (index)
   - Followups #5
-- [ ] **S-P1-7** Switch `user_votes.fight_id` FK to `ON DELETE CASCADE`
+- [x] **S-P1-7** Switch `user_votes.fight_id` FK to `ON DELETE CASCADE` ✅ 2026-05-24
+  - `supabase/migrate_user_votes_cascade.py` — pre-flight (240 rows, 0 orphans, current NO ACTION) + single-tx DROP/ADD + post-verify (`confdeltype='c'`)
+  - Sibling parity restored: `user_round_scores` / `user_fight_scorecard_state` / `fight_ratings` / `user_votes` all CASCADE on `fight_id`
+  - `context/schema.md` updated with `ON DELETE CASCADE` on all four `fight_id` FK rows
   - Followups #7
 
 ## Phase C — Supabase P2 tech debt (depends on B)
@@ -138,3 +141,4 @@ Files: `Login.js`, `JudgeDirectory.js`, `JudgeProfileView.js`, `JudgeComparison.
 - 2026-05-16 — **S-P0-3 done.** Dropped deprecated `get_user_judging_profile(uuid)` overload via patched `deploy_judging_profile.py`. `pg_proc` verified: only the no-arg overload remains. Frontend was already on the no-arg call (`dataService.js:271`). **Phase A complete.**
 - 2026-05-23 — **S-P1-4 resolved (audit premise was wrong).** Investigation against ufcstats screenshots: all 3 NULL-winner fights (8281, 8269, 8761) are genuine draws — both fighters have "D" status, no winner should be set. Real fixes: (b) `fmd.result = 'draw'` SQL update for 8269 + 8281 via `supabase/fix_fmd_result_draws.py`; (c) `ScorecardComparison` + `FightDetailView` now render "Draw — {method}" when winner NULL on a decision; (e) added `rescrape_null_winner_decisions()` to Phase 3 `sync_meta` so future stale rows get re-checked. Two new follow-ups discovered: S-P1-16 (method_details parser drops loser score) + S-P1-17 (judge_scores fighter inversion on fight 8761).
 - 2026-05-24 — **S-P1-5 done.** Phase 4 upsert in `master file for data update.py` now stamps `fight_url` from the `fight_scraping_status` task dict (zero extra HTTP). `supabase/backfill_rfs_fight_url.py` cleared 334 NULL `fight_url` rows across 6 events (audit said 270; a 6th event had landed in the 8-day gap). Pre-flight sanity check confirmed every NULL row mapped to a fights row under bidirectional bout matching. Post-state verified: 0 NULL `fight_url` rows in rfs. Phase C deps (S-P2-11, S-P2-13) now unblocked.
+- 2026-05-24 — **S-P1-7 done.** `supabase/migrate_user_votes_cascade.py` flipped `user_votes_fight_id_fkey` from `NO ACTION` to `ON DELETE CASCADE` via a single-transaction DROP/ADD. Pre-flight (240 rows, 0 orphans, current=NO ACTION) and post-verify (`pg_constraint.confdeltype='c'`) both passed. All 4 user-data tables (`user_round_scores` / `user_fight_scorecard_state` / `fight_ratings` / `user_votes`) now share the same `fight_id` delete behavior. `context/schema.md` updated. Scope held: `user_votes.user_id → auth.users` is also NO ACTION but wasn't in the audit's S-P1-7 ask.

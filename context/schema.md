@@ -128,7 +128,7 @@ Unique constraint: `(user_id, fight_id)`.
 |---|---|---|---|
 | `id` | uuid PK | NOT NULL | |
 | `user_id` | uuid | NOT NULL | FK → auth.users |
-| `fight_id` | bigint | NOT NULL | FK → fights.id |
+| `fight_id` | bigint | NOT NULL | FK → fights.id ON DELETE CASCADE |
 | `vote_type` | text | NULL | `'like'` / `'dislike'` / `'favorite'` |
 | `created_at` | timestamptz | NULL | default now() |
 
@@ -137,7 +137,7 @@ Aggregated vote counts, maintained by `update_fight_ratings` trigger.
 
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
-| `fight_id` | bigint PK | NOT NULL | FK → fights.id |
+| `fight_id` | bigint PK | NOT NULL | FK → fights.id ON DELETE CASCADE |
 | `likes_count` | integer | NULL | default 0 |
 | `dislikes_count` | integer | NULL | default 0 |
 | `favorites_count` | integer | NULL | default 0 |
@@ -149,7 +149,7 @@ One row per (user_id, fight_id, round). Unique constraint: `(user_id, fight_id, 
 |---|---|---|---|
 | `id` | uuid PK | NOT NULL | |
 | `user_id` | uuid | NOT NULL | |
-| `fight_id` | bigint | NOT NULL | FK → fights.id |
+| `fight_id` | bigint | NOT NULL | FK → fights.id ON DELETE CASCADE |
 | `round` | integer | NOT NULL | |
 | `f1_score` | integer | NOT NULL | CHECK IN (10, 9, 8, 7) |
 | `f2_score` | integer | NOT NULL | CHECK IN (10, 9, 8, 7) |
@@ -161,7 +161,7 @@ Primary key: `(user_id, fight_id)`.
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
 | `user_id` | uuid | NOT NULL | |
-| `fight_id` | bigint | NOT NULL | FK → fights.id |
+| `fight_id` | bigint | NOT NULL | FK → fights.id ON DELETE CASCADE |
 | `scored_blind` | boolean | NULL | default false |
 | `forfeited` | boolean | NULL | default false |
 | `modified_after_reveal` | boolean | NULL | default false |

@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-24 (S-P1-5 resolved — Phase 4 upsert stamps fight_url; 334 historical rows backfilled)
-Next session: F1 Pulse contrast sweep, F2 modal focus trap, or Phase B continued (S-P1-6 fight 8754 alias / S-P1-7 user_votes CASCADE)
+Last updated: 2026-05-24 (S-P1-7 resolved — user_votes.fight_id FK now CASCADE; sibling parity restored)
+Next session: F1 Pulse contrast sweep, F2 modal focus trap, or S-P1-6 (fight 8754 alias dedup — last open P1)
 Last refreshed: 2026-05-16
 
 ---
@@ -67,11 +67,18 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 - **Decisions:** Bake the fix into the upsert site, not a post-insert UPDATE — the value was already in the task dict, so it's a zero-cost stamp. Backfill script aborts if any (event, bout) combo can't be matched, so we never end up half-migrated.
 - **NextSteps:** Phase C dependencies are now unblocked — S-P2-11 (refactor `fight_dna_metrics` view to join via `fight_url`) and S-P2-13 (add `idx_round_fight_stats_fight_url`) can proceed when ready. Resume Phase B with S-P1-6 (fight 8754 alias) or S-P1-7 (user_votes CASCADE).
 
+**Phase B — S-P1-7 resolved (2026-05-24) — Checkpoint**
+- **Goal:** Close S-P1-7 — switch `user_votes.fight_id` FK from `NO ACTION` to `ON DELETE CASCADE` so all 4 user-data tables share one delete behavior.
+- **Constraints:** Idempotent script; pre-flight aborts if any orphans exist (re-adding the FK would fail); single-transaction DROP/ADD so we never leave the column unconstrained.
+- **Progress:** `supabase/migrate_user_votes_cascade.py` deployed. Pre-flight: 240 rows, 0 orphans, current = NO ACTION. Post-state verified via `pg_constraint`: `confdeltype = 'c'`. Sibling parity now holds across `user_round_scores` / `user_fight_scorecard_state` / `fight_ratings` / `user_votes`. `context/schema.md` updated to note `ON DELETE CASCADE` on all four `fight_id` FKs.
+- **Decisions:** Scope held to `fight_id` only — the audit didn't flag `user_votes.user_id` (also NO ACTION on `auth.users`), so leaving it as a future call. No data written or removed; this is a constraint swap, not a backfill.
+- **NextSteps:** Phase B has one P1 left: S-P1-6 (fight 8754 Pitbull/Freire alias — 6 duplicate rfs rows + bout-string rewrite on `fights` + `fmd`). After that, Phase C unblocks (view refactor, indexes, search_path hardening).
+
 **P1 audit findings**
 - [x] **A4.** ~~Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761)~~ — **RESOLVED 2026-05-23**: audit premise wrong, all 3 are genuine draws (both fighters "D" on ufcstats). Frontend draw rendering added, Phase 3 re-scrape guard added, `fmd.result` cleaned up. Two new follow-ups split out (S-P1-16 method_details parser, S-P1-17 judge_scores Miranda inversion). See `04-data-quality.md §2`.
 - [x] **A5.** ~~Populate `round_fight_stats.fight_url` in Phase 4 scraper + backfill 270 NULL rows~~ — **RESOLVED 2026-05-24**: Phase 4 upsert now stamps `fight_url` from the `fight_scraping_status` task dict; `supabase/backfill_rfs_fight_url.py` cleared 334 historical rows (270 from audit + 64 from a 6th event that landed in the interim). Pre-flight verified every NULL row mapped to a fights row. See `02-schema.md §3`.
 - [ ] **A6.** Resolve fight 8754 duplicate rfs (Pitbull/Freire alias) — `04-data-quality.md §4`
-- [ ] **A7.** Switch `user_votes.fight_id` FK to ON DELETE CASCADE for consistency — `02-schema.md §1`
+- [x] **A7.** ~~Switch `user_votes.fight_id` FK to ON DELETE CASCADE for consistency~~ — **RESOLVED 2026-05-24** via `supabase/migrate_user_votes_cascade.py`. Sibling parity now holds across all 4 user-data tables on `fight_id`. See `02-schema.md §1`.
 
 **P2 audit findings:** 7 items — `search_path` lock on SECURITY DEFINER fns, anon-grant drift, view refactor to `fight_url`, indexes. See `99-followups.md`.
 
