@@ -40,6 +40,7 @@ CREATE OR REPLACE FUNCTION update_fight_ratings()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   target_fight_id bigint;

@@ -33,6 +33,7 @@ CREATE OR REPLACE FUNCTION get_leaderboard_user_detail(p_user_id uuid)
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   result json;

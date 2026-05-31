@@ -37,6 +37,7 @@ CREATE OR REPLACE FUNCTION get_user_judging_profile()
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();

@@ -9,6 +9,19 @@ Deploy script for judge profile: `supabase/deploy_judge_profile.py`
 Deploy script for judge comparison: `supabase/deploy_judge_comparison.py`
 Deploy script for user vs judge comparison: `supabase/deploy_user_judge_comparison.py`
 Deploy script for leaderboard: `supabase/deploy_leaderboard.py`
+Deploy script for leaderboard detail: `supabase/deploy_leaderboard_detail.py`
+Deploy script for scoring insights: `supabase/deploy_scoring_insights.py`
+Deploy script for community scorecard: `supabase/deploy_community_scorecard.py`
+Deploy script for the `update_fight_ratings` trigger fn: `supabase/deploy_triggers.py`
+
+**Security (S-P2-8, 2026-05-31):** All 7 `SECURITY DEFINER` functions in `public`
+(`get_community_scorecard`, `get_leaderboard`, `get_leaderboard_user_detail`,
+`get_scoring_insights`, `get_user_judge_comparison`, `get_user_judging_profile`,
+`update_fight_ratings`) have `SET search_path = public, pg_temp` baked into their
+CREATE in the deploy scripts. `CREATE OR REPLACE` resets `proconfig`, so the
+`SET` clause MUST stay in each deploy script — re-add it if you ever rewrite a
+function body, or the next redeploy silently drops the hardening. Verify with
+`SELECT proname, proconfig FROM pg_proc WHERE prosecdef AND pronamespace='public'::regnamespace`.
 
 ---
 
@@ -143,6 +156,10 @@ Returns per-round average scores across all users for a given fight.
 ```
 Returns: TABLE(round integer, f1_avg numeric, f2_avg numeric, user_count integer)
 ```
+
+- `LANGUAGE sql`, SECURITY DEFINER, `search_path = public, pg_temp`.
+- Output is **aggregate-only** (no `user_id`) → `anon` + `authenticated` EXECUTE is intentional; this is NOT in the S-P2-9 anon-revoke set.
+- Deploy script reconstructed 2026-05-31 (S-P2-8) — `supabase/deploy_community_scorecard.py`. Previously the function existed live with no version-controlled script.
 
 ---
 

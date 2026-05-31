@@ -30,6 +30,7 @@ CREATE OR REPLACE FUNCTION get_scoring_insights()
 RETURNS json
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_user_id uuid := auth.uid();
