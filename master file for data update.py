@@ -792,6 +792,10 @@ def _norm_name(s):
 # Add entries when ESPN uses a nickname or alternate spelling as the display name.
 _FIGHTER_ALIASES = {
     'patricio pitbull': 'patricio freire',
+    # ufcstats' upcoming page + ESPN call Ding Meng's UFC Fight Night (2026-05-30)
+    # opponent "Jose Henrique"; the completed fight page calls him "Jose Souza" (same
+    # fighter). Without this, Phase 2 inserted a duplicate completed row (8838/8856).
+    'jose henrique': 'jose souza',
 }
 
 def _resolve_alias(n):
