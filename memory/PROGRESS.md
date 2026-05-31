@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-31 (ufcstats started serving a SHA-256 JS proof-of-work challenge that broke ALL ufcstats scraping + crash-aborted the pipeline on Phase 0 — cause of "no upcoming event" + missing 2026-05-30 results. Fixed via in-process PoW solver `fetch_ufcstats()` + None-guards. Re-ran --post-event: Song vs Figueiredo backfilled, Muhammad vs Bonfim (2026-06-06) now upcoming.)
-Next session: Resume Phase C — S-P2-13 indexes (rfs.fight_url, user_votes.fight_id), then S-P2-8 search_path hardening / S-P2-9 anon EXECUTE revokes. (ufcstats challenge fix committed+pushed c98e9d5; Ding Meng/Jose Souza name-variant duplicate merged via supabase/fix_ding_meng_souza_dup.py — both done. Merge script awaiting commit.)
+Last updated: 2026-05-31 (S-P2-13 — added `idx_round_fight_stats_fight_url` + `idx_user_votes_fight_id` to `supabase/deploy_indexes.py`; script now post-verifies the full 8-index set against pg_indexes. Deployed + verified clean.)
+Next session: Resume Phase C — S-P2-8 search_path hardening (7 SECURITY DEFINER fns), then S-P2-9 anon EXECUTE revokes (4 user-scoped RPCs). S-P2-13 indexes done. (S-P2-13 deploy-script change awaiting commit.)
 Last refreshed: 2026-05-16
 
 ---
@@ -88,6 +88,13 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 - **Decisions:** (a) Two-step deploy in one PR rather than deferring S-P2-11 — fixing the data bug without the refactor leaves the latent issue and another deploy on the calendar; refactoring without the fix is a regression. (b) Whitelisted fight 3436 in the deploy script's parity check (`EXPECTED_DIVERGENCES = {3436}`) so re-runs don't false-fail. The divergence is a fix, not regression — view now correctly attributes the same-card rematch's stats to one fights row instead of both. (c) Added S-P1-18 to REMEDIATION-PLAN.md retroactively under Phase B to document the discovery + resolution.
 - **NextSteps:** Phase C continues. Recommended next: S-P2-13 (`idx_round_fight_stats_fight_url` + `idx_user_votes_fight_id` — now genuinely useful since the view joins on `fight_url`). Then S-P2-8 (search_path hardening on 7 SECURITY DEFINER fns) or S-P2-9 (revoke anon EXECUTE on user-scoped RPCs).
 
+**Phase C — S-P2-13 resolved (2026-05-31) — Checkpoint**
+- **Goal:** Close S-P2-13 — add the two indexes the prior Phase B/C work made useful: `idx_round_fight_stats_fight_url` (S-P2-11 view now aggregates rfs by `fight_url`) + `idx_user_votes_fight_id` (`update_fight_ratings` trigger aggregates votes per fight).
+- **Constraints:** Non-destructive only (`CREATE INDEX IF NOT EXISTS`); changes belong in the version-controlled `supabase/deploy_indexes.py`, not a one-off; deploy must be self-verifying.
+- **Progress:** Added both indexes to `INDEXES_SQL` in `supabase/deploy_indexes.py` with intent comments. Added an `EXPECTED_INDEXES` list + `VERIFY_SQL` and a post-deploy check that queries `pg_indexes` and exits non-zero if any of the 8 expected indexes is missing. Ran the script: create returned 201, post-verify confirmed all 8 present (including the 2 new ones). No pre-flight required — `IF NOT EXISTS` is idempotent and these are additive.
+- **Decisions:** (a) Deferred this behind S-P2-11 by design — an index for a join nothing uses is pure write-amplification; the REMEDIATION-PLAN encoded the #5→#11→#13 dependency chain. (b) Added self-verification to the script because the Management API returns 201 for a no-op `IF NOT EXISTS` exactly as for a real create — a 201 alone proves nothing. `context/schema.md` does not track indexes (none of the 6 prior ones are there either), so no context-file sync; flagged the "schema.md has no index inventory" gap to Bastian rather than adding one unilaterally.
+- **NextSteps:** Phase C continues — S-P2-8 (search_path hardening on 7 SECURITY DEFINER fns) then S-P2-9 (revoke anon EXECUTE on 4 user-scoped RPCs). Both require touching the relevant `deploy_*.py` scripts so the change survives redeploys.
+
 **P1 audit findings**
 - [x] **A4.** ~~Backfill 3 NULL-winner decision fights (ids 8281, 8269, 8761)~~ — **RESOLVED 2026-05-23**: audit premise wrong, all 3 are genuine draws (both fighters "D" on ufcstats). Frontend draw rendering added, Phase 3 re-scrape guard added, `fmd.result` cleaned up. Two new follow-ups split out (S-P1-16 method_details parser, S-P1-17 judge_scores Miranda inversion). See `04-data-quality.md §2`.
 - [x] **A5.** ~~Populate `round_fight_stats.fight_url` in Phase 4 scraper + backfill 270 NULL rows~~ — **RESOLVED 2026-05-24**: Phase 4 upsert now stamps `fight_url` from the `fight_scraping_status` task dict; `supabase/backfill_rfs_fight_url.py` cleared 334 historical rows (270 from audit + 64 from a 6th event that landed in the interim). Pre-flight verified every NULL row mapped to a fights row. See `02-schema.md §3`.
@@ -98,6 +105,7 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 **P2 audit findings:** 7 items — `search_path` lock on SECURITY DEFINER fns, anon-grant drift, view refactor to `fight_url`, indexes. See `99-followups.md`.
 
 - [x] **S-P2-11.** ~~Refactor `fight_dna_metrics` view to join via `fight_url`~~ — **RESOLVED 2026-05-24** via `supabase/deploy_fight_dna_metrics.py`. CREATE OR REPLACE VIEW with rfs aggregated by `fight_url`. Pre-flight enforces 0 NULL fight_url + 0 cross-event misstamps. Row count + `ufc_baselines` + 11 sampled fight values all identical pre/post. 1 known-good divergence (fight 3436 Ultimate Japan no-contest — old view double-counted rematch stats, new view correctly attributes 0; whitelisted in deploy script).
+- [x] **S-P2-13.** ~~Add `idx_round_fight_stats_fight_url` + `idx_user_votes_fight_id`~~ — **RESOLVED 2026-05-31** via `supabase/deploy_indexes.py`. Both `CREATE INDEX IF NOT EXISTS` (idempotent, non-destructive). First serves the S-P2-11 view's per-`fight_url` GROUP BY; second serves the `update_fight_ratings` trigger. Script now post-verifies the full 8-index expected set against `pg_indexes` and exits non-zero on any miss. Deploy ran clean — all 8 indexes confirmed present.
 
 ---
 

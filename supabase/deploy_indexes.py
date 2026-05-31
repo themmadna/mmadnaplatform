@@ -50,9 +50,49 @@ CREATE INDEX IF NOT EXISTS idx_fight_meta_details_weight_class_clean
 CREATE INDEX IF NOT EXISTS idx_round_fight_stats_event_bout
   ON round_fight_stats (event_name, bout);
 
+-- round_fight_stats: fight_url is the canonical join key the fight_dna_metrics view
+-- now aggregates on (S-P2-11 refactor, 2026-05-24). Without this the per-fight_url
+-- GROUP BY does a full scan of the rfs table on every view read.
+CREATE INDEX IF NOT EXISTS idx_round_fight_stats_fight_url
+  ON round_fight_stats (fight_url);
+
 -- user_round_scores: (user_id, fight_id) is the primary filter for all scoring RPCs
 CREATE INDEX IF NOT EXISTS idx_user_round_scores_user_fight
   ON user_round_scores (user_id, fight_id);
+
+-- user_votes: fight_id is the aggregation key for the update_fight_ratings trigger,
+-- which recomputes a fight's rating from all of its votes on every vote insert/update.
+CREATE INDEX IF NOT EXISTS idx_user_votes_fight_id
+  ON user_votes (fight_id);
+"""
+
+# Indexes this script is expected to leave in place, for post-deploy verification.
+EXPECTED_INDEXES = [
+    "idx_judge_scores_date",
+    "idx_judge_scores_judge",
+    "idx_fight_meta_details_fight_url",
+    "idx_fight_meta_details_weight_class_clean",
+    "idx_round_fight_stats_event_bout",
+    "idx_round_fight_stats_fight_url",
+    "idx_user_round_scores_user_fight",
+    "idx_user_votes_fight_id",
+]
+
+VERIFY_SQL = """
+SELECT indexname
+FROM pg_indexes
+WHERE schemaname = 'public'
+  AND indexname IN (
+    'idx_judge_scores_date',
+    'idx_judge_scores_judge',
+    'idx_fight_meta_details_fight_url',
+    'idx_fight_meta_details_weight_class_clean',
+    'idx_round_fight_stats_event_bout',
+    'idx_round_fight_stats_fight_url',
+    'idx_user_round_scores_user_fight',
+    'idx_user_votes_fight_id'
+  )
+ORDER BY indexname;
 """
 
 # ── Deploy ─────────────────────────────────────────────────────────────────────
@@ -64,6 +104,24 @@ def run_sql(label, sql):
         print(f"  ERROR {resp.status_code}: {resp.text}")
         sys.exit(1)
     print(f"  OK ({resp.status_code})")
+    return resp
+
 
 run_sql("all indexes (IF NOT EXISTS — safe to re-run)", INDEXES_SQL)
-print("\nAll indexes deployed successfully.")
+
+# ── Post-verify ──────────────────────────────────────────────────────────────────
+
+print("\nVerifying indexes exist in pg_indexes...")
+resp = requests.post(api_url, headers=headers, json={"query": VERIFY_SQL})
+if resp.status_code >= 400:
+    print(f"  ERROR {resp.status_code}: {resp.text}")
+    sys.exit(1)
+present = {row["indexname"] for row in resp.json()}
+missing = [ix for ix in EXPECTED_INDEXES if ix not in present]
+for ix in EXPECTED_INDEXES:
+    print(f"  {'OK ' if ix in present else 'MISSING'} {ix}")
+if missing:
+    print(f"\nFAILED — {len(missing)} index(es) missing: {', '.join(missing)}")
+    sys.exit(1)
+
+print("\nAll indexes deployed and verified successfully.")
