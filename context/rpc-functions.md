@@ -23,6 +23,18 @@ CREATE in the deploy scripts. `CREATE OR REPLACE` resets `proconfig`, so the
 function body, or the next redeploy silently drops the hardening. Verify with
 `SELECT proname, proconfig FROM pg_proc WHERE prosecdef AND pronamespace='public'::regnamespace`.
 
+**EXECUTE grants (S-P2-9, 2026-05-31):** The user-scoped RPCs
+(`get_user_judging_profile()`, `get_user_judge_comparison(text)`,
+`get_scoring_insights()`, `get_liked_fight_stats()`) have `anon` + `PUBLIC`
+EXECUTE **revoked** — only `authenticated` (+ `postgres`/`service_role`) can call
+them. They key on `auth.uid()`, so a guest call returned empty before and now
+errors with permission-denied; the dataService wrappers all guard with
+`if (!user) return null` so guests never make the call. `REVOKE ... FROM anon, PUBLIC`
+is baked into the 3 functions' deploy scripts after their `GRANT ... TO authenticated`
+(re-add it if you ever rewrite the grant block — `CREATE OR REPLACE` doesn't reset
+grants, but a fresh-env deploy relies on it). `get_community_scorecard` is the
+deliberate exception — aggregate-only, stays anon-accessible.
+
 ---
 
 ## `get_leaderboard()`
@@ -197,6 +209,10 @@ Returns all `round_fight_stats` rows for fights the current user (`auth.uid()`) 
 ```
 Returns: SETOF round_fight_stats
 ```
+
+- `LANGUAGE sql STABLE`, **SECURITY INVOKER** (not DEFINER → not in the S-P2-8 set).
+- anon/PUBLIC EXECUTE revoked (S-P2-9, applied ad-hoc — see below).
+- ⚠️ **DEAD + ORPHAN + buggy — flagged for DROP (S-P2-19).** No frontend usage (not in `src/`), not referenced by any DB function or view, and has **no version-controlled deploy script** (the S-P2-9 revoke was applied ad-hoc, not baked into a script). It also joins `round_fight_stats`↔`fights` on `(event_name, bout)` — the Convention #9 reversal risk — so even if revived it would mis-join. Recommend `DROP FUNCTION` pending approval rather than reconstructing a deploy script for dead code.
 
 ---
 

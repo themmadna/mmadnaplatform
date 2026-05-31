@@ -673,8 +673,10 @@ BEGIN
 END;
 $$;
 
--- Grant access to authenticated users only
+-- Grant access to authenticated users only.
+-- User-scoped (auth.uid()): revoke anon/PUBLIC so the surface matches the docs (S-P2-9).
 GRANT EXECUTE ON FUNCTION get_scoring_insights() TO authenticated;
+REVOKE EXECUTE ON FUNCTION get_scoring_insights() FROM anon, PUBLIC;
 """
 
 resp = requests.post(MGMT_QUERY_URL, headers=HEADERS, json={"query": SQL}, timeout=30)

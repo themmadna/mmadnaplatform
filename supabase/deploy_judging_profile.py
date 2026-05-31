@@ -456,6 +456,11 @@ BEGIN
   );
 END;
 $$;
+
+-- User-scoped (auth.uid()): grant authenticated explicitly, revoke anon/PUBLIC so the
+-- surface matches the docs (S-P2-9). The deprecated uuid overload is dropped above.
+GRANT EXECUTE ON FUNCTION public.get_user_judging_profile() TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.get_user_judging_profile() FROM anon, PUBLIC;
 """
 
 resp = requests.post(MGMT_QUERY_URL, headers=HEADERS, json={"query": SQL}, timeout=20)

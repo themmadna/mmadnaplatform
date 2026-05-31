@@ -292,6 +292,11 @@ export const dataService = {
   },
 
   async getUserJudgeComparison(judgeName) {
+    // User-scoped RPC: anon EXECUTE is revoked (S-P2-9), and auth.uid() is NULL for
+    // guests anyway. Guard like getUserJudgingProfile/getScoringInsights so a guest
+    // never makes a doomed anon call.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
     const { data, error } = await supabase.rpc('get_user_judge_comparison', { p_judge: judgeName });
     if (error) { console.error('getUserJudgeComparison error:', error); return null; }
     return data;
