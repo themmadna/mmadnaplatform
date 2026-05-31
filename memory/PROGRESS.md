@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-24 (S-P2-11 fight_dna_metrics view refactored to fight_url; S-P1-18 fixed 1237 misstamped rfs.fight_url rows discovered during pre-flight)
-Next session: Phase C continues — S-P2-13 indexes (rfs.fight_url, user_votes.fight_id), then S-P2-8 search_path hardening / S-P2-9 anon EXECUTE revokes. Or pivot to app-side F1 Pulse contrast sweep / F2 modal focus trap.
+Last updated: 2026-05-30 (Live-event display fixes: event stuck on LIVE all day + phantom "upcoming" fights that were actually opponent swaps. Added ufc_events.ended_at, poller stamp, frontend hide. Pending: master scrape audit + delete 3 stale rows.)
+Next session: Finish Song vs Figueiredo data — run master scrape (if ufcstats has posted), audit, delete 3 stale replaced-matchup rows (8835/8840/8842). Then resume Phase C — S-P2-13 indexes, S-P2-8 search_path hardening / S-P2-9 anon EXECUTE revokes.
 Last refreshed: 2026-05-16
 
 ---
@@ -98,6 +98,15 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 **P2 audit findings:** 7 items — `search_path` lock on SECURITY DEFINER fns, anon-grant drift, view refactor to `fight_url`, indexes. See `99-followups.md`.
 
 - [x] **S-P2-11.** ~~Refactor `fight_dna_metrics` view to join via `fight_url`~~ — **RESOLVED 2026-05-24** via `supabase/deploy_fight_dna_metrics.py`. CREATE OR REPLACE VIEW with rfs aggregated by `fight_url`. Pre-flight enforces 0 NULL fight_url + 0 cross-event misstamps. Row count + `ufc_baselines` + 11 sampled fight values all identical pre/post. 1 known-good divergence (fight 3436 Ultimate Japan no-contest — old view double-counted rematch stats, new view correctly attributes 0; whitelisted in deploy script).
+
+---
+
+**Live-Event Display Fixes — 2026-05-30 — Checkpoint**
+- **Goal:** Two reported bugs on UFC Fight Night: Song vs Figueiredo (live event, concluded ~13:44 UTC): (1) event stuck showing "LIVE" all day; (2) three fights stuck showing "Upcoming."
+- **Constraints:** Verify the "cancelled" premise before asserting (per [[verify-audit-premise-before-fix]]); non-destructive frontend display fix + DB cleanup gated on approval.
+- **Progress:** Root causes (verified vs ESPN): (1) `isLiveEvent()` was purely time-based — no "event over" signal. (2) The 3 "upcoming" fights were NOT cancelled — they were **late opponent swaps** (Salikhov→Harris, Aguilar→Gurule, Taveras→Vera). ESPN re-IDed those competitions; poller couldn't match (stale `espn_competition_id` + `boutMatchesComp` needs both fighters). **Fixes shipped:** (a) `supabase/migrate_event_ended_at.py` — added `ufc_events.ended_at`, backfilled 11 events from main-event `fight_ended_at`. (b) `poll-live-fights/index.ts` — stamps `ended_at` when main event (lowest `card_position`) finalizes; **deployed + smoke-tested + cron verified active**. (c) `App.js` — `isLiveEvent` returns false on `ended_at`; "Upcoming" badge gated on `!ended_at`; fights view hides never-started bouts once event concluded. Build clean (+66 B). (d) Fixed Windows `npx` resolution bug in `deploy_poll_live_fights.py` (shutil.which). context/schema.md + live-events.md updated.
+- **Decisions:** Keyed "event over" off the main event, not "all fights ended" — scratched/swapped bouts never reach FINAL so an all-ended check never trips. Frontend hides phantom rows immediately (non-destructive) so the display is correct regardless of DB-cleanup timing.
+- **NextSteps:** (1) Run master scrape for this event to pull the 3 real bouts (Matthews/Harris, Tsuruya/Gurule, Zhu/Vera) + winners/stats — only works once ufcstats posts results (all 13 rows still `upcoming`, so Phase 2 hasn't flipped them — worth checking the --live automation). (2) After scrape audit, delete the 3 stale rows (8835/8840/8842 — verified 0 user data). (3) Investigate why `--live` Phase 2 hasn't flipped any statuses.
 
 ---
 

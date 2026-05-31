@@ -17,6 +17,7 @@ Requirements:
 
 import sys
 import os
+import shutil
 import subprocess
 import requests
 from pathlib import Path
@@ -42,8 +43,11 @@ REPO_ROOT      = Path(__file__).parent.parent
 # ---------- 1. Deploy via Supabase CLI ----------
 
 print("\n🚀 Deploying Edge Function via Supabase CLI...")
+# On Windows npx is a .cmd/.ps1 shim, not an .exe — subprocess.run can't resolve a bare
+# "npx" via CreateProcess. Resolve the real path (incl. extension) with shutil.which.
+npx_path = shutil.which("npx") or "npx"
 result = subprocess.run(
-    ["npx", "supabase", "functions", "deploy", FUNCTION_SLUG,
+    [npx_path, "supabase", "functions", "deploy", FUNCTION_SLUG,
      "--project-ref", project_ref, "--no-verify-jwt"],
     env={**os.environ, "SUPABASE_ACCESS_TOKEN": mgmt_key},
     cwd=str(REPO_ROOT),

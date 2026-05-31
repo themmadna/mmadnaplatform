@@ -7,6 +7,9 @@
 //   2. Exit if current time is before event start_time
 //   3. Exit if all upcoming fights already have fight_ended_at set
 //
+// After polling, stamps ufc_events.ended_at once the main event (lowest card_position)
+// reaches FINAL — this clears the frontend LIVE badge (isLiveEvent checks !ended_at).
+//
 // Uses native fetch + Supabase REST API only — NO esm.sh imports.
 
 // ---------- helpers ----------
@@ -72,7 +75,7 @@ Deno.serve(async (_req) => {
     // Use a 2-day window (yesterday → today) because UFC events start late US time
     // and can still be ongoing after UTC midnight rolls to the next day.
     const eventsRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/ufc_events?event_date=gte.${ydayUTC}&event_date=lte.${todayUTC}&select=event_name,event_date,start_time&order=event_date.desc&limit=1`,
+      `${SUPABASE_URL}/rest/v1/ufc_events?event_date=gte.${ydayUTC}&event_date=lte.${todayUTC}&select=event_name,event_date,start_time,ended_at&order=event_date.desc&limit=1`,
       { headers: dbHeaders }
     )
     const events = await eventsRes.json()
@@ -129,6 +132,9 @@ Deno.serve(async (_req) => {
 
     const now = new Date().toISOString()
     const results: any[] = []
+    // Track the updates we apply this cycle, keyed by fight id, so the
+    // event-ended-at stamp below can see fields written this same run.
+    const updatesById = new Map<number, Record<string, unknown>>()
 
     for (const fight of fights) {
       if (fight.fight_ended_at) {
@@ -197,6 +203,8 @@ Deno.serve(async (_req) => {
         continue
       }
 
+      updatesById.set(fight.id, updates)
+
       const patchRes = await fetch(
         `${SUPABASE_URL}/rest/v1/fights?id=eq.${fight.id}`,
         {
@@ -209,7 +217,44 @@ Deno.serve(async (_req) => {
       results.push({ fight_id: fight.id, status: statusName, updates, ok: patchRes.ok })
     }
 
-    return json({ ok: true, event: event.event_name, results })
+    // Stamp ufc_events.ended_at once the main event has finalized.
+    // The main event is always the last fight of the night, so once it ends the whole
+    // event is over. This is what clears the frontend LIVE badge (isLiveEvent checks
+    // !ended_at). Robust against scratched/replaced bouts that never reach FINAL —
+    // those never get a fight_ended_at, so a "have all fights ended?" check would never
+    // trip, but the main-event check still does.
+    // Main event = lowest card_position (== 1 once ESPN-synced), fallback lowest id.
+    let eventEnded: string | null = null
+    if (!event.ended_at) {
+      const eff = fights.map((f: any) => {
+        const u = updatesById.get(f.id) || {}
+        return {
+          id: f.id,
+          card_position: (u.card_position ?? f.card_position) as number | null,
+          fight_ended_at: (u.fight_ended_at ?? f.fight_ended_at) as string | null,
+        }
+      })
+      eff.sort((a, b) => {
+        const ap = a.card_position ?? Number.POSITIVE_INFINITY
+        const bp = b.card_position ?? Number.POSITIVE_INFINITY
+        if (ap !== bp) return ap - bp
+        return a.id - b.id
+      })
+      const mainEvent = eff[0]
+      if (mainEvent && mainEvent.fight_ended_at) {
+        const evRes = await fetch(
+          `${SUPABASE_URL}/rest/v1/ufc_events?event_name=eq.${encodeURIComponent(event.event_name)}&ended_at=is.null`,
+          {
+            method: 'PATCH',
+            headers: { ...dbHeaders, 'Prefer': 'return=minimal' },
+            body: JSON.stringify({ ended_at: mainEvent.fight_ended_at }),
+          }
+        )
+        if (evRes.ok) eventEnded = mainEvent.fight_ended_at
+      }
+    }
+
+    return json({ ok: true, event: event.event_name, event_ended_at: eventEnded, results })
   } catch (err: any) {
     return json({ error: err.message }, 500)
   }

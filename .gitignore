@@ -10,3 +10,4 @@ nul
 *.log
 *.csv
 scoring_model/ml_dataset.csv
+supabase/.temp/

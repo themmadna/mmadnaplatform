@@ -860,6 +860,9 @@ export default function UFCFightRating() {
 
   const isLiveEvent = (event) => {
     if (!event?.event_date) return false;
+    // Main event has finalized → event is over, regardless of clock time.
+    // Set by poll-live-fights when the lowest-card_position fight reaches FINAL.
+    if (event.ended_at) return false;
     // Compare as local date strings to avoid UTC timezone shift
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -1197,7 +1200,7 @@ export default function UFCFightRating() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
                                     Live
                                 </span>
-                            ) : isUpcoming(event.event_date) && (
+                            ) : (!event.ended_at && isUpcoming(event.event_date)) && (
                                 <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-widest font-semibold">
                                     Upcoming
                                 </span>
@@ -1249,7 +1252,14 @@ export default function UFCFightRating() {
                 <div className="text-center py-20 opacity-40 italic">No fights found for this event.</div>
             ) : (() => {
                 const eventLocked = isVotingLocked(selectedEvent);
-                return eventFights.map((f, i) => (
+                // Once the event has concluded (main event finalized), a fight that never
+                // started is a scratched/replaced bout — hide it instead of showing "Upcoming".
+                // eventFights is ordered by card_position ASC, so [0] is the main event.
+                const eventConcluded = !!selectedEvent?.ended_at || !!eventFights[0]?.fight_ended_at;
+                const visibleFights = eventConcluded
+                    ? eventFights.filter(f => f.fight_started_at || f.fight_ended_at || f.status === 'completed')
+                    : eventFights;
+                return visibleFights.map((f, i) => (
                     <FightCard
                         key={f.id}
                         fight={f}

@@ -7,14 +7,15 @@ Full table and view definitions. Update this file whenever a migration adds, rem
 ## Tables
 
 ### `ufc_events`
-| Column | Type | Nullable |
-|---|---|---|
-| `id` | bigint PK | NOT NULL |
-| `event_name` | text | NULL |
-| `event_url` | text | NULL |
-| `event_date` | date | NULL |
-| `event_location` | text | NULL |
-| `start_time` | text | NULL |
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | bigint PK | NOT NULL | |
+| `event_name` | text | NULL | |
+| `event_url` | text | NULL | |
+| `event_date` | date | NULL | |
+| `event_location` | text | NULL | |
+| `start_time` | text | NULL | ESPN ISO 8601 string |
+| `ended_at` | timestamptz | NULL | set by `poll-live-fights` when the main event (lowest `card_position`) reaches FINAL; frontend `isLiveEvent` returns false once set — this is what clears the LIVE badge after the event concludes. Added via `supabase/migrate_event_ended_at.py` |
 
 ### `fights`
 | Column | Type | Nullable | Notes |

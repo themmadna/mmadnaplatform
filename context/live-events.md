@@ -88,6 +88,11 @@ The Edge Function is the only path — it runs with service role and validates t
 ### `fights` table query
 `select('*')` everywhere in App.js — new columns auto-included in the `fight` prop without explicit listing.
 
+### Event LIVE badge + scratched-fight hiding
+- **`isLiveEvent(event)`** returns false if `event.ended_at` is set — the LIVE badge clears the moment the main event finalizes, not at local midnight. Without this it was purely `event_date === today && start_time <= now`, so an event showed LIVE all day. The events list uses `ufc_events.select('*')`, so `ended_at` flows through automatically.
+- The "Upcoming" event badge is also gated on `!event.ended_at` so a concluded event today shows no badge (not "Upcoming").
+- **Scratched/replaced bouts:** once an event has concluded (`selectedEvent.ended_at` set, or the main event `eventFights[0].fight_ended_at` set), the fights view hides any fight that never started (`!fight_started_at && !fight_ended_at && status !== 'completed'`). These are late opponent swaps or pulled bouts that ESPN re-created under new competition IDs, so the poller could never match them (stale `espn_competition_id` + `boutMatchesComp` needs both fighters). The DB rows are deleted later via the post-event audit; the frontend hides them immediately so they don't linger as "Upcoming."
+
 ### Fight card ordering
 Frontend orders fights by `card_position ASC` (nulls last), then `id ASC` as fallback for older events without `card_position`. This ensures the display always matches the real UFC card order even after reshuffles.
 
@@ -126,6 +131,8 @@ Called by pg_cron every minute. No JWT required (`verify_jwt: false`).
 1. Exit if no `ufc_events` row with `event_date` in the last 2 days (yesterday–today UTC). UFC events start late US time and can still be running after UTC midnight, so `event_date` may be "yesterday" in UTC. Uses `event_date.desc limit 1` to get the most recent.
 2. Exit if `ufc_events.start_time` (ISO 8601 string from ESPN) is in the future
 3. Exit if all `status = 'upcoming'` fights for the event already have `fight_ended_at IS NOT NULL`
+
+**Stamps `ufc_events.ended_at`:** after the fight loop, if `event.ended_at` is null and the main event (lowest `card_position`, fallback lowest `id`) has `fight_ended_at` (already set or written this cycle), it PATCHes `ufc_events.ended_at` (with `&ended_at=is.null` for idempotency). This is the signal that clears the frontend LIVE badge. Deliberately keyed off the main event rather than "all fights ended" — scratched/replaced bouts never reach FINAL, so an all-ended check would never trip, but the main event always finishes last.
 
 **Key:** ESPN is fetched using `event.event_date` (not UTC today) so the correct date is always used even past midnight UTC.
 
