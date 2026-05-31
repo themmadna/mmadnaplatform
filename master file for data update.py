@@ -1,6 +1,8 @@
 import os
 import sys
 import time
+import re
+import hashlib
 import subprocess
 import argparse
 from typing import Optional
@@ -36,6 +38,66 @@ stats_summary = {
     "new_metadata": 0,
     "new_round_rows": 0
 }
+
+# --- ufcstats anti-bot proof-of-work solver ---
+# As of ~2026-05-30 ufcstats serves a self-hosted SHA-256 proof-of-work JS challenge
+# (NOT Cloudflare — origin is its own nginx) to plain HTTP clients instead of the real
+# page. The challenge page embeds a `nonce` and a difficulty; the client must find the
+# smallest n where sha256(f"{nonce}:{n}") starts with `difficulty` hex zeros, POST
+# {nonce, n} to /__c, then reuse the clearance cookie (_fmc, ~7-day TTL) on subsequent
+# requests. We solve it transparently and route every ufcstats fetch through
+# fetch_ufcstats(), so one solve per run clears the whole session. Header/UA tweaks and
+# cloudscraper do NOT work; this is the only viable lightweight path.
+UFCSTATS_BASE = "http://ufcstats.com"
+_CHALLENGE_MARKERS = ("Checking your browser", "This site requires JavaScript")
+_CHALLENGE_MAX_ITERS = 50_000_000  # ~difficulty 6; guards against a runaway loop
+
+_ufc_session = requests.Session()
+_ufc_session.headers.update({
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+})
+
+def _looks_like_challenge(html):
+    return any(m in html for m in _CHALLENGE_MARKERS)
+
+def _solve_ufcstats_challenge(html):
+    """Parse nonce + difficulty from the challenge page and return (nonce, n) solving the
+    SHA-256 proof-of-work, or None if the page can't be parsed (challenge layout changed)."""
+    m_nonce = re.search(r'nonce\s*=\s*"([0-9a-fA-F]+)"', html)
+    m_diff  = re.search(r'new Array\((\d+)\+1\)\.join\(', html)
+    if not m_nonce or not m_diff:
+        return None
+    nonce = m_nonce.group(1)
+    difficulty = int(m_diff.group(1))
+    target = "0" * difficulty
+    for n in range(_CHALLENGE_MAX_ITERS):
+        if hashlib.sha256(f"{nonce}:{n}".encode()).hexdigest()[:difficulty] == target:
+            return nonce, n
+    return None
+
+def fetch_ufcstats(url, timeout=20):
+    """GET a ufcstats URL through a shared session, transparently clearing the SHA-256 JS
+    proof-of-work challenge when ufcstats serves it. The clearance cookie is cached on the
+    session, so only the first challenged request pays the solve cost. Returns the
+    requests.Response. If the challenge can't be parsed, returns the challenge response
+    unchanged so callers' existing empty/None guards degrade gracefully instead of crashing."""
+    res = _ufc_session.get(url, timeout=timeout)
+    if not _looks_like_challenge(res.text):
+        return res
+    solved = _solve_ufcstats_challenge(res.text)
+    if not solved:
+        print("   ⚠️  ufcstats challenge present but unparseable — page structure may have changed.")
+        return res
+    nonce, n = solved
+    print(f"   🔓 Solved ufcstats proof-of-work (n={n}); retrying {url}")
+    try:
+        _ufc_session.post(f"{UFCSTATS_BASE}/__c",
+                          data={"nonce": nonce, "n": n}, timeout=timeout)
+    except Exception as e:
+        print(f"   ⚠️  ufcstats challenge POST failed: {e}")
+        return res
+    return _ufc_session.get(url, timeout=timeout)
 
 def is_post_event_window():
     """Return (True, event_name, msg) if in the post-event processing window, else (False, None, msg).
@@ -172,7 +234,7 @@ def parse_weight_class(raw):
 
 def parse_fight_meta_details(fight_url):
     try:
-        res = requests.get(fight_url, timeout=10)
+        res = fetch_ufcstats(fight_url, timeout=10)
         soup = BeautifulSoup(res.text, 'html.parser')
         fighters = soup.select('div.b-fight-details__person')
         if len(fighters) < 2: return None
@@ -301,9 +363,13 @@ def parse_zone_stats_table(table, event_name, fight_name):
 
 def sync_upcoming_events():
     print("🔮 Phase 0: Syncing Upcoming Events (Next Event Only)...")
-    res = requests.get("http://ufcstats.com/statistics/events/upcoming", timeout=15)
+    res = fetch_ufcstats("http://ufcstats.com/statistics/events/upcoming", timeout=15)
     soup = BeautifulSoup(res.text, 'html.parser')
-    rows = soup.find('table', class_='b-statistics__table-events').find_all('tr', class_='b-statistics__table-row')
+    table = soup.find('table', class_='b-statistics__table-events')
+    if not table:
+        print("   ⚠️  Phase 0: no events table found (ufcstats challenge or layout change) — skipping.")
+        return
+    rows = table.find_all('tr', class_='b-statistics__table-row')
     
     # LOGIC CHANGE: Only process the FIRST valid row (The next event)
     # The first row is usually the header, so we look for the first one with a link
@@ -360,7 +426,7 @@ def sync_upcoming_fights():
         existing = supabase_db.table("fights").select("bout").eq("event_name", event['event_name']).execute().data
         existing_bouts = [f['bout'] for f in existing]
 
-        res = requests.get(event['event_url'], timeout=15)
+        res = fetch_ufcstats(event['event_url'], timeout=15)
         soup = BeautifulSoup(res.text, 'html.parser')
         tbody = soup.find('tbody')
         if not tbody: continue
@@ -406,9 +472,13 @@ def sync_upcoming_fights():
 
 def sync_events():
     print("🚀 Phase 1: Syncing Completed Events...")
-    res = requests.get("http://ufcstats.com/statistics/events/completed?page=all", timeout=15)
+    res = fetch_ufcstats("http://ufcstats.com/statistics/events/completed?page=all", timeout=15)
     soup = BeautifulSoup(res.text, 'html.parser')
-    rows = soup.find('table', class_='b-statistics__table-events').find_all('tr', class_='b-statistics__table-row')
+    table = soup.find('table', class_='b-statistics__table-events')
+    if not table:
+        print("   ⚠️  Phase 1: no events table found (ufcstats challenge or layout change) — skipping.")
+        return
+    rows = table.find_all('tr', class_='b-statistics__table-row')
     consecutive_existing = 0
     STOP_AFTER = 5  # Stop once we've seen this many already-in-DB events in a row
     for row in rows:
@@ -450,7 +520,7 @@ def sync_fights():
         any_newly_completed = False
 
         try:
-            res = requests.get(event['event_url'], timeout=30)
+            res = fetch_ufcstats(event['event_url'], timeout=30)
             res.raise_for_status()
         except Exception as e:
             print(f"   ⚠️  Phase 2: could not fetch {event['event_url']}: {e} — skipping event")
@@ -648,7 +718,7 @@ def sync_round_stats():
         tasks = supabase_db.table("fight_scraping_status").select("bout, event_name, fight_url").filter("fight_status", "in", '("❌ MISSING", "⚠️ PARTIAL")').execute()
         
         for task in tasks.data:
-            res = requests.get(task['fight_url'])
+            res = fetch_ufcstats(task['fight_url'])
             if res.status_code != 200:
                 print(f"   ⚠️  Phase 4: HTTP {res.status_code} for {task['fight_url']} — skipping")
                 time.sleep(1)

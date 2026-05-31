@@ -56,6 +56,21 @@ python "master file for data update.py" --post-event # Post-event mode: Phases 0
 
 After Phase 4, every mode calls **`stamp_event_ended_at(event_name)`** — stamps `ufc_events.ended_at` = the event's latest `fight_ended_at` (for events with NULL `ended_at`). Durable backstop for the frontend LIVE badge in case `poll-live-fights` never saw the main event finalize (e.g. an unmatchable main-event opponent swap). Idempotent; full-run is bounded to events from the last 14 days.
 
+### ufcstats Anti-Bot Proof-of-Work Challenge
+
+As of ~2026-05-30 ufcstats.com serves a **self-hosted SHA-256 JavaScript proof-of-work challenge** (origin `nginx/1.10.1`, **not** Cloudflare — no `cf-ray`) to plain HTTP clients: a tiny "Checking your browser…" stub with `<noscript>This site requires JavaScript.</noscript>` instead of the real page. This broke every ufcstats fetch (Phases 0/1/2/3/4) and — because Phase 0's `find('table').find_all(...)` had no None-guard — **crash-aborted the whole run on the first phase**, starving the completed-results phases too. Header/User-Agent tweaks and `cloudscraper` do **not** clear it (it isn't Cloudflare).
+
+**Solver:** every ufcstats GET now routes through `fetch_ufcstats(url, timeout=20)` (in `master file for data update.py`):
+1. GET via a shared module-level `requests.Session` (browser UA).
+2. If the body looks like the challenge (`_looks_like_challenge`), parse `nonce` (`var nonce="<hex>"`) and difficulty (`new Array(<D>+1).join('0')` → D hex zeros).
+3. Solve: smallest `n` where `sha256(f"{nonce}:{n}").hexdigest()[:D] == "0"*D` (difficulty 2 ≈ 256 hashes — instant; iteration-capped at 50M as a runaway guard).
+4. `POST /__c` with form body `nonce=<nonce>&n=<n>` → `204` sets clearance cookie `_fmc` (Max-Age ~7 days).
+5. Retry the GET. The cookie is cached on the session, so only the **first** challenged request per run pays the solve cost.
+
+If the challenge can't be parsed (layout changed), `fetch_ufcstats` returns the challenge response unchanged and the caller's existing None/empty guard handles it. **Both `find('table', class_='b-statistics__table-events')` sites (Phase 0, Phase 1) now None-guard → skip+warn** instead of crashing, so a future challenge-structure change degrades gracefully rather than taking down Phases 1–4.
+
+No new dependencies (`hashlib` + `re` are stdlib). `scrape_mmadecisions.py` hits a different origin (Apache, not challenged) and `poll-live-fights` uses ESPN — both unaffected.
+
 ### `--live` Mode (GitHub Actions automated)
 
 Runs only Phases 2, 3, 4. Self-guarding via `is_live_window()`:
