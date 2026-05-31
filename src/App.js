@@ -858,11 +858,22 @@ export default function UFCFightRating() {
     return eventDate >= today;
   };
 
+  // An event is definitely over this many hours after start_time. Safety net for the
+  // rare case where ended_at was never stamped (e.g. the main event was itself an
+  // unmatchable opponent swap, so the poller never saw it finalize). UFC cards run
+  // ~5-6h; 8h covers overruns.
+  const EVENT_MAX_LIVE_HOURS = 8;
+  const isPastEventWindow = (event) => {
+    if (!event?.start_time) return false;
+    return Date.now() > new Date(event.start_time).getTime() + EVENT_MAX_LIVE_HOURS * 3600 * 1000;
+  };
+
   const isLiveEvent = (event) => {
     if (!event?.event_date) return false;
     // Main event has finalized → event is over, regardless of clock time.
     // Set by poll-live-fights when the lowest-card_position fight reaches FINAL.
     if (event.ended_at) return false;
+    if (isPastEventWindow(event)) return false; // time-based safety net
     // Compare as local date strings to avoid UTC timezone shift
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
@@ -1255,7 +1266,7 @@ export default function UFCFightRating() {
                 // Once the event has concluded (main event finalized), a fight that never
                 // started is a scratched/replaced bout — hide it instead of showing "Upcoming".
                 // eventFights is ordered by card_position ASC, so [0] is the main event.
-                const eventConcluded = !!selectedEvent?.ended_at || !!eventFights[0]?.fight_ended_at;
+                const eventConcluded = !!selectedEvent?.ended_at || !!eventFights[0]?.fight_ended_at || isPastEventWindow(selectedEvent);
                 const visibleFights = eventConcluded
                     ? eventFights.filter(f => f.fight_started_at || f.fight_ended_at || f.status === 'completed')
                     : eventFights;

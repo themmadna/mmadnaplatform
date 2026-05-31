@@ -677,6 +677,33 @@ def sync_round_stats():
         print(f"Skipping Round Stats (View might be missing): {e}")
 
 
+def stamp_event_ended_at(event_name: Optional[str] = None):
+    """Stamp ufc_events.ended_at = the event's latest fight_ended_at, for events that
+    don't have it yet. An event is over once its last-tracked fight has ended.
+
+    Mirrors poll-live-fights' ended_at stamp, but runs in the scraper so ended_at is set
+    even when the poller never matched the main event (e.g. a late opponent swap ESPN
+    re-IDed). The frontend LIVE badge clears on ended_at, so this is the durable backstop
+    for that edge. Idempotent: the `.is_("ended_at","null")` guard never overwrites a set
+    value, and lexicographic max over ISO-8601 timestamps == chronological max."""
+    print("🏁 Stamping event ended_at...")
+    q = supabase_db.table("ufc_events").select("event_name, event_date").is_("ended_at", "null")
+    if event_name:
+        q = q.eq("event_name", event_name)
+    else:
+        # Full-run safety: bound the per-event lookups to recent events only.
+        cutoff = (datetime.now(timezone.utc) - timedelta(days=14)).date().isoformat()
+        q = q.gte("event_date", cutoff)
+    events = q.execute().data or []
+    for ev in events:
+        en = ev["event_name"]
+        rows = supabase_db.table("fights").select("fight_ended_at").eq("event_name", en).execute().data or []
+        ended = [r["fight_ended_at"] for r in rows if r.get("fight_ended_at")]
+        if ended:
+            latest = max(ended)
+            supabase_db.table("ufc_events").update({"ended_at": latest}).eq("event_name", en).is_("ended_at", "null").execute()
+            print(f"   ✅ {en} → {latest}")
+
 
 # --- ADD THIS FUNCTION WITH YOUR OTHER SCRAPERS ---
 def _norm_name(s):
@@ -853,6 +880,7 @@ if __name__ == "__main__":
         sync_fights()
         sync_meta(event_name=event_name)
         sync_round_stats()
+        stamp_event_ended_at(event_name=event_name)
     elif args.post_event:
         in_window, event_name, detail = is_post_event_window()
         if not in_window:
@@ -865,6 +893,7 @@ if __name__ == "__main__":
         sync_fights()
         sync_meta(event_name=event_name)
         sync_round_stats()
+        stamp_event_ended_at(event_name=event_name)
         sync_event_times()
         sync_judge_scores()
     else:
@@ -877,6 +906,7 @@ if __name__ == "__main__":
         sync_fights()
         sync_meta()
         sync_round_stats()
+        stamp_event_ended_at()
         sync_judge_scores()
         sync_event_times()
 

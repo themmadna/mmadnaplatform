@@ -7,6 +7,10 @@
 //   2. Exit if current time is before event start_time
 //   3. Exit if all upcoming fights already have fight_ended_at set
 //
+// Matches each fight to an ESPN competition by id, then by both-fighter name, then by
+// swap-resolution (an unclaimed comp sharing exactly one fighter — a late opponent swap
+// that ESPN re-IDed); on a swap it re-links the comp id + corrects the bout.
+//
 // After polling, stamps ufc_events.ended_at once the main event (lowest card_position)
 // reaches FINAL — this clears the frontend LIVE badge (isLiveEvent checks !ended_at).
 //
@@ -130,6 +134,19 @@ Deno.serve(async (_req) => {
     const compPositionMap = new Map<any, number>()
     allComps.forEach((c: any, i: number) => compPositionMap.set(c, totalComps - i))
 
+    // Pre-compute which ESPN comps are claimed by a confident match (by id or by BOTH
+    // fighters). Swap-resolution below only considers UNCLAIMED comps, so it can never
+    // steal a comp that already belongs to another fight.
+    const claimedCompIds = new Set<string>()
+    for (const f of fights) {
+      for (const c of allComps) {
+        if ((f.espn_competition_id && String(c.id) === String(f.espn_competition_id)) ||
+            boutMatchesComp(f.bout, c)) {
+          claimedCompIds.add(String(c.id))
+        }
+      }
+    }
+
     const now = new Date().toISOString()
     const results: any[] = []
     // Track the updates we apply this cycle, keyed by fight id, so the
@@ -155,6 +172,32 @@ Deno.serve(async (_req) => {
           comp = (ev.competitions || []).find((c: any) => boutMatchesComp(fight.bout, c))
         }
         if (comp) break
+      }
+
+      // Swap-resolution fallback: a late opponent change makes ESPN re-create the
+      // competition under a NEW id with one fighter swapped, so neither the stored id nor
+      // the both-fighters bout match works and the fight sits frozen as 'upcoming'. A
+      // fighter is unique within an event, so an UNCLAIMED comp that shares exactly one
+      // fighter is a confident match. Require a single unambiguous candidate, then re-link
+      // the comp id and correct the bout — so the fight tracks live and the post-event
+      // scrape updates this row in place (no duplicate) instead of inserting a new one.
+      let swapResolved = false
+      if (!comp) {
+        const parts = (fight.bout || '').split(/ vs /i)
+        if (parts.length === 2) {
+          const candidates = allComps.filter((c: any) => {
+            if (claimedCompIds.has(String(c.id))) return false
+            const names = (c.competitors || []).map((cc: any) => cc.athlete?.displayName || '')
+            const m0 = names.some((n: string) => matchesFighter(n, parts[0]))
+            const m1 = names.some((n: string) => matchesFighter(n, parts[1]))
+            return (m0 ? 1 : 0) + (m1 ? 1 : 0) === 1 // exactly one side matches = a swap
+          })
+          if (candidates.length === 1) {
+            comp = candidates[0]
+            swapResolved = true
+            claimedCompIds.add(String(comp.id)) // don't let another fight grab it this cycle
+          }
+        }
       }
 
       if (!comp) {
@@ -198,6 +241,16 @@ Deno.serve(async (_req) => {
         if (espnScheduled) updates.scheduled_rounds = espnScheduled
       }
 
+      // On a resolved swap, re-link the new comp id and correct the bout to ESPN's
+      // fighters (so future cycles match by id and the card shows the real matchup).
+      // ESPN naming is used here; the post-event ufcstats scrape finalises names.
+      if (swapResolved) {
+        updates.espn_competition_id = String(comp.id)
+        const swapNames = (comp.competitors || [])
+          .map((cc: any) => cc.athlete?.displayName || '').filter(Boolean)
+        if (swapNames.length === 2) updates.bout = `${swapNames[0]} vs ${swapNames[1]}`
+      }
+
       if (Object.keys(updates).length === 0) {
         results.push({ fight_id: fight.id, noop: true, status: statusName })
         continue
@@ -214,7 +267,7 @@ Deno.serve(async (_req) => {
         }
       )
 
-      results.push({ fight_id: fight.id, status: statusName, updates, ok: patchRes.ok })
+      results.push({ fight_id: fight.id, status: statusName, updates, ok: patchRes.ok, swap: swapResolved || undefined })
     }
 
     // Stamp ufc_events.ended_at once the main event has finalized.

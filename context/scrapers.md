@@ -54,6 +54,8 @@ python "master file for data update.py" --post-event # Post-event mode: Phases 0
 | **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights |
 | **6** | Judge scores — `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` |
 
+After Phase 4, every mode calls **`stamp_event_ended_at(event_name)`** — stamps `ufc_events.ended_at` = the event's latest `fight_ended_at` (for events with NULL `ended_at`). Durable backstop for the frontend LIVE badge in case `poll-live-fights` never saw the main event finalize (e.g. an unmatchable main-event opponent swap). Idempotent; full-run is bounded to events from the last 14 days.
+
 ### `--live` Mode (GitHub Actions automated)
 
 Runs only Phases 2, 3, 4. Self-guarding via `is_live_window()`:
@@ -73,7 +75,7 @@ Runs only Phases 2, 3, 4. Self-guarding via `is_live_window()`:
 
 ### `--post-event` Mode (GitHub Actions automated)
 
-Runs Phases 0, 0.5, 1, 5, 6. Self-guarding via `is_post_event_window()`:
+Runs **all phases 0 → 6** (0, 0.5, 1, 2, 3, 4, then `stamp_event_ended_at`, 5, 6). Self-guarding via `is_post_event_window()`:
 
 1. Queries `ufc_events` for any event in the past 3 days (3-day lookback handles UTC-midnight crossings)
 2. **Fails safe** if `ufc_events.start_time` is NULL — Phase 5 must have run first (prerequisite)
@@ -82,7 +84,7 @@ Runs Phases 0, 0.5, 1, 5, 6. Self-guarding via `is_post_event_window()`:
 
 **Triggered automatically** via `.github/workflows/post-event-scraper.yml` on a `0 */2 * * *` cron (every 2 hours). On non-event days exits after one DB query. All phases are idempotent — re-runs within the window are safe. Phase 6 (`scrape_mmadecisions.py`) stops after 10 consecutive existing records, so later runs in the window are fast.
 
-**Phase order:** sync_upcoming_events (0) → sync_upcoming_fights (0.5) → sync_events (1) → sync_event_times (5) → sync_judge_scores (6). Phases 2/3/4 are excluded — they were handled by `--live` during the event.
+**Phase order:** sync_upcoming_events (0) → sync_upcoming_fights (0.5) → sync_events (1) → sync_fights (2) → sync_meta (3) → sync_round_stats (4) → stamp_event_ended_at → sync_event_times (5) → sync_judge_scores (6). Phases 2/3/4 ARE run here (not just in `--live`) — this is the path that pulls in completed results / replaced-matchup bouts if `--live` missed them or ufcstats posted late. `sync_meta(event_name=...)` is event-scoped so it's not a full-history scan.
 
 **Required GitHub Secrets:** Same as live mode — `REACT_APP_SUPABASE_URL`, `SUPABASE_SERVICE_KEY`.
 
