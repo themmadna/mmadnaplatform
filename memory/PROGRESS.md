@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-05-31 (S-P2-9 — revoked anon/PUBLIC EXECUTE on 4 user-scoped RPCs + added missing frontend guard; dead orphan `get_liked_fight_stats` flagged for DROP (new S-P2-19). Earlier same day: S-P2-8 search_path, S-P2-13 indexes.)
-Next session: Resume Phase C — S-P2-10 (drop redundant fight_ratings SELECT policy), S-P2-12 (fmd→fights FK ON DELETE CASCADE), S-P2-14 (revoke update_fight_ratings EXECUTE from PUBLIC/anon/authenticated). Then new follow-up S-P2-19 (DROP dead get_liked_fight_stats — destructive, needs approval). S-P2-8/9/13 done. (S-P2-9 changes awaiting commit — includes a frontend dataService.js change → real Vercel deploy.)
+Last updated: 2026-06-09 (Live-event regression fix — `stamp_event_ended_at()` was stamping `ended_at` mid-event after the first prelim ended, hiding upcoming/live fights for the rest of the card. Main-event gate added; awaiting commit.)
+Next session: Resume Phase C — S-P2-10 (drop redundant fight_ratings SELECT policy), S-P2-12 (fmd→fights FK ON DELETE CASCADE), S-P2-14 (revoke update_fight_ratings EXECUTE from PUBLIC/anon/authenticated). Then new follow-up S-P2-19 (DROP dead get_liked_fight_stats — destructive, needs approval). S-P2-8/9/13 done + committed.
 Last refreshed: 2026-05-16
 
 ---
@@ -133,6 +133,15 @@ Full report in `memory/audits/2026-05-16/`. Read-only audit, no fixes deployed.
 - **Hardening (full future-proofing, 2026-05-30):** (a) Frontend time fallback — `isLiveEvent`/`eventConcluded` also clear at `start_time + 8h` (`EVENT_MAX_LIVE_HOURS`) so a never-stamped `ended_at` can't keep an event LIVE. (b) `stamp_event_ended_at()` added to the master scrape (all 3 modes) — durable backstop that sets `ended_at` = latest `fight_ended_at`. (c) **Swap-aware poller** — `poll-live-fights` now resolves opponent swaps: an unclaimed ESPN comp sharing exactly one fighter (fighter unique per event) → re-link comp id + rewrite bout. Deployed.
 - **RESULT — this event fully self-healed:** within one cron cycle the swap-aware poller resolved all 3 swapped rows in place (8835→Matthews/Harris, 8840→Tsuruya/Gurule, 8842→Vera/Zhu), correct bouts, comp ids re-linked, all FINAL, **no duplicates, no deletion needed**. Card now: 13 fights, 13 ended, 0 never-started. `cleanup_song_figueiredo_swaps.py` is now moot for this event (kept as a fallback tool; its pre-flight A aborts gracefully since the rows are no longer never-started). winner/method/round-stats still fill in when ufcstats posts (post-event Action runs Phases 2/3/4 every 2h — the scrapers.md claim that it skips them was STALE and is now corrected).
 - **NextSteps:** Live-event work complete. Resume Phase C — S-P2-13 indexes, then S-P2-8 search_path hardening / S-P2-9 anon EXECUTE revokes.
+
+---
+
+**Live-Event Display Regression #2 — mid-event `ended_at` stamp — 2026-06-09 — Checkpoint**
+- **Goal:** Bastian reported that during UFC FN: Muhammad vs Bonfim (2026-06-06) the event card only showed fights that had already happened — no upcoming fights, no live treatment.
+- **Constraints:** Verify against the live DB before blaming the frontend; scraper-only code fix; commit gated on approval.
+- **Progress:** Root cause confirmed in DB: `ufc_events.ended_at = 21:18 UTC` = the FIRST prelim's `fight_ended_at` (main event ended 02:58 next day). The 2026-05-30 backstop `stamp_event_ended_at()` stamped `ended_at = max(fight_ended_at)` whenever ≥1 fight had ended — and `--live` mode calls it every cycle, so it fired right after prelim #1. With `ended_at` set mid-event: `isLiveEvent` → false (LIVE badge + client polling gone) and `eventConcluded` → true (App.js filter hides all never-started fights). The frontend logic itself is correct. **Fix:** main-event gate added to `stamp_event_ended_at()` — only stamps once the main-event row (lowest `card_position`, fallback lowest `id`, same rule as `poll-live-fights`) has `fight_ended_at`. Compile-checked + simulated against Saturday's real data: mid-event state (21:20) → no stamp; post-event → stamps 02:58. `context/scrapers.md` + `memory/LESSONS.md` updated.
+- **Decisions:** No DB cleanup needed — the event is genuinely over now, so `ended_at` being set is correct (its 21:18 value is cosmetically early but only consumed as a boolean; left as-is). Poller untouched — it always had the main-event gate.
+- **NextSteps:** Commit the fix (scraper-only — no Vercel deploy impact). Will self-verify live at the next event (UFC Freedom 250, 2026-06-14). Then resume Phase C (S-P2-10/12/14, S-P2-19).
 
 ---
 

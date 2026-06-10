@@ -54,7 +54,7 @@ python "master file for data update.py" --post-event # Post-event mode: Phases 0
 | **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights |
 | **6** | Judge scores — `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` |
 
-After Phase 4, every mode calls **`stamp_event_ended_at(event_name)`** — stamps `ufc_events.ended_at` = the event's latest `fight_ended_at` (for events with NULL `ended_at`). Durable backstop for the frontend LIVE badge in case `poll-live-fights` never saw the main event finalize (e.g. an unmatchable main-event opponent swap). Idempotent; full-run is bounded to events from the last 14 days.
+After Phase 4, every mode calls **`stamp_event_ended_at(event_name)`** — stamps `ufc_events.ended_at` = the event's latest `fight_ended_at` (for events with NULL `ended_at`), **but only once the MAIN EVENT row (lowest `card_position`, fallback lowest `id` — same rule as the poller) has a `fight_ended_at`**. The main-event gate is critical: `--live` mode calls this mid-event after every cycle, and an "any fight ended" check stamps `ended_at` right after the first prelim ends, which kills the frontend LIVE display for the rest of the card (observed at UFC FN: Muhammad vs Bonfim, 2026-06-06 — `ended_at` got stamped 21:18, the first prelim's end, 5.5h before the main event; fixed 2026-06-09). Durable backstop for the frontend LIVE badge in case `poll-live-fights` never saw the main event finalize (e.g. an unmatchable main-event opponent swap). Idempotent; full-run is bounded to events from the last 14 days.
 
 ### ufcstats Anti-Bot Proof-of-Work Challenge
 

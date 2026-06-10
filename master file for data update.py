@@ -748,14 +748,20 @@ def sync_round_stats():
 
 
 def stamp_event_ended_at(event_name: Optional[str] = None):
-    """Stamp ufc_events.ended_at = the event's latest fight_ended_at, for events that
-    don't have it yet. An event is over once its last-tracked fight has ended.
+    """Stamp ufc_events.ended_at once an event's MAIN EVENT has a fight_ended_at, for
+    events that don't have it yet. The main event is always the last fight of the night,
+    so it ending is the "event over" signal — any earlier fight ending is not (--live
+    mode calls this mid-event after every cycle, so a weaker "any fight ended" check
+    would stamp ended_at right after the first prelim and kill the LIVE display for the
+    rest of the card).
 
-    Mirrors poll-live-fights' ended_at stamp, but runs in the scraper so ended_at is set
-    even when the poller never matched the main event (e.g. a late opponent swap ESPN
-    re-IDed). The frontend LIVE badge clears on ended_at, so this is the durable backstop
-    for that edge. Idempotent: the `.is_("ended_at","null")` guard never overwrites a set
-    value, and lexicographic max over ISO-8601 timestamps == chronological max."""
+    Mirrors poll-live-fights' ended_at stamp (same main-event rule: lowest
+    card_position, fallback lowest id), but runs in the scraper so ended_at is set even
+    when the poller never matched the main event (e.g. a late opponent swap ESPN
+    re-IDed). The frontend LIVE badge clears on ended_at, so this is the durable
+    backstop for that edge. Idempotent: the `.is_("ended_at","null")` guard never
+    overwrites a set value, and lexicographic max over ISO-8601 timestamps ==
+    chronological max."""
     print("🏁 Stamping event ended_at...")
     q = supabase_db.table("ufc_events").select("event_name, event_date").is_("ended_at", "null")
     if event_name:
@@ -767,12 +773,23 @@ def stamp_event_ended_at(event_name: Optional[str] = None):
     events = q.execute().data or []
     for ev in events:
         en = ev["event_name"]
-        rows = supabase_db.table("fights").select("fight_ended_at").eq("event_name", en).execute().data or []
+        rows = (
+            supabase_db.table("fights")
+            .select("id, card_position, fight_ended_at")
+            .eq("event_name", en)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            continue
+        main = min(rows, key=lambda r: (r.get("card_position") is None, r.get("card_position"), r["id"]))
+        if not main.get("fight_ended_at"):
+            continue  # main event still open (or never tracked) → event not over yet
         ended = [r["fight_ended_at"] for r in rows if r.get("fight_ended_at")]
-        if ended:
-            latest = max(ended)
-            supabase_db.table("ufc_events").update({"ended_at": latest}).eq("event_name", en).is_("ended_at", "null").execute()
-            print(f"   ✅ {en} → {latest}")
+        latest = max(ended)
+        supabase_db.table("ufc_events").update({"ended_at": latest}).eq("event_name", en).is_("ended_at", "null").execute()
+        print(f"   ✅ {en} → {latest}")
 
 
 # --- ADD THIS FUNCTION WITH YOUR OTHER SCRAPERS ---
