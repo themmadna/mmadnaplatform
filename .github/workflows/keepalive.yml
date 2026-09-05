@@ -1,0 +1,35 @@
+name: Keepalive
+
+# GitHub automatically disables scheduled workflows after 60 days without
+# repository activity. That happened on 2026-08-09 (last commit 2026-06-09),
+# silently killing both scraper crons and stalling the DB at the
+# 2026-08-08 Gamrot vs Salkilld card until it was noticed a month later.
+#
+# This job pushes an empty commit monthly so the 60-day timer never expires.
+# `[skip ci]` in the message stops Vercel from redeploying for a no-op commit.
+
+on:
+  schedule:
+    - cron: '0 6 1 * *'   # 06:00 UTC on the 1st of every month
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: false
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Push empty keepalive commit
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit --allow-empty -m "chore: keepalive — reset Actions 60-day inactivity timer [skip ci]"
+          git push

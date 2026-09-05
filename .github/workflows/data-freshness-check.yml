@@ -1,0 +1,30 @@
+name: Data Freshness Check
+
+# The scraper pipeline can fail silently — nothing in the stack complains when
+# scraping stops. This runs weekly and goes red (which emails) if the data has gone
+# stale or a recent card is only partly scraped. See supabase/check_data_freshness.py.
+
+on:
+  schedule:
+    - cron: '0 12 * * 1'   # Mondays 12:00 UTC — after the weekend's events are in
+  workflow_dispatch:
+
+jobs:
+  check-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Check data freshness
+        env:
+          REACT_APP_SUPABASE_URL: ${{ secrets.REACT_APP_SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python supabase/check_data_freshness.py

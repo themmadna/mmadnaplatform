@@ -51,7 +51,7 @@ python "master file for data update.py" --post-event # Post-event mode: Phases 0
 | **2** | Completed fights — includes auto-delete guard (see below) |
 | **3** | Fight metadata & winners — `sync_meta` scans ALL completed fights unless scoped by `event_name`. After the insert loop, calls `rescrape_null_winner_decisions()` to re-check any `winner IS NULL AND method ILIKE 'Decision%'` rows; updates only when the parse now returns a winner (real draws stay untouched). |
 | **4** | Round-by-round stats — upsert with `on_conflict`; `time.sleep(1)` between requests. Stamps `fight_url` from `task['fight_url']` onto every merged row before upsert so the FK link is set at insert time (S-P1-5 fix). |
-| **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights |
+| **5** | Event start times from ESPN API — also populates `fights.espn_competition_id` and `fights.scheduled_rounds` for upcoming fights. Covers all future events **plus** any event up to `PHASE5_BACKFILL_DAYS` (45) in the past whose `start_time` is still NULL (see below) |
 | **6** | Judge scores — `subprocess.run([sys.executable, "scrape_mmadecisions.py", "--yes"])` |
 
 After Phase 4, every mode calls **`stamp_event_ended_at(event_name)`** — stamps `ufc_events.ended_at` = the event's latest `fight_ended_at` (for events with NULL `ended_at`), **but only once the MAIN EVENT row (lowest `card_position`, fallback lowest `id` — same rule as the poller) has a `fight_ended_at`**. The main-event gate is critical: `--live` mode calls this mid-event after every cycle, and an "any fight ended" check stamps `ended_at` right after the first prelim ends, which kills the frontend LIVE display for the rest of the card (observed at UFC FN: Muhammad vs Bonfim, 2026-06-06 — `ended_at` got stamped 21:18, the first prelim's end, 5.5h before the main event; fixed 2026-06-09). Durable backstop for the frontend LIVE badge in case `poll-live-fights` never saw the main event finalize (e.g. an unmatchable main-event opponent swap). Idempotent; full-run is bounded to events from the last 14 days.
@@ -102,6 +102,40 @@ Runs **all phases 0 → 6** (0, 0.5, 1, 2, 3, 4, then `stamp_event_ended_at`, 5,
 **Phase order:** sync_upcoming_events (0) → sync_upcoming_fights (0.5) → sync_events (1) → sync_fights (2) → sync_meta (3) → sync_round_stats (4) → stamp_event_ended_at → sync_event_times (5) → sync_judge_scores (6). Phases 2/3/4 ARE run here (not just in `--live`) — this is the path that pulls in completed results / replaced-matchup bouts if `--live` missed them or ufcstats posted late. `sync_meta(event_name=...)` is event-scoped so it's not a full-history scan.
 
 **Required GitHub Secrets:** Same as live mode — `REACT_APP_SUPABASE_URL`, `SUPABASE_SERVICE_KEY`.
+
+### Phase 5 Backfill Window
+
+Phase 5 selects future events **plus** events up to `PHASE5_BACKFILL_DAYS` (45) in the past that still have `start_time IS NULL`. It was future-only (`gte(event_date, today)`) until 2026-09-05.
+
+Why it matters: an event ingested after the fact — the normal outcome whenever automation lapses and a later run backfills it — would land with `start_time = NULL` forever. Both `is_live_window()` and `is_post_event_window()` **fail safe on a NULL `start_time`**, so such an event is permanently invisible to the automation that would otherwise finish populating it. It also leaves the frontend's `isPastEventWindow()` false, so `eventConcluded` never trips for that event.
+
+The ESPN comp-id / `card_position` half of Phase 5 (step 4b) still only matches `status = 'upcoming'` fights, so for a backfilled past event only `start_time` is filled; expect a noisy "ESPN comps not matched to DB" warning on those. Harmless — card ordering falls back to Convention #4 (`fights.id ASC`).
+
+### GitHub Actions 60-Day Inactivity Disable
+
+**Both scraper workflows are scheduled, and GitHub disables scheduled workflows after 60 days with no repository activity.** This fired on 2026-08-09 (last commit 2026-06-09) and the data pipeline stopped silently for a month — the DB sat at the 2026-08-08 Gamrot vs Salkilld card while 4 events went unscraped.
+
+- Diagnose with `curl -s https://api.github.com/repos/themmadna/mmadnaplatform/actions/workflows` — a `"state": "disabled_inactivity"` is conclusive and needs no auth. **Check this before debugging the scrapers**; the scraper code was fine throughout.
+- A commit resets the 60-day timer but does **not** re-enable an already-disabled workflow. Re-enable via the Actions tab ("Enable workflow" button) or `PUT /repos/<owner>/<repo>/actions/workflows/<id>/enable` with an `actions: write` token.
+- The disable lands mid-cron, so the event in flight is left half-scraped rather than cleanly skipped.
+- Mitigation: `.github/workflows/keepalive.yml` pushes an empty commit on `0 6 1 * *` (monthly). The message carries `[skip ci]` so Vercel does not redeploy for it. The keepalive is itself a scheduled workflow, so it keeps *itself* alive too — but only while it is enabled; if everything is ever disabled again, it must be re-enabled by hand like the others.
+
+### Data Freshness Check (`supabase/check_data_freshness.py`)
+
+Weekly guard against the pipeline dying silently, run by `.github/workflows/data-freshness-check.yml` (`0 12 * * 1`, Mondays after the weekend's events land). Two checks, both of which would have caught the 2026-08 outage within days:
+
+1. **Freshness** — the newest fully-scraped past event must be within `STALE_AFTER_DAYS` (14). Catches "scraping stopped entirely." 14 rather than 7 because genuine two-week UFC gaps happen (December); a check that cries wolf gets ignored.
+2. **Completeness** — no past event inside `COMPLETENESS_WINDOW_DAYS` (30) may still have fights stuck `upcoming` or missing a winner. Catches "scraping died partway through a card," which is what the mid-cron disable actually did to Gamrot vs Salkilld.
+
+Exits non-zero on failure so the Actions run goes red and emails, and prints a ranked runbook of likely causes (workflow disabled → ufcstats challenge changed → stale secrets). Runs locally too: `python supabase/check_data_freshness.py`.
+
+### Fighter Name Matching Across Sources
+
+`_names_match()` tries, in order: exact normalized match → alias map (`_FIGHTER_ALIASES`) → generational-suffix strip (`_strip_suffix`) → space-collapse ("Rong Zhu"/"Rongzhu") → bare last-name match.
+
+**The last-name fallback is deliberately loose** — any two fighters sharing a surname match (Charles/Donte Johnson, Ty/Juliana Miller, Levi/Gregory Rodrigues all collide). That is safe only because `_bout_matches()` requires **both** fighters to match before a bout is linked. Never use `_names_match` alone to identify a fighter.
+
+`_strip_suffix` drops a trailing `jr/sr/ii/iii/iv` (added 2026-09-05). Sources disagree on these: ufcstats had "Sean King III" on Noche UFC where ESPN said "Sean King", and the last-name fallback couldn't rescue it because it landed on the suffix token `iii`, which also fails its `len > 3` test — leaving that fight with no `espn_competition_id` and therefore no live status.
 
 ### Phase 0.5 Duplicate Detection
 

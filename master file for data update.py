@@ -818,9 +818,26 @@ _FIGHTER_ALIASES = {
 def _resolve_alias(n):
     return _FIGHTER_ALIASES.get(n, n)
 
+_NAME_SUFFIXES = {'jr', 'sr', 'ii', 'iii', 'iv'}
+
+def _strip_suffix(n):
+    """Drop a trailing generational suffix: "sean king iii" → "sean king".
+
+    Sources disagree on these — ufcstats had "Sean King III" on Noche UFC where ESPN
+    said "Sean King", leaving that fight with no espn_competition_id. The last-name
+    fallback in _names_match can't rescue it because it lands on the suffix token
+    ("iii"), which also fails its length > 3 test. Never strips a lone token, so a
+    single-word name survives intact.
+    """
+    parts = n.split()
+    if len(parts) > 1 and parts[-1] in _NAME_SUFFIXES:
+        return ' '.join(parts[:-1])
+    return n
+
 def _names_match(a, b):
     """True if two fighter names refer to the same person (order-insensitive)."""
     na, nb = _resolve_alias(_norm_name(a)), _resolve_alias(_norm_name(b))
+    na, nb = _strip_suffix(na), _strip_suffix(nb)
     if na == nb:
         return True
     # Space-collapse (handles "Rong Zhu" / "Rongzhu")
@@ -842,26 +859,44 @@ def _bout_matches(espn_a, espn_b, db_bout):
         (_names_match(espn_a, db_b) and _names_match(espn_b, db_a))
     )
 
+# Phase 5 re-checks past events this many days back, but only ones whose start_time
+# is still NULL (i.e. ingested after the fact by a backfill).
+PHASE5_BACKFILL_DAYS = 45
+
 def sync_event_times():
-    print("⏰ Phase 5: Syncing Event Times + ESPN Competition IDs (Future Focused)...")
+    print("⏰ Phase 5: Syncing Event Times + ESPN Competition IDs...")
 
     # 1. Get today's date
-    today = datetime.now().date().isoformat()
+    today_date = datetime.now().date()
+    today = today_date.isoformat()
+    backfill_since = (today_date - timedelta(days=PHASE5_BACKFILL_DAYS)).isoformat()
 
-    # 2. Fetch ONLY future/upcoming events from your DB
-    upcoming_events = supabase_db.table("ufc_events")\
+    # 2. Fetch future events, plus recent past events still missing a start_time.
+    #    A past event only lands here when it was ingested after the fact — e.g. the
+    #    GitHub Actions crons sat disabled and a later backfill added the event weeks
+    #    on (see 2026-09-05). Leaving start_time NULL is self-perpetuating: both
+    #    is_live_window() and is_post_event_window() fail safe on a NULL start_time,
+    #    so a backfilled event stays permanently invisible to the automation that
+    #    would otherwise finish populating it. It also leaves the frontend's
+    #    isPastEventWindow() false, so eventConcluded never trips for that event.
+    candidates = supabase_db.table("ufc_events")\
         .select("*")\
-        .gte("event_date", today)\
+        .gte("event_date", backfill_since)\
         .order("event_date", desc=False)\
         .execute()
 
-    if not upcoming_events.data:
-        print("   No upcoming events found in DB to sync.")
+    upcoming_events = [
+        e for e in (candidates.data or [])
+        if e['event_date'] >= today or not e.get('start_time')
+    ]
+
+    if not upcoming_events:
+        print("   No events found in DB to sync.")
         return
 
     base_url = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
 
-    for db_event in upcoming_events.data:
+    for db_event in upcoming_events:
         # Convert DB date (YYYY-MM-DD) to ESPN format (YYYYMMDD)
         date_param = db_event['event_date'].replace("-", "")
 
