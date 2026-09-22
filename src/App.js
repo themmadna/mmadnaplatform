@@ -60,7 +60,7 @@ function boutMatchesComp(bout, comp) {
 }
 
 // --- FightCard Component (Favorites First) ---
-const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0 }) => {
+const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0, prediction = null, onPredict = null, predictionClosed = false }) => {
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
@@ -84,12 +84,74 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
   const isCompleted = fight.status === 'completed' || !!fight.fight_ended_at;
   const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at;
 
+  // --- PREDICTIONS (prototype: held in memory, not persisted) ---
+  // Predict window closes at the walkout (ESPN STATUS_FIGHTERS_WALKING), which lands
+  // 6-12 min before the first bell — measured across all 12 bouts of UFC 331.
+  const canPredict = !!onPredict && isUpcomingFight && !predictionClosed;
+  const pick = prediction?.pick || null;          // fighter NAME, never a corner index
+  // One action row, never two: prediction owns the card before and during the fight,
+  // voting takes the slot back once it's over (votes are judgments of a fight you watched).
+  const showPredictionRow = !!onPredict && !isCompleted;
+
+  // Swipe: push the card toward the winner. Tap is the primary path; this is the accelerant.
+  const [drag, setDrag] = useState(0);            // live x offset while dragging
+  const gesture = useRef(null);                   // { startX, startY, axis } | null
+  const movedRef = useRef(false);                 // suppresses the card's onClick after a drag
+  const COMMIT = 64, AXIS_LOCK = 10, EDGE_GUARD = 20;
+
+  const onPointerDown = (e) => {
+    if (!canPredict || e.pointerType === 'mouse') return;
+    if (e.clientX < EDGE_GUARD) return;           // iOS back-swipe territory
+    gesture.current = { startX: e.clientX, startY: e.clientY, axis: null };
+    movedRef.current = false;
+  };
+  const onPointerMove = (e) => {
+    const g = gesture.current;
+    if (!g) return;
+    const dx = e.clientX - g.startX, dy = e.clientY - g.startY;
+    if (!g.axis) {
+      if (Math.abs(dx) < AXIS_LOCK && Math.abs(dy) < AXIS_LOCK) return;
+      g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';   // locked for the rest of the drag
+    }
+    if (g.axis !== 'x') return;                   // vertical scroll wins, permanently
+    movedRef.current = true;
+    setDrag(dx);
+  };
+  const endGesture = () => {
+    const g = gesture.current;
+    gesture.current = null;
+    if (g?.axis === 'x' && Math.abs(drag) >= COMMIT) onPredict(fight, drag < 0 ? f1 : f2);
+    setDrag(0);                                   // always springs back; card never flies away
+  };
+
+  const dragTarget = Math.abs(drag) >= COMMIT ? (drag < 0 ? f1 : f2) : null;
+  const glow = pick === f1 ? 'shadow-[0_0_0_1px_rgba(239,68,68,.40),0_0_26px_-6px_rgba(239,68,68,.50)]'
+             : pick === f2 ? 'shadow-[0_0_0_1px_rgba(59,130,246,.40),0_0_26px_-6px_rgba(59,130,246,.50)]'
+             : '';
+
   return (
     <div
-      className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 transition-all relative group${onClick ? ' cursor-pointer active:scale-[0.98]' : ''} animate-in fade-in slide-in-from-bottom-2`}
-      style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'both' }}
-      onClick={onClick ? () => onClick(fight) : undefined}
+      className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 relative group${onClick ? ' cursor-pointer active:scale-[0.98]' : ''} animate-in fade-in slide-in-from-bottom-2 ${glow}`}
+      style={{
+        animationDelay: `${index * 60}ms`,
+        animationFillMode: 'both',
+        transform: drag ? `translateX(${drag}px) rotate(${drag * 0.02}deg)` : undefined,
+        transition: drag ? 'none' : 'transform .28s cubic-bezier(.22,1,.36,1), box-shadow .25s ease',
+        touchAction: canPredict ? 'pan-y' : undefined,
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endGesture}
+      onPointerCancel={endGesture}
+      onClick={onClick ? (e) => { if (movedRef.current) { e.preventDefault(); return; } onClick(fight); } : undefined}
     >
+      {/* Directional tint while dragging past the commit threshold */}
+      {dragTarget && (
+        <div
+          className="absolute inset-0 pointer-events-none z-10"
+          style={{ background: `linear-gradient(${drag < 0 ? 90 : 270}deg, ${drag < 0 ? 'rgba(239,68,68,.30)' : 'rgba(59,130,246,.30)'} 0%, transparent 72%)` }}
+        />
+      )}
       {/* Badge row */}
       <div className="flex gap-1.5 px-3.5 pt-2.5 flex-wrap items-center">
         {isLiveFight && (
@@ -167,7 +229,52 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
         )}
       </div>
 
+      {/* Prediction row — replaces the vote row until the fight is over */}
+      {showPredictionRow && (
+        <div className="border-t border-white/[0.06] px-3.5 py-2.5">
+          {canPredict ? (
+            <div className="flex gap-2">
+              {[f1, f2].map((name, i) => {
+                const on = pick === name;
+                const tint = i === 0 ? 'bg-pulse-red border-pulse-red' : 'bg-pulse-blue border-pulse-blue';
+                const dim = pick && !on ? 'opacity-30' : '';
+                const hot = dragTarget === name && !on ? 'border-white/40' : '';
+                return (
+                  <button
+                    key={name}
+                    aria-label={on ? `Your pick: ${name}. Tap to change.` : `Predict ${name} to win`}
+                    aria-pressed={on}
+                    onClick={(e) => { e.stopPropagation(); onPredict(fight, name); }}
+                    className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-btn border transition-all
+                      font-heading font-bold text-[15px] uppercase tracking-wider active:scale-[0.96]
+                      ${on ? `${tint} text-white` : `bg-pulse-surface-2 border-white/10 text-pulse-text-2 ${dim} ${hot}`}`}
+                  >
+                    {i === 0 && <span className="text-[11px] opacity-60 font-body">{on ? '✓' : '◀'}</span>}
+                    <span className="truncate">{i === 0 ? f1Last : f2Last}</span>
+                    {i === 1 && <span className="text-[11px] opacity-60 font-body">{on ? '✓' : '▶'}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn bg-pulse-surface-2
+                font-heading font-bold text-[15px] uppercase tracking-wider
+                ${pick ? 'text-pulse-text-2 opacity-60' : 'text-pulse-text-3 opacity-50'}`}>
+                {pick ? <>{pick.split(' ').pop()} <span className="text-[11px] font-body opacity-70">✓</span></> : 'No pick made'}
+              </div>
+            </div>
+          )}
+          <div className="text-center text-[11px] text-pulse-text-3 mt-2 uppercase tracking-wider">
+            {canPredict
+              ? (pick ? <>Your pick · <span className="text-pulse-text-2">tap the other to change</span></> : 'Swipe or tap to pick a winner')
+              : (pick ? 'Locked at the walkout' : 'Predictions closed at the walkout')}
+          </div>
+        </div>
+      )}
+
       {/* Vote buttons */}
+      {!showPredictionRow && (
       <div className="border-t border-white/[0.06] px-3.5 py-2.5">
         <div className="flex gap-2">
           <button
@@ -216,6 +323,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             </div>
         )}
       </div>
+      )}
     </div>
   );
 };
@@ -231,6 +339,11 @@ export default function UFCFightRating() {
   const [selectedYear, setSelectedYear] = useState('');
   const [events, setEvents] = useState([]);
   const [eventFights, setEventFights] = useState([]);
+  // PROTOTYPE: predictions live in memory only — no table, no persistence across a reload.
+  // Shape mirrors the eventual row: the fighter NAME plus both names at pick time, so a
+  // changed matchup (opponent swap / scratch) is detectable and the pick can be voided.
+  const [predictions, setPredictions] = useState({});             // { [fightId]: { pick, f1, f2 } }
+  const [predictionClosed, setPredictionClosed] = useState({});   // { [fightId]: true }
   const [loadingFights, setLoadingFights] = useState(false);
   const [selectedFight, setSelectedFight] = useState(null);
   const [previousView, setPreviousView] = useState('events');
@@ -447,6 +560,14 @@ export default function UFCFightRating() {
               setEventFights(prev => prev.map(f => f.id === fight.id ? { ...f, espn_competition_id: String(comp.id) } : f));
             }
             const statusName = comp.status?.type?.name;
+            // Predictions close at the walkout — measured across all 12 bouts of UFC 331,
+            // STATUS_FIGHTERS_WALKING lands 6-12 min before the first bell and appeared on
+            // every bout. STATUS_PRE_FIGHT is too early (10-28 min out) and INTRODUCTION is
+            // often missed between polls. Local gate ONLY: deliberately does not call the
+            // Edge Function, so fight_started_at keeps meaning "first bell", unchanged.
+            if (statusName === 'STATUS_FIGHTERS_WALKING' || statusName === 'STATUS_FIGHTERS_INTRODUCTION') {
+              setPredictionClosed(prev => prev[fight.id] ? prev : { ...prev, [fight.id]: true });
+            }
             if (statusName === prevStatuses[fight.id]) continue;
             prevStatuses[fight.id] = statusName;
             // STATUS_IN_PROGRESS_2/3/4/5 = round N in progress; STATUS_END_OF_ROUND = between rounds
@@ -671,6 +792,17 @@ export default function UFCFightRating() {
       setEventFights(merged);
     }
     setLoadingFights(false);
+  };
+
+  // Tap the other fighter to change your pick; tap your own pick to clear it.
+  const handlePredict = (fight, fighterName) => {
+    const parts = (fight.bout || '').split(/ vs /i);
+    setPredictions(prev => {
+      const next = { ...prev };
+      if (prev[fight.id]?.pick === fighterName) delete next[fight.id];
+      else next[fight.id] = { pick: fighterName, f1: parts[0]?.trim(), f2: parts[1]?.trim() };
+      return next;
+    });
   };
 
   const handleFightClick = (fight) => {
@@ -1279,6 +1411,9 @@ export default function UFCFightRating() {
                         locked={eventLocked}
                         onClick={handleFightClick}
                         index={i}
+                        prediction={predictions[f.id] || null}
+                        onPredict={handlePredict}
+                        predictionClosed={!!predictionClosed[f.id]}
                     />
                 ));
             })()}
