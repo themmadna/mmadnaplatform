@@ -95,14 +95,33 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 
   // Swipe: push the card toward the winner. Tap is the primary path; this is the accelerant.
   const [drag, setDrag] = useState(0);            // live x offset while dragging
-  const gesture = useRef(null);                   // { startX, startY, axis } | null
+  const [armed, setArmed] = useState(false);      // past the commit threshold
+  const gesture = useRef(null);                   // { startX, startY, axis, tL, tR } | null
   const movedRef = useRef(false);                 // suppresses the card's onClick after a drag
-  const COMMIT = 64, AXIS_LOCK = 10, EDGE_GUARD = 20;
+  const cardRef = useRef(null);
+  const f1CircleRef = useRef(null);
+  const f2CircleRef = useRef(null);
+  const AXIS_LOCK = 10, EDGE_GUARD = 20;
+
+  // Commit threshold is a landmark, not a magic number: drag until you reach the letter of
+  // the target's initials nearest the VS divider — the last-name initial on the red corner
+  // (drawn left), the first-name initial on the blue (drawn right). Measured from the DOM so
+  // it stays honest at any card width. Falls back to 96px if the refs aren't mounted yet.
+  const commitDistance = (dir) => {
+    const card = cardRef.current;
+    const circle = (dir < 0 ? f1CircleRef : f2CircleRef).current;
+    if (!card || !circle) return 96;
+    const c = card.getBoundingClientRect();
+    const r = circle.getBoundingClientRect();
+    const inner = dir < 0 ? r.right - r.width / 4 : r.left + r.width / 4;
+    return Math.abs((c.left + c.width / 2) - inner);
+  };
 
   const onPointerDown = (e) => {
     if (!canPredict || e.pointerType === 'mouse') return;
     if (e.clientX < EDGE_GUARD) return;           // iOS back-swipe territory
-    gesture.current = { startX: e.clientX, startY: e.clientY, axis: null };
+    // Measure at rest, before any translate is applied
+    gesture.current = { startX: e.clientX, startY: e.clientY, axis: null, tL: commitDistance(-1), tR: commitDistance(1) };
     movedRef.current = false;
   };
   const onPointerMove = (e) => {
@@ -115,22 +134,29 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
     }
     if (g.axis !== 'x') return;                   // vertical scroll wins, permanently
     movedRef.current = true;
+    g.dx = dx;                                    // ref, so a fast flick can't outrun a state flush
     setDrag(dx);
+    setArmed(Math.abs(dx) >= (dx < 0 ? g.tL : g.tR));
   };
   const endGesture = () => {
     const g = gesture.current;
     gesture.current = null;
-    if (g?.axis === 'x' && Math.abs(drag) >= COMMIT) onPredict(fight, drag < 0 ? f1 : f2);
+    if (g?.axis === 'x' && g.dx) {
+      const past = Math.abs(g.dx) >= (g.dx < 0 ? g.tL : g.tR);
+      if (past) onPredict(fight, g.dx < 0 ? f1 : f2);
+    }
     setDrag(0);                                   // always springs back; card never flies away
+    setArmed(false);
   };
 
-  const dragTarget = Math.abs(drag) >= COMMIT ? (drag < 0 ? f1 : f2) : null;
+  const dragTarget = armed ? (drag < 0 ? f1 : f2) : null;
   const glow = pick === f1 ? 'shadow-[0_0_0_1px_rgba(239,68,68,.40),0_0_26px_-6px_rgba(239,68,68,.50)]'
              : pick === f2 ? 'shadow-[0_0_0_1px_rgba(59,130,246,.40),0_0_26px_-6px_rgba(59,130,246,.50)]'
              : '';
 
   return (
     <div
+      ref={cardRef}
       className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 relative group${onClick ? ' cursor-pointer active:scale-[0.98]' : ''} animate-in fade-in slide-in-from-bottom-2 ${glow}`}
       style={{
         animationDelay: `${index * 60}ms`,
@@ -186,7 +212,11 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
       <div className="flex items-center justify-between px-3.5 py-3">
         {/* Fighter 1 (Red corner) */}
         <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-red bg-pulse-red/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2">
+          <div
+            ref={f1CircleRef}
+            className={`w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-red bg-pulse-red/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2 transition-transform duration-200
+              ${dragTarget === f1 ? 'scale-[1.14] shadow-[0_0_22px_-3px_rgba(239,68,68,.75)]' : ''}`}
+          >
             {f1Initials}
           </div>
           <div className="font-heading font-bold text-[15px] uppercase tracking-wider text-center leading-tight">
@@ -207,7 +237,11 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 
         {/* Fighter 2 (Blue corner) */}
         <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-blue bg-pulse-blue/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2">
+          <div
+            ref={f2CircleRef}
+            className={`w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-blue bg-pulse-blue/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2 transition-transform duration-200
+              ${dragTarget === f2 ? 'scale-[1.14] shadow-[0_0_22px_-3px_rgba(59,130,246,.75)]' : ''}`}
+          >
             {f2Initials}
           </div>
           <div className="font-heading font-bold text-[15px] uppercase tracking-wider text-center leading-tight">
