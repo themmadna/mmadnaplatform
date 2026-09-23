@@ -201,11 +201,9 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             {fight.event_name}
           </span>
         )}
-        {fight.weight_class && !showEvent && (
-          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold">
-            {fight.weight_class}
-          </span>
-        )}
+        {/* Weight class lives on the VS divider only — it renders on every surface,
+            where this badge-row copy only appeared when showEvent was false. Keeping the
+            badge row clear also leaves room for the prediction result chip. */}
       </div>
 
       {/* Fighters layout */}
