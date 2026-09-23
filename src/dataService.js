@@ -18,6 +18,46 @@ export const dataService = {
     }
   },
 
+  // --- FIGHT PREDICTIONS (pre-fight winner picks) ---
+  // Signed-in only by design: a guest's record would evaporate with sessionStorage.
+  // RLS scopes every row to auth.uid(), so none of these can reach another user's picks.
+
+  async getPredictionsForFights(fightIds) {
+    if (!fightIds?.length) return {};
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {};
+    const { data, error } = await supabase
+      .from('user_fight_predictions')
+      .select('fight_id, predicted_fighter, bout_snapshot')
+      .in('fight_id', fightIds);
+    if (error) { console.error('getPredictionsForFights error:', error); return {}; }
+    return Object.fromEntries((data || []).map(p => [p.fight_id, p]));
+  },
+
+  // Pass fighterName === null to clear the pick.
+  async upsertPrediction(fightId, fighterName, boutSnapshot) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Login required");
+
+    if (fighterName === null) {
+      const { error } = await supabase
+        .from('user_fight_predictions')
+        .delete()
+        .match({ user_id: user.id, fight_id: fightId });
+      if (error) throw error;
+      return;
+    }
+    // bout_snapshot is the matchup as it read when picked — a later opponent swap or
+    // scratch makes the stored string stop matching, which is how a void is detected.
+    const { error } = await supabase
+      .from('user_fight_predictions')
+      .upsert(
+        { user_id: user.id, fight_id: fightId, predicted_fighter: fighterName, bout_snapshot: boutSnapshot },
+        { onConflict: 'user_id,fight_id' }
+      );
+    if (error) throw error;
+  },
+
   // --- COMBAT DNA + SCATTER PLOT DATA (single query) ---
   // Fetches fight_dna_metrics once and returns both the DNA averages and per-fight chart data.
   async getDNAAndChartData(fightList) {

@@ -60,7 +60,7 @@ function boutMatchesComp(bout, comp) {
 }
 
 // --- FightCard Component (Favorites First) ---
-const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0, prediction = null, onPredict = null, predictionClosed = false }) => {
+const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0, prediction = null, onPredict = null, predictionClosed = false, isGuest = false }) => {
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
@@ -87,8 +87,12 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
   // --- PREDICTIONS (prototype: held in memory, not persisted) ---
   // Predict window closes at the walkout (ESPN STATUS_FIGHTERS_WALKING), which lands
   // 6-12 min before the first bell — measured across all 12 bouts of UFC 331.
-  const canPredict = !!onPredict && isUpcomingFight && !predictionClosed;
-  const pick = prediction?.pick || null;          // fighter NAME, never a corner index
+  const voided = !!prediction?.voided;             // matchup changed since the pick was made
+  const showPickButtons = isUpcomingFight && !predictionClosed;
+  // Guests see the control but can't use it — a guest's record would evaporate with
+  // sessionStorage, and an accuracy record you lose on tab close is worse than none.
+  const canPredict = !!onPredict && showPickButtons && !isGuest;
+  const pick = voided ? null : (prediction?.pick || null);   // fighter NAME, never a corner
   // One action row, never two: prediction owns the card before and during the fight,
   // voting takes the slot back once it's over (votes are judgments of a fight you watched).
   const showPredictionRow = !!onPredict && !isCompleted;
@@ -201,6 +205,11 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             {fight.event_name}
           </span>
         )}
+        {voided && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-3 border border-white/10 uppercase tracking-wider font-semibold">
+            — Pick voided
+          </span>
+        )}
         {/* Weight class lives on the VS divider only — it renders on every surface,
             where this badge-row copy only appeared when showEvent was false. Keeping the
             badge row clear also leaves room for the prediction result chip. */}
@@ -264,7 +273,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
       {/* Prediction row — replaces the vote row until the fight is over */}
       {showPredictionRow && (
         <div className="border-t border-white/[0.06] px-3.5 py-2.5">
-          {canPredict ? (
+          {showPickButtons ? (
             <div className="flex gap-2">
               {[f1, f2].map((name, i) => {
                 const on = pick === name;
@@ -276,7 +285,8 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
                     key={name}
                     aria-label={on ? `Your pick: ${name}. Tap to change.` : `Predict ${name} to win`}
                     aria-pressed={on}
-                    onClick={(e) => { e.stopPropagation(); onPredict(fight, name); }}
+                    disabled={!canPredict}
+                    onClick={(e) => { e.stopPropagation(); if (canPredict) onPredict(fight, name); }}
                     className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-btn border transition-all
                       font-heading font-bold text-[15px] uppercase tracking-wider active:scale-[0.96]
                       ${on ? `${tint} text-white` : `bg-pulse-surface-2 border-white/10 text-pulse-text-2 ${dim} ${hot}`}`}
@@ -298,9 +308,11 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             </div>
           )}
           <div className="text-center text-[11px] text-pulse-text-3 mt-2 uppercase tracking-wider">
-            {canPredict
-              ? (pick ? <>Your pick · <span className="text-pulse-text-2">tap the other to change</span></> : 'Swipe or tap to pick a winner')
-              : (pick ? 'Locked at the walkout' : 'Predictions closed at the walkout')}
+            {isGuest ? 'Sign in to predict'
+              : voided ? <>Opponent changed · <span className="text-pulse-text-2">pick cleared, choose again</span></>
+              : canPredict
+                ? (pick ? <>Your pick · <span className="text-pulse-text-2">tap the other to change</span></> : 'Swipe or tap to pick a winner')
+                : (pick ? 'Locked at the walkout' : 'Predictions closed at the walkout')}
           </div>
         </div>
       )}
@@ -822,19 +834,49 @@ export default function UFCFightRating() {
           : guestVotes[String(f.id)],
       }));
       setEventFights(merged);
+
+      // Load this user's picks for the card. A pick refers to a specific MATCHUP, so if
+      // the bout string has changed since it was made (opponent swap, withdrawal, scratch)
+      // the pick is void — surfaced as such rather than silently dropped, otherwise you'd
+      // re-pick without ever knowing the first one went.
+      if (session) {
+        const stored = await dataService.getPredictionsForFights(bouts.map(b => b.id));
+        const loaded = {};
+        for (const b of bouts) {
+          const p = stored[b.id];
+          if (!p) continue;
+          const parts = (b.bout || '').split(/ vs /i);
+          loaded[b.id] = {
+            pick: p.predicted_fighter,
+            f1: parts[0]?.trim(),
+            f2: parts[1]?.trim(),
+            voided: (p.bout_snapshot || '') !== (b.bout || ''),
+          };
+        }
+        setPredictions(loaded);
+      } else {
+        setPredictions({});
+      }
     }
     setLoadingFights(false);
   };
 
   // Tap the other fighter to change your pick; tap your own pick to clear it.
+  // Optimistic, with a rollback if the write fails — a pick that silently didn't save
+  // is worse than one that visibly bounced back.
   const handlePredict = (fight, fighterName) => {
+    if (isGuest || !session) return;
     const parts = (fight.bout || '').split(/ vs /i);
+    const clearing = predictions[fight.id]?.pick === fighterName;
+    const before = predictions;
     setPredictions(prev => {
       const next = { ...prev };
-      if (prev[fight.id]?.pick === fighterName) delete next[fight.id];
+      if (clearing) delete next[fight.id];
       else next[fight.id] = { pick: fighterName, f1: parts[0]?.trim(), f2: parts[1]?.trim() };
       return next;
     });
+    dataService.upsertPrediction(fight.id, clearing ? null : fighterName, fight.bout)
+      .catch(e => { console.error('prediction save failed:', e); setPredictions(before); });
   };
 
   const handleFightClick = (fight) => {
@@ -1446,6 +1488,7 @@ export default function UFCFightRating() {
                         prediction={predictions[f.id] || null}
                         onPredict={handlePredict}
                         predictionClosed={!!predictionClosed[f.id]}
+                        isGuest={isGuest}
                     />
                 ));
             })()}
