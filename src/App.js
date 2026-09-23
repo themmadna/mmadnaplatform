@@ -4,6 +4,7 @@ import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
 import * as guestStorage from './guestStorage';
+import { gradePrediction } from './fighterNames';
 import CombatDNAVisual from './CombatDNAVisual';
 
 import FightDetailView from './components/FightDetailView';
@@ -154,7 +155,16 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
   };
 
   const dragTarget = armed ? (drag < 0 ? f1 : f2) : null;
-  const glow = pick === f1 ? 'shadow-[0_0_0_1px_rgba(239,68,68,.40),0_0_26px_-6px_rgba(239,68,68,.50)]'
+
+  // Grade against the DB winner first (scraper, authoritative), falling back to the one
+  // ESPN reported live this session. Never exact string equality — ESPN and ufcstats spell
+  // the same fighter differently ("Matthieu Letho Duclos" vs "Matthieu Duclos").
+  const knownWinner = fight.winner ?? fight.espn_winner;
+  const grade = gradePrediction(pick, knownWinner);   // 'correct' | 'wrong' | 'draw' | null
+
+  const glow = grade === 'correct' ? 'shadow-[0_0_0_1px_rgba(34,197,94,.55),0_0_30px_-6px_rgba(34,197,94,.60)]'
+             : grade === 'wrong'   ? 'shadow-[0_0_0_1px_rgba(255,255,255,.07)]'
+             : pick === f1 ? 'shadow-[0_0_0_1px_rgba(239,68,68,.40),0_0_26px_-6px_rgba(239,68,68,.50)]'
              : pick === f2 ? 'shadow-[0_0_0_1px_rgba(59,130,246,.40),0_0_26px_-6px_rgba(59,130,246,.50)]'
              : '';
 
@@ -208,6 +218,29 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
         {voided && (
           <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-3 border border-white/10 uppercase tracking-wider font-semibold">
             — Pick voided
+          </span>
+        )}
+        {/* Your result is SOLID where every other badge is tinted, so it reads as yours
+            rather than as another fact about the fight. Icon as well as colour — red/green
+            alone fails for ~8% of men, and red is already the fighter-one corner. */}
+        {grade === 'correct' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-green text-[#08130b] uppercase tracking-wider font-semibold">
+            ✓ Called it
+          </span>
+        )}
+        {grade === 'wrong' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-text-3 text-pulse-bg uppercase tracking-wider font-semibold">
+            ✕ Missed
+          </span>
+        )}
+        {grade === 'draw' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-3 border border-white/10 uppercase tracking-wider font-semibold">
+            — Draw
+          </span>
+        )}
+        {isCompleted && pick && !grade && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-wider font-semibold">
+            Awaiting result
           </span>
         )}
         {/* Weight class lives on the VS divider only — it renders on every surface,
@@ -611,6 +644,21 @@ export default function UFCFightRating() {
             // Edge Function, so fight_started_at keeps meaning "first bell", unchanged.
             if (statusName === 'STATUS_FIGHTERS_WALKING' || statusName === 'STATUS_FIGHTERS_INTRODUCTION') {
               setPredictionClosed(prev => prev[fight.id] ? prev : { ...prev, [fight.id]: true });
+            }
+            // ESPN carries the result on FINAL in competitors[].winner. Neither this poll
+            // nor either Edge Function read it before, so a pick could only be graded once
+            // the post-event scraper wrote fights.winner — hours later. Measured across all
+            // 12 bouts of UFC 331: 11 of 12 carried the winner in the same poll that first
+            // reported FINAL, the 12th on the next one.
+            // Local state only. Persisting it needs a record-fight-status change.
+            // '' (not null) = FINAL with nobody flagged, i.e. a draw or no contest — the
+            // distinction a nullable winner column can't make on its own.
+            if (statusName === 'STATUS_FINAL') {
+              const won = (comp.competitors || []).find(c => c.winner === true);
+              const espnWinner = won ? (won.athlete?.displayName || '') : '';
+              setEventFights(prev => prev.map(f =>
+                f.id === fight.id && f.espn_winner === undefined ? { ...f, espn_winner: espnWinner } : f
+              ));
             }
             if (statusName === prevStatuses[fight.id]) continue;
             prevStatuses[fight.id] = statusName;
