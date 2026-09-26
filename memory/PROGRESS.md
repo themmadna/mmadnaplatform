@@ -1,7 +1,25 @@
 # UFC Web App — Project Plan
-Last updated: 2026-09-05 (Data pipeline had been dead for a month — both GitHub Actions scraper crons were auto-disabled for 60-day repo inactivity. Backfilled 4 missing events + repaired the Gamrot card; keepalive workflow added. **Workflows still need manual re-enabling by Bastian.**)
-Next session: (1) **Re-enable both disabled workflows in the GitHub Actions tab** — nothing scrapes until this is done. (2) Commit + push the 2026-09-05 pipeline-recovery work. Then resume Phase C — S-P2-10 (drop redundant fight_ratings SELECT policy), S-P2-12 (fmd→fights FK ON DELETE CASCADE), S-P2-14 (revoke update_fight_ratings EXECUTE from PUBLIC/anon/authenticated). Then new follow-up S-P2-19 (DROP dead get_liked_fight_stats — destructive, needs approval). S-P2-8/9/13 done + committed.
+Last updated: 2026-09-26 (Swipe-to-predict feature built on `feature-predictions` — picks, persistence, walkout lock, live grading, and a rebuilt profile page. Not merged to `main`, so production is untouched. **Pipeline confirmed healthy** — the 2026-09-05 workflow problem appears resolved: UFC 331 and the five events before it all have 12–14/14 winners scraped.)
+Next session: (1) Decide whether to merge `feature-predictions` to `main` — Vercel auto-deploys, so this is the go-live call. (2) Optional: deploy the `record-fight-status` change so ESPN's live winner is persisted rather than only held in session (needs Bastian to run — production deploys are blocked for Claude). Then resume Phase C — S-P2-10 (drop redundant fight_ratings SELECT policy), S-P2-12 (fmd→fights FK ON DELETE CASCADE), S-P2-14 (revoke update_fight_ratings EXECUTE from PUBLIC/anon/authenticated). Then new follow-up S-P2-19 (DROP dead get_liked_fight_stats — destructive, needs approval). S-P2-8/9/13 done + committed.
 Last refreshed: 2026-05-16
+
+---
+
+## Swipe-to-Predict — 2026-09-26 (branch `feature-predictions`, NOT merged)
+
+**Checkpoint**
+- **Goal:** let signed-in users pick a winner on upcoming fights, grade those picks automatically, and give the profile page a record worth looking at — broken down by division, sex and title status.
+- **Constraints:** guests cannot predict (a sessionStorage record evaporates on tab close); production untouched until Bastian merges; Claude is blocked from production deploys by the auto-mode classifier, so the migration and any Edge Function deploy must be run by Bastian.
+- **Progress:** feature complete on branch, 10 commits, all verified on the Vercel preview against live data. Table `user_fight_predictions` created and RLS-verified. 29 unit cases passing across `fighterNames.js` + `predictionStats.js`. 11 real picks stored on the 2026-09-26 card.
+- **Decisions:**
+  - **One action row, never two** — prediction owns the card before and during a fight, voting takes the slot back after. They're complementary: a pick is about a fight that hasn't happened, while dislike ‹ like ‹ **favorite** is a quality ranking of a fight you've *watched* (favorite is the tier above like, NOT a pre-event bookmark — Bastian corrected this).
+  - **Vote gate moves from event-level to fight-level.** `isVotingLocked` opened voting on all 13 bouts the moment the first prelim started, hours before most fights happened. Fixing that is what makes one row possible.
+  - **Predictions close at the WALKOUT**, not the first bell — client-side only, so `fight_started_at` keeps meaning "first bell" and no stored data changes meaning.
+  - **A pick refers to a MATCHUP, not a fighter.** If the bout no longer reads as it did when picked (swap, withdrawal, scratch), the pick is void — shown as such, never silently dropped. That's why `bout_snapshot` stores the whole bout string: if only the *opponent* is replaced, the chosen name still matches and the swap goes undetected.
+  - **No stored `correct` column** — correctness is derived, so a scraper correction can't leave a stale verdict.
+  - **Under 5 graded picks, no percentage.** Groups sort by volume, never accuracy. Draws and voids sit outside the win/loss denominator.
+  - Dropped after review: identity strip, winner shown on vote rows, voids in the form strip. Paging at 50.
+- **NextSteps:** (1) Merge to `main` when ready — that's the go-live decision, Vercel deploys on push. (2) Optionally deploy the `record-fight-status` change so ESPN's live winner persists instead of living only in session. (3) `context/live-events.md` still needs the poller changes written up (walkout detection + winner read) — `context/schema.md` is already updated.
 
 ---
 
