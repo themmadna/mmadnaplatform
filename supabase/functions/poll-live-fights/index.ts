@@ -17,7 +17,8 @@
 // Uses native fetch + Supabase REST API only — NO esm.sh imports.
 
 // ---------- helpers ----------
-// normName + matchesFighter mirror src/components/FightDetailView.js exactly.
+// normName + matchesFighter mirror src/fighterNames.js exactly (the single JS source of
+// truth). This copy exists only because a Deno edge function cannot import from src/.
 // If you change either copy, update the other too.
 
 function normName(name: string): string {

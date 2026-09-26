@@ -133,6 +133,28 @@ Unique constraint: `(user_id, fight_id)`.
 | `vote_type` | text | NULL | `'like'` / `'dislike'` / `'favorite'` |
 | `created_at` | timestamptz | NULL | default now() |
 
+### `user_fight_predictions`
+Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_id)` — one pick per fight, changing your mind is an upsert and clearing it is a delete. RLS on, all four policies scoped to `auth.uid()`; `anon` revoked (guests cannot predict — a sessionStorage record would evaporate on tab close). Created by `supabase/migrate_fight_predictions.py`.
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | bigint PK | NOT NULL | bigserial |
+| `user_id` | uuid | NOT NULL | FK → auth.users ON DELETE CASCADE |
+| `fight_id` | bigint | NOT NULL | FK → fights.id ON DELETE CASCADE |
+| `predicted_fighter` | text | NOT NULL | fighter NAME, never a corner index — bout strings get re-scraped reversed (conventions #1/#9) |
+| `bout_snapshot` | text | NOT NULL | `fights.bout` as it read at pick time; if it no longer matches, the matchup changed and the pick is **void** |
+| `created_at` | timestamptz | NOT NULL | default now() |
+| `updated_at` | timestamptz | NOT NULL | default now(), maintained by `trg_ufp_updated_at` |
+
+**No `correct` column by design.** Correctness is derived at read time against `fights.winner` using `matchesFighter`, *not* exact equality — ESPN and ufcstats spell the same fighter differently (`Matthieu Letho Duclos` vs `Matthieu Duclos`). Storing the verdict would go stale when the scraper corrects a winner.
+
+**The three profile cuts need two columns**, and no single one carries all three:
+| Cut | Source |
+|---|---|
+| Division | `fight_meta_details.weight_class_clean` |
+| Sex | `weight_class_clean` starts with `Women's` |
+| Title / Interim | **raw `fights.weight_class` only** — `weight_class_clean` strips title wording (verified: 0 of 6 real title fights retained it) |
+
 ### `fight_ratings`
 Aggregated vote counts, maintained by `update_fight_ratings` trigger.
 

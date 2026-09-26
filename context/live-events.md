@@ -12,7 +12,9 @@ Used by the frontend to drive live event badges and the `record-fight-status` Ed
 | Status | Meaning | Treatment |
 |---|---|---|
 | `STATUS_SCHEDULED` | Not started | Upcoming |
-| `STATUS_FIGHTERS_WALKING` | Walkout | Upcoming — do NOT trigger live |
+| `STATUS_PRE_FIGHT` | Pre-fight | Upcoming — fires **10–28 min** before the bell, too early to act on |
+| `STATUS_FIGHTERS_WALKING` | Walkout | Upcoming — do NOT trigger live. Fires **6–12 min** before the bell, on **every** bout |
+| `STATUS_FIGHTERS_INTRODUCTION` | Bruce Buffer | Upcoming — ~2 min before, but seen on only 4 of 11 bouts (missed between polls) |
 | `STATUS_IN_PROGRESS` | Round 1 live | Live — use `startsWith('STATUS_IN_PROGRESS')` |
 | `STATUS_IN_PROGRESS_2/3/4/5` | Round N live | Live |
 | `STATUS_END_OF_ROUND` | Between rounds | Live |
@@ -30,7 +32,16 @@ https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=YYYYMMDD
 https://sports.core.api.espn.com/v2/sports/mma/leagues/ufc/events/{eventId}/competitions/{competitionId}/status
 ```
 
-Key fields: `comp.status.type.name` (status code), `comp.format.regulation.periods` (scheduled rounds), `comp.details` (finish type — check type id `'22'` for Unofficial Winner Decision).
+Key fields: `comp.status.type.name` (status code), `comp.format.regulation.periods` (scheduled rounds), `comp.details` (finish type — check type id `'22'` for Unofficial Winner Decision), `comp.competitors[].winner` (**boolean — the actual result**, see below).
+
+### `competitors[].winner` — the result, live
+
+ESPN sets a boolean `winner` on each competitor once a bout reaches `STATUS_FINAL`. Measured across all 12 bouts of UFC 331 (2026-09-19): **11 of 12 carried the winner in the same poll that first reported FINAL**, the 12th on the next poll — so ≤120s at a 2-minute interval. Also validated against 9 past cards: 115 final bouts, 114 agreeing with the winner the scraper eventually wrote, **0 disagreeing**.
+
+- **A FINAL bout with NO competitor flagged `winner: true` is a draw or no contest.** This is the only signal separating "drew" from "not graded yet" — the nullable `fights.winner` column cannot.
+- **Comparing this name to anything stored is cross-source.** Use `matchesFighter` from `src/fighterNames.js`, never exact equality: ESPN reported `Matthieu Letho Duclos` where ufcstats stored `Matthieu Duclos`.
+- **Neither Edge Function reads it** as of 2026-09 — both look only at `status.type.name`, which is why `fights.winner` is populated by the post-event scraper hours later. The frontend event poll (`App.js`) reads it into local state for prediction grading, but does **not** persist it; persisting requires a `record-fight-status` change.
+- Verify any time with `python espn_winner_probe.py --date YYYYMMDD --once` — read-only, never writes to Supabase.
 
 **ESPN scoreboard is ephemeral** — only serves live data during the event window. Always persist data to DB immediately; do not rely on ESPN being available after the event.
 

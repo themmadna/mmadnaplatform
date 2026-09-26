@@ -4,6 +4,8 @@ import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
 import * as guestStorage from './guestStorage';
+import { gradePrediction } from './fighterNames';
+import * as predictionStats from './predictionStats';
 import CombatDNAVisual from './CombatDNAVisual';
 
 import FightDetailView from './components/FightDetailView';
@@ -60,7 +62,7 @@ function boutMatchesComp(bout, comp) {
 }
 
 // --- FightCard Component (Favorites First) ---
-const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0 }) => {
+const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0, prediction = null, onPredict = null, predictionClosed = false, isGuest = false }) => {
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
@@ -84,12 +86,113 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
   const isCompleted = fight.status === 'completed' || !!fight.fight_ended_at;
   const isUpcomingFight = fight.status === 'upcoming' && !fight.fight_started_at;
 
+  // --- PREDICTIONS (prototype: held in memory, not persisted) ---
+  // Predict window closes at the walkout (ESPN STATUS_FIGHTERS_WALKING), which lands
+  // 6-12 min before the first bell — measured across all 12 bouts of UFC 331.
+  const voided = !!prediction?.voided;             // matchup changed since the pick was made
+  const showPickButtons = isUpcomingFight && !predictionClosed;
+  // Guests see the control but can't use it — a guest's record would evaporate with
+  // sessionStorage, and an accuracy record you lose on tab close is worse than none.
+  const canPredict = !!onPredict && showPickButtons && !isGuest;
+  const pick = voided ? null : (prediction?.pick || null);   // fighter NAME, never a corner
+  // One action row, never two: prediction owns the card before and during the fight,
+  // voting takes the slot back once it's over (votes are judgments of a fight you watched).
+  const showPredictionRow = !!onPredict && !isCompleted;
+
+  // Swipe: push the card toward the winner. Tap is the primary path; this is the accelerant.
+  const [drag, setDrag] = useState(0);            // live x offset while dragging
+  const [armed, setArmed] = useState(false);      // past the commit threshold
+  const gesture = useRef(null);                   // { startX, startY, axis, tL, tR } | null
+  const movedRef = useRef(false);                 // suppresses the card's onClick after a drag
+  const cardRef = useRef(null);
+  const f1CircleRef = useRef(null);
+  const f2CircleRef = useRef(null);
+  const AXIS_LOCK = 10, EDGE_GUARD = 20;
+
+  // Commit threshold is a landmark, not a magic number: drag until you reach the letter of
+  // the target's initials nearest the VS divider — the last-name initial on the red corner
+  // (drawn left), the first-name initial on the blue (drawn right). Measured from the DOM so
+  // it stays honest at any card width. Falls back to 96px if the refs aren't mounted yet.
+  const commitDistance = (dir) => {
+    const card = cardRef.current;
+    const circle = (dir < 0 ? f1CircleRef : f2CircleRef).current;
+    if (!card || !circle) return 96;
+    const c = card.getBoundingClientRect();
+    const r = circle.getBoundingClientRect();
+    const inner = dir < 0 ? r.right - r.width / 4 : r.left + r.width / 4;
+    return Math.abs((c.left + c.width / 2) - inner);
+  };
+
+  const onPointerDown = (e) => {
+    if (!canPredict || e.pointerType === 'mouse') return;
+    if (e.clientX < EDGE_GUARD) return;           // iOS back-swipe territory
+    // Measure at rest, before any translate is applied
+    gesture.current = { startX: e.clientX, startY: e.clientY, axis: null, tL: commitDistance(-1), tR: commitDistance(1) };
+    movedRef.current = false;
+  };
+  const onPointerMove = (e) => {
+    const g = gesture.current;
+    if (!g) return;
+    const dx = e.clientX - g.startX, dy = e.clientY - g.startY;
+    if (!g.axis) {
+      if (Math.abs(dx) < AXIS_LOCK && Math.abs(dy) < AXIS_LOCK) return;
+      g.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';   // locked for the rest of the drag
+    }
+    if (g.axis !== 'x') return;                   // vertical scroll wins, permanently
+    movedRef.current = true;
+    g.dx = dx;                                    // ref, so a fast flick can't outrun a state flush
+    setDrag(dx);
+    setArmed(Math.abs(dx) >= (dx < 0 ? g.tL : g.tR));
+  };
+  const endGesture = () => {
+    const g = gesture.current;
+    gesture.current = null;
+    if (g?.axis === 'x' && g.dx) {
+      const past = Math.abs(g.dx) >= (g.dx < 0 ? g.tL : g.tR);
+      if (past) onPredict(fight, g.dx < 0 ? f1 : f2);
+    }
+    setDrag(0);                                   // always springs back; card never flies away
+    setArmed(false);
+  };
+
+  const dragTarget = armed ? (drag < 0 ? f1 : f2) : null;
+
+  // Grade against the DB winner first (scraper, authoritative), falling back to the one
+  // ESPN reported live this session. Never exact string equality — ESPN and ufcstats spell
+  // the same fighter differently ("Matthieu Letho Duclos" vs "Matthieu Duclos").
+  const knownWinner = fight.winner ?? fight.espn_winner;
+  const grade = gradePrediction(pick, knownWinner);   // 'correct' | 'wrong' | 'draw' | null
+
+  const glow = grade === 'correct' ? 'shadow-[0_0_0_1px_rgba(34,197,94,.55),0_0_30px_-6px_rgba(34,197,94,.60)]'
+             : grade === 'wrong'   ? 'shadow-[0_0_0_1px_rgba(255,255,255,.07)]'
+             : pick === f1 ? 'shadow-[0_0_0_1px_rgba(239,68,68,.40),0_0_26px_-6px_rgba(239,68,68,.50)]'
+             : pick === f2 ? 'shadow-[0_0_0_1px_rgba(59,130,246,.40),0_0_26px_-6px_rgba(59,130,246,.50)]'
+             : '';
+
   return (
     <div
-      className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 transition-all relative group${onClick ? ' cursor-pointer active:scale-[0.98]' : ''} animate-in fade-in slide-in-from-bottom-2`}
-      style={{ animationDelay: `${index * 60}ms`, animationFillMode: 'both' }}
-      onClick={onClick ? () => onClick(fight) : undefined}
+      ref={cardRef}
+      className={`bg-pulse-surface border border-white/[0.06] rounded-fight overflow-hidden mb-3 relative group${onClick ? ' cursor-pointer active:scale-[0.98]' : ''} animate-in fade-in slide-in-from-bottom-2 ${glow}`}
+      style={{
+        animationDelay: `${index * 60}ms`,
+        animationFillMode: 'both',
+        transform: drag ? `translateX(${drag}px) rotate(${drag * 0.02}deg)` : undefined,
+        transition: drag ? 'none' : 'transform .28s cubic-bezier(.22,1,.36,1), box-shadow .25s ease',
+        touchAction: canPredict ? 'pan-y' : undefined,
+      }}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={endGesture}
+      onPointerCancel={endGesture}
+      onClick={onClick ? (e) => { if (movedRef.current) { e.preventDefault(); return; } onClick(fight); } : undefined}
     >
+      {/* Directional tint while dragging past the commit threshold */}
+      {dragTarget && (
+        <div
+          className="absolute inset-0 pointer-events-none z-10"
+          style={{ background: `linear-gradient(${drag < 0 ? 90 : 270}deg, ${drag < 0 ? 'rgba(239,68,68,.30)' : 'rgba(59,130,246,.30)'} 0%, transparent 72%)` }}
+        />
+      )}
       {/* Badge row */}
       <div className="flex gap-1.5 px-3.5 pt-2.5 flex-wrap items-center">
         {isLiveFight && (
@@ -113,18 +216,48 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             {fight.event_name}
           </span>
         )}
-        {fight.weight_class && !showEvent && (
-          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 uppercase tracking-wider font-semibold">
-            {fight.weight_class}
+        {voided && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-3 border border-white/10 uppercase tracking-wider font-semibold">
+            — Pick voided
           </span>
         )}
+        {/* Your result is SOLID where every other badge is tinted, so it reads as yours
+            rather than as another fact about the fight. Icon as well as colour — red/green
+            alone fails for ~8% of men, and red is already the fighter-one corner. */}
+        {grade === 'correct' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-green text-[#08130b] uppercase tracking-wider font-semibold">
+            ✓ Called it
+          </span>
+        )}
+        {grade === 'wrong' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-text-3 text-pulse-bg uppercase tracking-wider font-semibold">
+            ✕ Missed
+          </span>
+        )}
+        {grade === 'draw' && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-3 border border-white/10 uppercase tracking-wider font-semibold">
+            — Draw
+          </span>
+        )}
+        {isCompleted && pick && !grade && (
+          <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-wider font-semibold">
+            Awaiting result
+          </span>
+        )}
+        {/* Weight class lives on the VS divider only — it renders on every surface,
+            where this badge-row copy only appeared when showEvent was false. Keeping the
+            badge row clear also leaves room for the prediction result chip. */}
       </div>
 
       {/* Fighters layout */}
       <div className="flex items-center justify-between px-3.5 py-3">
         {/* Fighter 1 (Red corner) */}
         <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-red bg-pulse-red/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2">
+          <div
+            ref={f1CircleRef}
+            className={`w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-red bg-pulse-red/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2 transition-transform duration-200
+              ${dragTarget === f1 ? 'scale-[1.14] shadow-[0_0_22px_-3px_rgba(239,68,68,.75)]' : ''}`}
+          >
             {f1Initials}
           </div>
           <div className="font-heading font-bold text-[15px] uppercase tracking-wider text-center leading-tight">
@@ -145,7 +278,11 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 
         {/* Fighter 2 (Blue corner) */}
         <div className="flex flex-col items-center flex-1 min-w-0">
-          <div className="w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-blue bg-pulse-blue/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2">
+          <div
+            ref={f2CircleRef}
+            className={`w-[52px] h-[52px] rounded-full border-[2.5px] border-pulse-blue bg-pulse-blue/[0.08] flex items-center justify-center font-heading font-bold text-lg text-pulse-text mb-2 transition-transform duration-200
+              ${dragTarget === f2 ? 'scale-[1.14] shadow-[0_0_22px_-3px_rgba(59,130,246,.75)]' : ''}`}
+          >
             {f2Initials}
           </div>
           <div className="font-heading font-bold text-[15px] uppercase tracking-wider text-center leading-tight">
@@ -167,7 +304,55 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
         )}
       </div>
 
+      {/* Prediction row — replaces the vote row until the fight is over */}
+      {showPredictionRow && (
+        <div className="border-t border-white/[0.06] px-3.5 py-2.5">
+          {showPickButtons ? (
+            <div className="flex gap-2">
+              {[f1, f2].map((name, i) => {
+                const on = pick === name;
+                const tint = i === 0 ? 'bg-pulse-red border-pulse-red' : 'bg-pulse-blue border-pulse-blue';
+                const dim = pick && !on ? 'opacity-30' : '';
+                const hot = dragTarget === name && !on ? 'border-white/40' : '';
+                return (
+                  <button
+                    key={name}
+                    aria-label={on ? `Your pick: ${name}. Tap to change.` : `Predict ${name} to win`}
+                    aria-pressed={on}
+                    disabled={!canPredict}
+                    onClick={(e) => { e.stopPropagation(); if (canPredict) onPredict(fight, name); }}
+                    className={`flex-1 min-w-0 flex items-center justify-center gap-1.5 py-2.5 rounded-btn border transition-all
+                      font-heading font-bold text-[15px] uppercase tracking-wider active:scale-[0.96]
+                      ${on ? `${tint} text-white` : `bg-pulse-surface-2 border-white/10 text-pulse-text-2 ${dim} ${hot}`}`}
+                  >
+                    {i === 0 && <span className="text-[11px] opacity-60 font-body">{on ? '✓' : '◀'}</span>}
+                    <span className="truncate">{i === 0 ? f1Last : f2Last}</span>
+                    {i === 1 && <span className="text-[11px] opacity-60 font-body">{on ? '✓' : '▶'}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <div className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-btn bg-pulse-surface-2
+                font-heading font-bold text-[15px] uppercase tracking-wider
+                ${pick ? 'text-pulse-text-2 opacity-60' : 'text-pulse-text-3 opacity-50'}`}>
+                {pick ? <>{pick.split(' ').pop()} <span className="text-[11px] font-body opacity-70">✓</span></> : 'No pick made'}
+              </div>
+            </div>
+          )}
+          <div className="text-center text-[11px] text-pulse-text-3 mt-2 uppercase tracking-wider">
+            {isGuest ? 'Sign in to predict'
+              : voided ? <>Opponent changed · <span className="text-pulse-text-2">pick cleared, choose again</span></>
+              : canPredict
+                ? (pick ? <>Your pick · <span className="text-pulse-text-2">tap the other to change</span></> : 'Swipe or tap to pick a winner')
+                : (pick ? 'Locked at the walkout' : 'Predictions closed at the walkout')}
+          </div>
+        </div>
+      )}
+
       {/* Vote buttons */}
+      {!showPredictionRow && (
       <div className="border-t border-white/[0.06] px-3.5 py-2.5">
         <div className="flex gap-2">
           <button
@@ -216,10 +401,375 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             </div>
         )}
       </div>
+      )}
     </div>
   );
 };
 
+
+// --- Prediction record (profile) ---
+
+// --- Profile (picks · votes · settings) ---
+//
+// Rebuilt around one dense row. The old page stacked everything vertically and rendered a
+// full FightCard per vote (~250px each), so an account with 67 votes was ~18,000px of
+// scroll. A FightCard is right on the events page, where you're choosing what to open —
+// on a history list you already know what you voted for, so you're scanning, not choosing.
+
+const PAGE = 50;   // ~2,200px of rows, the same scroll per page as 10 full cards today
+
+const Seg = ({ options, value, onChange, ghost = false }) => (
+  <div className="flex bg-pulse-surface-2 p-0.5 rounded-btn gap-0.5">
+    {options.map(o => (
+      <button
+        key={o.v}
+        onClick={() => onChange(o.v)}
+        aria-pressed={value === o.v}
+        className={`flex-1 py-1.5 rounded-[7px] font-heading font-bold text-[11.5px] uppercase tracking-wider transition-colors
+          ${value === o.v ? (ghost ? 'bg-pulse-surface text-pulse-text' : 'bg-pulse-red text-white') : 'text-pulse-text-3'}`}
+      >{o.l}</button>
+    ))}
+  </div>
+);
+
+const Chip = ({ on, onClick, children }) => (
+  <button onClick={onClick} aria-pressed={on}
+    className={`font-mono text-[10.5px] px-2.5 py-1 rounded-pill border transition-colors
+      ${on ? 'border-pulse-red text-pulse-red' : 'border-transparent bg-pulse-surface-2 text-pulse-text-3'}`}
+  >{children}</button>
+);
+
+// The core unit: 22px mark, two lines, 44px tall — also the minimum comfortable touch
+// target, so it's as small as it should get. Truncates rather than wraps so row height
+// never varies and the list stays scannable down the left edge.
+const Row = ({ mark, markClass, title, meta, onClick, srLabel }) => (
+  <button onClick={onClick} disabled={!onClick} aria-label={srLabel}
+    className="w-full flex items-center gap-3 py-2.5 border-b border-white/[0.06] last:border-b-0 text-left">
+    <span className={`w-[22px] h-[22px] rounded-md flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${markClass}`}>{mark}</span>
+    <span className="flex-1 min-w-0">
+      <span className="block text-[13px] leading-tight truncate">{title}</span>
+      <span className="block font-mono text-[10px] text-pulse-text-3 truncate mt-px">{meta}</span>
+    </span>
+    {onClick && <ChevronRight size={14} className="text-pulse-text-3 flex-shrink-0" aria-hidden="true" />}
+  </button>
+);
+
+// Under MIN_FOR_PCT graded picks: raw count, no bar, no percentage. 2–0 shown as 100%
+// would outrank a 6–2 record built on four times the evidence. Sub-50% bars go grey,
+// never red — red is the fighter-one corner colour everywhere else in this app.
+const BRow = ({ label, row }) => (
+  <div className={`flex items-center gap-2.5 py-2 border-b border-white/[0.06] last:border-b-0 ${row.showPct ? '' : 'opacity-50'}`}>
+    <span className="flex-1 min-w-0 font-heading font-semibold text-[13.5px] uppercase tracking-wider truncate">{label}</span>
+    {row.showPct && (
+      <span className="w-[62px] h-[5px] rounded-full bg-pulse-surface-2 overflow-hidden flex-shrink-0">
+        <span className={`block h-full rounded-full ${row.pct >= 50 ? 'bg-pulse-green' : 'bg-pulse-text-3'}`} style={{ width: `${row.pct}%` }} />
+      </span>
+    )}
+    <span className="font-mono text-[11.5px] text-pulse-text-2 w-[38px] text-right tabular-nums flex-shrink-0">{row.w}–{row.l}</span>
+    {row.showPct
+      ? <span className="font-heading font-bold text-[13.5px] w-[34px] text-right tabular-nums flex-shrink-0">{row.pct}%</span>
+      : <span className="text-[10px] text-pulse-text-3 w-[46px] text-right flex-shrink-0">{row.graded || 0} pick{row.graded === 1 ? '' : 's'}</span>}
+  </div>
+);
+
+const SLab = ({ children, right }) => (
+  <div className="flex items-center justify-between gap-2 mt-5 mb-2">
+    <span className="font-heading font-bold text-[11.5px] uppercase tracking-[0.13em] text-pulse-text-3">{children}</span>
+    {right}
+  </div>
+);
+
+const Empty = ({ title, sub }) => (
+  <div className="py-14 text-center">
+    <p className="font-heading font-bold text-base uppercase tracking-wider text-pulse-text-2">{title}</p>
+    {sub && <p className="text-xs text-pulse-text-3 mt-1.5">{sub}</p>}
+  </div>
+);
+
+// Vote marks differ on TWO axes, not just colour. A thumbs-down is a thumbs-up flipped
+// vertically — the hardest pair to tell apart at a glance, because shape carries
+// recognition and orientation doesn't register peripherally. So the positive marks are
+// SOLID and the negative one is HOLLOW: fill weight reads instantly even out of focus,
+// and it encodes the real tier order (dislike ‹ like ‹ favorite).
+// Lucide icons rather than emoji — emoji glyphs vary a lot between iOS and Android, and
+// these need to be predictable at 12px.
+const MARK = {
+  correct: { t: '✓', c: 'bg-pulse-green text-[#08130b]' },
+  wrong:   { t: '✕', c: 'bg-pulse-text-3 text-pulse-bg' },
+  draw:    { t: '—', c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10' },
+  void:    { t: '—', c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10' },
+  pending: { t: '·', c: 'bg-pulse-amber/15 text-pulse-amber' },
+  favorite:{ t: <Star size={12} className="fill-current" aria-hidden="true" />,      c: 'bg-yellow-500 text-black' },
+  like:    { t: <ThumbsUp size={12} className="fill-current" aria-hidden="true" />,  c: 'bg-pulse-blue text-white' },
+  dislike: { t: <ThumbsDown size={12} aria-hidden="true" />,                          c: 'bg-transparent border border-pulse-red/60 text-pulse-red' },
+};
+const markOf = p => p.voided ? MARK.void : (MARK[p.grade] || MARK.pending);
+
+const PicksTab = ({ picks, loading }) => {
+  const [scope, setScope] = useState('all');
+  const [year, setYear] = useState(null);
+  const [openEvent, setOpenEvent] = useState(null);
+  const [cut, setCut] = useState('division');
+  const [filter, setFilter] = useState('all');
+  const [limit, setLimit] = useState(PAGE);
+
+  const years = predictionStats.availableYears(picks);
+  const activeYear = year || years[0] || null;
+
+  if (loading) return <div className="py-14 text-center opacity-40 italic">Loading your picks…</div>;
+  if (!picks.length) return <Empty title="No picks yet" sub="Swipe or tap a fighter on an upcoming card to make your first pick." />;
+
+  const scoped = scope === 'year' ? picks.filter(p => p.year === activeYear)
+               : scope === 'event' && openEvent ? picks.filter(p => p.event_name === openEvent)
+               : picks;
+
+  const rec = predictionStats.tally(scoped);
+  const graded = scoped.filter(p => p.grade === 'correct' || p.grade === 'wrong');
+
+  // Event scope is a LIST, not a filter: the other scopes answer "how good am I",
+  // this one answers "how did that card go", and you don't know which card until you see them.
+  if (scope === 'event' && !openEvent) {
+    return (
+      <>
+        <Seg value={scope} onChange={v => { setScope(v); setOpenEvent(null); }}
+             options={[{ v: 'all', l: 'All time' }, { v: 'year', l: 'Year' }, { v: 'event', l: 'Event' }]} />
+        <SLab>By event</SLab>
+        {predictionStats.byEvent(picks).map(e => (
+          <Row key={e.key}
+            mark={e.graded === 0 && e.pending > 0 ? '·' : `${e.w}`}
+            markClass={e.graded === 0 && e.pending > 0 ? MARK.pending.c : 'bg-pulse-surface-2 text-pulse-text font-mono'}
+            title={e.key}
+            // A card with picks but no results reads "pending", never 0–0, which would
+            // look like a card you went winless on.
+            meta={e.graded === 0 && e.pending > 0 ? `${e.picks[0]?.event_date || ''} · ${e.pending} pending`
+                                                  : `${e.picks[0]?.event_date || ''} · ${e.w}–${e.l}`}
+            onClick={() => setOpenEvent(e.key)} />
+        ))}
+      </>
+    );
+  }
+
+  const shown = [...scoped]
+    .filter(p => filter === 'all' ? true
+               : filter === 'correct' ? p.grade === 'correct'
+               : filter === 'wrong' ? p.grade === 'wrong'
+               : p.pending)
+    .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')) || (a.card_position ?? 99) - (b.card_position ?? 99));
+
+  // Form = last 10 picks that actually resolved or are still live. Voids are excluded
+  // entirely: the fight never happened, so it is neither a result nor a pending one.
+  const form = [...scoped].filter(p => !p.voided)
+    .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')))
+    .slice(0, 10).reverse();
+
+  return (
+    <>
+      <Seg value={scope} onChange={v => { setScope(v); setOpenEvent(null); setLimit(PAGE); }}
+           options={[{ v: 'all', l: 'All time' }, { v: 'year', l: 'Year' }, { v: 'event', l: 'Event' }]} />
+
+      {scope === 'year' && years.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap mt-3">
+          {years.map(y => <Chip key={y} on={y === activeYear} onClick={() => setYear(y)}>{y}</Chip>)}
+        </div>
+      )}
+
+      <div className="mt-4">
+        {scope === 'event' && (
+          <button onClick={() => setOpenEvent(null)} className="text-[11px] text-pulse-red font-semibold mb-2">‹ All events</button>
+        )}
+        <div className="flex items-end gap-2.5">
+          <span className="font-heading font-extrabold text-[46px] leading-[0.85] tabular-nums">
+            <span className="text-pulse-green">{rec.w}</span><span className="text-pulse-text-3">–</span><span className="text-pulse-text-2">{rec.l}</span>
+          </span>
+          {rec.showPct && <span className="font-heading font-bold text-lg text-pulse-text-2 pb-0.5 tabular-nums">{rec.pct}%</span>}
+        </div>
+        {rec.graded > 0 && (
+          <div className="flex h-1 rounded-sm overflow-hidden mt-2.5 bg-pulse-surface-2">
+            <span className="block h-full bg-pulse-green" style={{ width: `${(rec.w / rec.graded) * 100}%` }} />
+            <span className="block h-full bg-pulse-text-3" style={{ width: `${(rec.l / rec.graded) * 100}%` }} />
+          </div>
+        )}
+        <div className="text-[11.5px] text-pulse-text-3 mt-1.5">
+          {rec.graded} graded
+          {rec.pending ? ` · ${rec.pending} pending` : ''}
+          {rec.draw ? ` · ${rec.draw} draw${rec.draw === 1 ? '' : 's'}` : ''}
+          {rec.voided ? ` · ${rec.voided} voided` : ''}
+          {!rec.showPct && rec.graded > 0 ? ' · too few for a percentage' : ''}
+        </div>
+      </div>
+
+      {/* Answers "am I on a run right now", which a lifetime percentage structurally can't. */}
+      {form.length >= 3 && (
+        <div className="flex items-center gap-2 mt-3.5">
+          <span className="font-mono text-[10px] text-pulse-text-3 uppercase tracking-widest flex-shrink-0">Last {form.length}</span>
+          <span className="flex gap-[3px] flex-1">
+            {form.map(p => (
+              <span key={p.fight_id} title={p.predicted_fighter}
+                className={`flex-1 h-4 rounded-[3px] ${p.grade === 'correct' ? 'bg-pulse-green' : p.grade === 'wrong' ? 'bg-pulse-text-3' : p.grade === 'draw' ? 'bg-pulse-surface-2' : 'bg-pulse-amber/35'}`} />
+            ))}
+          </span>
+        </div>
+      )}
+
+      {/* One cut at a time — three stacked panels were the same data at three times the height. */}
+      {scope !== 'event' && graded.length > 0 && (
+        <>
+          <SLab>Breakdown</SLab>
+          <Seg ghost value={cut} onChange={setCut}
+               options={[{ v: 'division', l: 'Division' }, { v: 'sex', l: 'Sex' }, { v: 'stakes', l: 'Stakes' }]} />
+          <div className="mt-1.5">
+            {predictionStats.groupBy(
+              scoped,
+              cut === 'division' ? (p => p.division)
+                : cut === 'sex' ? (p => (p.isWomens ? "Women's" : "Men's"))
+                : (p => (p.isTitle ? 'Title fights' : 'Non-title'))
+            ).map(r => <BRow key={r.key} label={r.key} row={r} />)}
+          </div>
+        </>
+      )}
+
+      <SLab right={<span className="font-mono text-[10px] text-pulse-text-3">{shown.length}</span>}>Picks</SLab>
+      <div className="flex gap-1.5 flex-wrap mb-2">
+        {[['all', 'All'], ['correct', 'Correct'], ['wrong', 'Missed'], ['pending', 'Pending']].map(([v, l]) => (
+          <Chip key={v} on={filter === v} onClick={() => { setFilter(v); setLimit(PAGE); }}>{l}</Chip>
+        ))}
+      </div>
+      {shown.length === 0 ? <Empty title="Nothing here" /> : shown.slice(0, limit).map(p => {
+        const m = markOf(p);
+        const other = (p.bout || '').split(/ vs /i).map(s => s.trim()).find(n => n !== p.predicted_fighter);
+        return (
+          <Row key={p.fight_id} mark={m.t} markClass={m.c}
+            title={<><b className="font-semibold">{p.predicted_fighter}</b> <span className="text-pulse-text-3">over {other}</span></>}
+            meta={[p.event_name, p.division, p.isTitle ? 'title' : null, p.voided ? 'voided' : null].filter(Boolean).join(' · ')} />
+        );
+      })}
+      {shown.length > limit && (
+        <button onClick={() => setLimit(l => l + PAGE)}
+          className="w-full mt-3 py-3 bg-pulse-surface-2 rounded-btn font-heading font-bold text-xs uppercase tracking-wider text-pulse-text-2">
+          Show more ({shown.length - limit} remaining)
+        </button>
+      )}
+    </>
+  );
+};
+
+const VotesTab = ({ history, onFightClick }) => {
+  const [filter, setFilter] = useState('all');
+  const [limit, setLimit] = useState(PAGE);
+
+  const counts = {
+    all: history.length,
+    favorite: history.filter(f => f.userVote === 'favorite').length,
+    like: history.filter(f => f.userVote === 'like').length,
+    dislike: history.filter(f => f.userVote === 'dislike').length,
+  };
+  if (!history.length) return <Empty title="No votes yet" sub="Rate a fight after you've watched it and it shows up here." />;
+
+  const shown = history
+    .filter(f => filter === 'all' || f.userVote === filter)
+    .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')));
+
+  return (
+    <>
+      {/* Chips, not tabs: the old three-way tab meant you could never see voting as one
+          history. Defaults to All in date order, which groups by card naturally. */}
+      <div className="flex gap-1.5 flex-wrap">
+        {[
+          ['all', <>All {counts.all}</>],
+          ['favorite', <><Star size={11} className="fill-current text-yellow-400" aria-hidden="true" /> {counts.favorite}</>],
+          ['like', <><ThumbsUp size={11} className="fill-current text-pulse-blue" aria-hidden="true" /> {counts.like}</>],
+          ['dislike', <><ThumbsDown size={11} className="text-pulse-red" aria-hidden="true" /> {counts.dislike}</>],
+        ].map(([v, l]) => (
+          <Chip key={v} on={filter === v} onClick={() => { setFilter(v); setLimit(PAGE); }}>
+            <span className="inline-flex items-center gap-1">{l}</span>
+          </Chip>
+        ))}
+      </div>
+      <div className="mt-3">
+        {shown.length === 0 ? <Empty title="Nothing here" /> : shown.slice(0, limit).map(f => {
+          const m = MARK[f.userVote] || MARK.like;
+          const [a, b] = (f.bout || '').split(/ vs /i).map(s => s?.trim());
+          return (
+            <Row key={f.id} mark={m.t} markClass={m.c}
+              title={<>{a} <span className="text-pulse-text-3">vs</span> {b}</>}
+              meta={[f.event_name, f.event_date].filter(Boolean).join(' · ')}
+              srLabel={`${f.userVote === 'favorite' ? 'Favorited' : f.userVote === 'like' ? 'Liked' : 'Disliked'}: ${f.bout}`}
+              onClick={() => onFightClick(f)} />
+          );
+        })}
+      </div>
+      {shown.length > limit && (
+        <button onClick={() => setLimit(l => l + PAGE)}
+          className="w-full mt-3 py-3 bg-pulse-surface-2 rounded-btn font-heading font-bold text-xs uppercase tracking-wider text-pulse-text-2">
+          Show more ({shown.length - limit} remaining)
+        </button>
+      )}
+    </>
+  );
+};
+
+const SettingsTab = ({ spoilerDefault, onSpoilerChange, onShare, shareCopied, isGuest, onSignOut, onGuestSignUp }) => (
+  <>
+    <div className="flex items-center justify-between gap-3 py-3 border-b border-white/[0.06]">
+      <div>
+        <div className="font-heading font-semibold text-[13.5px] uppercase tracking-wider">Spoiler protection</div>
+        <div className="text-[11px] text-pulse-text-3">Hide results until you've scored</div>
+      </div>
+      <button
+        onClick={() => onSpoilerChange(!spoilerDefault)}
+        aria-label={spoilerDefault ? 'Disable spoiler protection' : 'Enable spoiler protection'}
+        className={`inline-flex items-center w-10 h-[21px] rounded-full transition-colors flex-shrink-0 ${spoilerDefault ? 'bg-pulse-blue' : 'bg-white/25'}`}>
+        <span className={`inline-block w-[15px] h-[15px] rounded-full bg-white transition-transform ${spoilerDefault ? 'translate-x-[22px]' : 'translate-x-[3px]'}`} />
+      </button>
+    </div>
+    <button onClick={onShare} className="w-full flex items-center justify-between gap-3 py-3 border-b border-white/[0.06] text-left">
+      <div>
+        <div className="font-heading font-semibold text-[13.5px] uppercase tracking-wider">Share MMA DNA</div>
+        <div className="text-[11px] text-pulse-text-3">{shareCopied ? 'Link copied' : 'Copy a link to the app'}</div>
+      </div>
+      {shareCopied ? <Check size={16} className="text-green-400 flex-shrink-0" /> : <Share2 size={16} className="text-pulse-text-3 flex-shrink-0" />}
+    </button>
+    {isGuest ? (
+      <button onClick={onGuestSignUp} className="w-full text-left py-3">
+        <div className="font-heading font-semibold text-[13.5px] uppercase tracking-wider text-yellow-400">Sign up / log in</div>
+        <div className="text-[11px] text-pulse-text-3">Guest picks and votes aren't saved</div>
+      </button>
+    ) : (
+      <button onClick={onSignOut} className="w-full text-left py-3">
+        <div className="font-heading font-semibold text-[13.5px] uppercase tracking-wider text-pulse-red">Sign out</div>
+      </button>
+    )}
+  </>
+);
+
+const ProfileView = (props) => {
+  const [tab, setTab] = useState('picks');
+  const tabs = [
+    { v: 'picks', l: 'Picks', n: props.isGuest ? null : props.picks.length },
+    { v: 'votes', l: 'Votes', n: props.history.length },
+    { v: 'settings', l: 'Settings', n: null },
+  ];
+  return (
+    <div className="animate-in slide-in-from-right pb-20">
+      {/* Tabs sit at the top: vertical stacking is what made this page endless. */}
+      <div className="flex border-b border-white/[0.06] mb-4 -mx-1">
+        {tabs.map(t => (
+          <button key={t.v} onClick={() => setTab(t.v)} aria-current={tab === t.v ? 'page' : undefined}
+            className={`flex-1 pt-2.5 pb-2 font-heading font-bold text-[12.5px] uppercase tracking-[0.11em] border-b-2 transition-colors
+              ${tab === t.v ? 'text-pulse-text border-pulse-red' : 'text-pulse-text-3 border-transparent'}`}>
+            {t.l}{t.n !== null && <span className="font-mono text-[10px] text-pulse-text-3 ml-1">{t.n}</span>}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'picks' && (props.isGuest
+        ? <Empty title="Sign in to track picks" sub="A guest record would vanish when the tab closes." />
+        : <PicksTab picks={props.picks} loading={props.picksLoading} />)}
+      {tab === 'votes' && <VotesTab history={props.history} onFightClick={props.onFightClick} />}
+      {tab === 'settings' && <SettingsTab {...props} />}
+    </div>
+  );
+};
 
 // --- Main App Component ---
 export default function UFCFightRating() {
@@ -231,6 +781,13 @@ export default function UFCFightRating() {
   const [selectedYear, setSelectedYear] = useState('');
   const [events, setEvents] = useState([]);
   const [eventFights, setEventFights] = useState([]);
+  // PROTOTYPE: predictions live in memory only — no table, no persistence across a reload.
+  // Shape mirrors the eventual row: the fighter NAME plus both names at pick time, so a
+  // changed matchup (opponent swap / scratch) is detectable and the pick can be voided.
+  const [predictions, setPredictions] = useState({});             // { [fightId]: { pick, f1, f2 } }
+  const [predictionClosed, setPredictionClosed] = useState({});   // { [fightId]: true }
+  const [allPicks, setAllPicks] = useState([]);                   // enriched, for the profile
+  const [picksLoading, setPicksLoading] = useState(false);
   const [loadingFights, setLoadingFights] = useState(false);
   const [selectedFight, setSelectedFight] = useState(null);
   const [previousView, setPreviousView] = useState('events');
@@ -257,7 +814,6 @@ export default function UFCFightRating() {
   });
 
   const [recommendations, setRecommendations] = useState([]);
-  const [activeProfileTab, setActiveProfileTab] = useState('favorite');
   const [dnaTab, setDnaTab] = useState('combat');
   const [judgingProfile, setJudgingProfile] = useState(null);
   const [scoringInsights, setScoringInsights] = useState(null);
@@ -393,6 +949,19 @@ export default function UFCFightRating() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, isGuest]);
 
+  // Load every pick when the profile opens. Refetched on each visit rather than cached —
+  // a pick made on the events tab minutes ago should show up here.
+  useEffect(() => {
+    if (currentView !== 'profile' || isGuest || !session) { return; }
+    let cancelled = false;
+    setPicksLoading(true);
+    dataService.getAllPredictions()
+      .then(rows => { if (!cancelled) setAllPicks((rows || []).map(predictionStats.enrichPick)); })
+      .finally(() => { if (!cancelled) setPicksLoading(false); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, isGuest, session]);
+
   // Keep ref in sync so the ESPN poll can read latest eventFights without re-triggering the effect
   useEffect(() => { eventFightsRef.current = eventFights; }, [eventFights]);
 
@@ -447,6 +1016,29 @@ export default function UFCFightRating() {
               setEventFights(prev => prev.map(f => f.id === fight.id ? { ...f, espn_competition_id: String(comp.id) } : f));
             }
             const statusName = comp.status?.type?.name;
+            // Predictions close at the walkout — measured across all 12 bouts of UFC 331,
+            // STATUS_FIGHTERS_WALKING lands 6-12 min before the first bell and appeared on
+            // every bout. STATUS_PRE_FIGHT is too early (10-28 min out) and INTRODUCTION is
+            // often missed between polls. Local gate ONLY: deliberately does not call the
+            // Edge Function, so fight_started_at keeps meaning "first bell", unchanged.
+            if (statusName === 'STATUS_FIGHTERS_WALKING' || statusName === 'STATUS_FIGHTERS_INTRODUCTION') {
+              setPredictionClosed(prev => prev[fight.id] ? prev : { ...prev, [fight.id]: true });
+            }
+            // ESPN carries the result on FINAL in competitors[].winner. Neither this poll
+            // nor either Edge Function read it before, so a pick could only be graded once
+            // the post-event scraper wrote fights.winner — hours later. Measured across all
+            // 12 bouts of UFC 331: 11 of 12 carried the winner in the same poll that first
+            // reported FINAL, the 12th on the next one.
+            // Local state only. Persisting it needs a record-fight-status change.
+            // '' (not null) = FINAL with nobody flagged, i.e. a draw or no contest — the
+            // distinction a nullable winner column can't make on its own.
+            if (statusName === 'STATUS_FINAL') {
+              const won = (comp.competitors || []).find(c => c.winner === true);
+              const espnWinner = won ? (won.athlete?.displayName || '') : '';
+              setEventFights(prev => prev.map(f =>
+                f.id === fight.id && f.espn_winner === undefined ? { ...f, espn_winner: espnWinner } : f
+              ));
+            }
             if (statusName === prevStatuses[fight.id]) continue;
             prevStatuses[fight.id] = statusName;
             // STATUS_IN_PROGRESS_2/3/4/5 = round N in progress; STATUS_END_OF_ROUND = between rounds
@@ -669,8 +1261,49 @@ export default function UFCFightRating() {
           : guestVotes[String(f.id)],
       }));
       setEventFights(merged);
+
+      // Load this user's picks for the card. A pick refers to a specific MATCHUP, so if
+      // the bout string has changed since it was made (opponent swap, withdrawal, scratch)
+      // the pick is void — surfaced as such rather than silently dropped, otherwise you'd
+      // re-pick without ever knowing the first one went.
+      if (session) {
+        const stored = await dataService.getPredictionsForFights(bouts.map(b => b.id));
+        const loaded = {};
+        for (const b of bouts) {
+          const p = stored[b.id];
+          if (!p) continue;
+          const parts = (b.bout || '').split(/ vs /i);
+          loaded[b.id] = {
+            pick: p.predicted_fighter,
+            f1: parts[0]?.trim(),
+            f2: parts[1]?.trim(),
+            voided: (p.bout_snapshot || '') !== (b.bout || ''),
+          };
+        }
+        setPredictions(loaded);
+      } else {
+        setPredictions({});
+      }
     }
     setLoadingFights(false);
+  };
+
+  // Tap the other fighter to change your pick; tap your own pick to clear it.
+  // Optimistic, with a rollback if the write fails — a pick that silently didn't save
+  // is worse than one that visibly bounced back.
+  const handlePredict = (fight, fighterName) => {
+    if (isGuest || !session) return;
+    const parts = (fight.bout || '').split(/ vs /i);
+    const clearing = predictions[fight.id]?.pick === fighterName;
+    const before = predictions;
+    setPredictions(prev => {
+      const next = { ...prev };
+      if (clearing) delete next[fight.id];
+      else next[fight.id] = { pick: fighterName, f1: parts[0]?.trim(), f2: parts[1]?.trim() };
+      return next;
+    });
+    dataService.upsertPrediction(fight.id, clearing ? null : fighterName, fight.bout)
+      .catch(e => { console.error('prediction save failed:', e); setPredictions(before); });
   };
 
   const handleFightClick = (fight) => {
@@ -1279,6 +1912,10 @@ export default function UFCFightRating() {
                         locked={eventLocked}
                         onClick={handleFightClick}
                         index={i}
+                        prediction={predictions[f.id] || null}
+                        onPredict={handlePredict}
+                        predictionClosed={!!predictionClosed[f.id]}
+                        isGuest={isGuest}
                     />
                 ));
             })()}
@@ -1417,66 +2054,19 @@ export default function UFCFightRating() {
 
         {/* --- 5. PROFILE PAGE (Reordered) --- */}
         {currentView === 'profile' && (
-          <div className="animate-in slide-in-from-right pb-20">
-            <div className="flex items-center gap-2 mb-6 opacity-60">
-                 <User size={20} />
-                 <span className="font-bold">VOTING HISTORY</span>
-             </div>
-
-            <div role="tablist" aria-label="Voting history" className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-8`}>
-              {['favorite', 'like', 'dislike'].map(tab => (
-                <button
-                  key={tab}
-                  role="tab"
-                  aria-selected={activeProfileTab === tab}
-                  onClick={() => setActiveProfileTab(tab)}
-                  className={`flex-1 py-3 ${currentTheme.rounded} font-bold text-xs sm:text-sm uppercase transition-all
-                    ${activeProfileTab === tab
-                        ? (tab === 'like' ? 'bg-blue-600 text-white' : tab === 'favorite' ? 'bg-yellow-500 text-black' : 'bg-red-600 text-white')
-                        : 'opacity-40'}`}
-                >
-                  {tab === 'favorite' ? <Star size={10} className="inline mr-1 mb-1"/> : null}
-                  {tab}s ({userHistory.filter(f => f.userVote === tab).length})
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4">
-              {userHistory.filter(f => f.userVote === activeProfileTab).length === 0 ? (
-                <div className="text-center py-20 opacity-40 italic">No {activeProfileTab}s yet.</div>
-              ) : userHistory.filter(f => f.userVote === activeProfileTab).map((f, i) => (
-                <FightCard key={f.id} fight={f} currentTheme={currentTheme} handleVote={handleVote} showEvent={true} onClick={handleFightClick} index={i} />
-              ))}
-            </div>
-            {/* Spoiler Protection Setting */}
-            <div className="mt-10 bg-pulse-surface border border-white/[0.06] rounded-fight p-4 flex items-center justify-between">
-              <div>
-                <p className="font-heading font-semibold text-sm uppercase tracking-widest text-pulse-text">Spoiler Protection</p>
-                <p className="text-xs text-pulse-text-3 mt-0.5">Hide fight results until you've scored</p>
-              </div>
-              <button
-                onClick={() => handleSpoilerDefaultChange(!spoilerDefault)}
-                className={`inline-flex items-center w-12 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${spoilerDefault ? 'bg-blue-500' : 'bg-white/25'}`}
-                aria-label={spoilerDefault ? 'Disable spoiler protection' : 'Enable spoiler protection'}
-              >
-                <span className={`inline-block w-4 h-4 rounded-full bg-white shadow-md transition-transform duration-200 ${spoilerDefault ? 'translate-x-7' : 'translate-x-1'}`} />
-              </button>
-            </div>
-
-            <button
-              onClick={handleShareApp}
-              className="w-full mt-4 py-4 bg-pulse-surface border border-white/[0.06] rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:border-white/20 transition-all text-pulse-text"
-            >
-              {shareAppCopied ? <Check size={16} className="text-green-400" /> : <Share2 size={16} />}
-              {shareAppCopied ? 'Link copied!' : 'Share MMA DNA'}
-            </button>
-
-            {isGuest ? (
-              <button onClick={handleGuestSignUp} className="w-full mt-4 py-4 bg-yellow-500/10 text-yellow-400 border border-yellow-500/30 rounded-xl font-bold hover:bg-yellow-500 hover:text-black transition-all">SIGN UP / LOG IN</button>
-            ) : (
-              <button onClick={handleSignOut} className="w-full mt-4 py-4 bg-red-600/10 text-red-500 border border-red-500/30 rounded-xl font-bold hover:bg-red-600 hover:text-white transition-all">SIGN OUT</button>
-            )}
-          </div>
+          <ProfileView
+            picks={allPicks}
+            picksLoading={picksLoading}
+            history={userHistory}
+            onFightClick={handleFightClick}
+            isGuest={isGuest}
+            spoilerDefault={spoilerDefault}
+            onSpoilerChange={handleSpoilerDefaultChange}
+            onShare={handleShareApp}
+            shareCopied={shareAppCopied}
+            onSignOut={handleSignOut}
+            onGuestSignUp={handleGuestSignUp}
+          />
         )}
       </main>
 

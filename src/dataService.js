@@ -18,6 +18,101 @@ export const dataService = {
     }
   },
 
+  // --- FIGHT PREDICTIONS (pre-fight winner picks) ---
+  // Signed-in only by design: a guest's record would evaporate with sessionStorage.
+  // RLS scopes every row to auth.uid(), so none of these can reach another user's picks.
+
+  async getPredictionsForFights(fightIds) {
+    if (!fightIds?.length) return {};
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {};
+    const { data, error } = await supabase
+      .from('user_fight_predictions')
+      .select('fight_id, predicted_fighter, bout_snapshot')
+      .in('fight_id', fightIds);
+    if (error) { console.error('getPredictionsForFights error:', error); return {}; }
+    return Object.fromEntries((data || []).map(p => [p.fight_id, p]));
+  },
+
+  // Pass fighterName === null to clear the pick.
+  async upsertPrediction(fightId, fighterName, boutSnapshot) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Login required");
+
+    if (fighterName === null) {
+      const { error } = await supabase
+        .from('user_fight_predictions')
+        .delete()
+        .match({ user_id: user.id, fight_id: fightId });
+      if (error) throw error;
+      return;
+    }
+    // bout_snapshot is the matchup as it read when picked — a later opponent swap or
+    // scratch makes the stored string stop matching, which is how a void is detected.
+    const { error } = await supabase
+      .from('user_fight_predictions')
+      .upsert(
+        { user_id: user.id, fight_id: fightId, predicted_fighter: fighterName, bout_snapshot: boutSnapshot },
+        { onConflict: 'user_id,fight_id' }
+      );
+    if (error) throw error;
+  },
+
+  // Every pick the user has made, with everything the profile cuts need.
+  // Four queries rather than a view: the three cuts straddle two tables, because
+  // weight_class_clean strips title wording and only the raw column keeps it.
+  async getAllPredictions() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data: picks, error } = await supabase
+      .from('user_fight_predictions')
+      .select('fight_id, predicted_fighter, bout_snapshot, created_at');
+    if (error) { console.error('getAllPredictions error:', error); return []; }
+    if (!picks?.length) return [];
+
+    const ids = picks.map(p => p.fight_id);
+    const { data: fights } = await supabase
+      .from('fights')
+      .select('id, bout, winner, weight_class, event_name, fight_url, card_position, status, fight_started_at, fight_ended_at')
+      .in('id', ids);
+    const fightById = Object.fromEntries((fights || []).map(f => [f.id, f]));
+
+    const urls = (fights || []).map(f => f.fight_url).filter(Boolean);
+    const events = [...new Set((fights || []).map(f => f.event_name).filter(Boolean))];
+
+    const [{ data: metas }, { data: evs }] = await Promise.all([
+      urls.length
+        ? supabase.from('fight_meta_details').select('fight_url, weight_class_clean').in('fight_url', urls)
+        : Promise.resolve({ data: [] }),
+      events.length
+        ? supabase.from('ufc_events').select('event_name, event_date, start_time').in('event_name', events)
+        : Promise.resolve({ data: [] }),
+    ]);
+    const cleanByUrl = Object.fromEntries((metas || []).map(m => [m.fight_url, m.weight_class_clean]));
+    const evByName   = Object.fromEntries((evs || []).map(e => [e.event_name, e]));
+
+    return picks.map(p => {
+      const f = fightById[p.fight_id] || {};
+      const ev = evByName[f.event_name] || {};
+      return {
+        fight_id: p.fight_id,
+        predicted_fighter: p.predicted_fighter,
+        bout_snapshot: p.bout_snapshot,
+        created_at: p.created_at,
+        bout: f.bout,
+        winner: f.winner,
+        weight_class: f.weight_class,                       // RAW — carries title wording
+        weight_class_clean: cleanByUrl[f.fight_url] || null, // CLEAN — division + sex
+        event_name: f.event_name,
+        event_date: ev.event_date || null,
+        card_position: f.card_position,
+        status: f.status,
+        fight_ended_at: f.fight_ended_at,
+      };
+    });
+  },
+
   // --- COMBAT DNA + SCATTER PLOT DATA (single query) ---
   // Fetches fight_dna_metrics once and returns both the DNA averages and per-fight chart data.
   async getDNAAndChartData(fightList) {
