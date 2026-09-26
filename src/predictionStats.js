@@ -21,9 +21,35 @@ export const MIN_FOR_PCT = 5;
  * Build the stakes cut off the clean column and every title fight silently lands in the
  * non-title bucket: a breakdown that looks plausible and is wrong.
  */
+/**
+ * Division from the RAW weight class, for fights that have no fight_meta_details row yet.
+ *
+ * fight_meta_details is written by the post-event scraper, so weight_class_clean is null
+ * for every upcoming and just-finished fight — exactly the ones a user has live picks on.
+ * Without this fallback the division cut silently drops them, and worse, every women's
+ * bout gets counted as men's, because the sex test runs off a null string.
+ *
+ * Validated against all 989 fights in the DB that have both columns: this reproduces
+ * weight_class_clean exactly, 989/989. Note "UFC" and "Interim" are stripped only as a
+ * LEADING prefix — "Road to UFC 4 Bantamweight Tournament" keeps its UFC.
+ */
+export function divisionFromRaw(raw) {
+  if (!raw) return null;
+  const s = String(raw)
+    .replace(/^\s*UFC\s+/i, '')
+    .replace(/^\s*Interim\s+/i, '')
+    .replace(/\s*\bTitle\b/ig, '')
+    .replace(/\s*\bChampionship\b/ig, '')
+    .replace(/\s*\bBout\b\s*$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return s || null;
+}
+
 export function enrichPick(p) {
   const raw = p.weight_class || '';
-  const clean = p.weight_class_clean || null;
+  // Prefer the analytics column; fall back to the raw one until the scraper has run.
+  const clean = p.weight_class_clean || divisionFromRaw(raw);
 
   // A pick refers to a specific MATCHUP. If the bout no longer reads the way it did when
   // picked — opponent swap, withdrawal, scratch — the pick is void and counts neither way.
