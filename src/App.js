@@ -442,8 +442,8 @@ const Chip = ({ on, onClick, children }) => (
 // The core unit: 22px mark, two lines, 44px tall — also the minimum comfortable touch
 // target, so it's as small as it should get. Truncates rather than wraps so row height
 // never varies and the list stays scannable down the left edge.
-const Row = ({ mark, markClass, title, meta, onClick }) => (
-  <button onClick={onClick} disabled={!onClick}
+const Row = ({ mark, markClass, title, meta, onClick, srLabel }) => (
+  <button onClick={onClick} disabled={!onClick} aria-label={srLabel}
     className="w-full flex items-center gap-3 py-2.5 border-b border-white/[0.06] last:border-b-0 text-left">
     <span className={`w-[22px] h-[22px] rounded-md flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${markClass}`}>{mark}</span>
     <span className="flex-1 min-w-0">
@@ -486,15 +486,22 @@ const Empty = ({ title, sub }) => (
   </div>
 );
 
+// Vote marks differ on TWO axes, not just colour. A thumbs-down is a thumbs-up flipped
+// vertically — the hardest pair to tell apart at a glance, because shape carries
+// recognition and orientation doesn't register peripherally. So the positive marks are
+// SOLID and the negative one is HOLLOW: fill weight reads instantly even out of focus,
+// and it encodes the real tier order (dislike ‹ like ‹ favorite).
+// Lucide icons rather than emoji — emoji glyphs vary a lot between iOS and Android, and
+// these need to be predictable at 12px.
 const MARK = {
   correct: { t: '✓', c: 'bg-pulse-green text-[#08130b]' },
   wrong:   { t: '✕', c: 'bg-pulse-text-3 text-pulse-bg' },
   draw:    { t: '—', c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10' },
   void:    { t: '—', c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10' },
   pending: { t: '·', c: 'bg-pulse-amber/15 text-pulse-amber' },
-  favorite:{ t: '★', c: 'bg-yellow-500/15 text-yellow-400' },
-  like:    { t: '👍', c: 'bg-pulse-blue/15 text-pulse-blue' },
-  dislike: { t: '👎', c: 'bg-pulse-red/[0.13] text-pulse-red' },
+  favorite:{ t: <Star size={12} className="fill-current" aria-hidden="true" />,      c: 'bg-yellow-500 text-black' },
+  like:    { t: <ThumbsUp size={12} className="fill-current" aria-hidden="true" />,  c: 'bg-pulse-blue text-white' },
+  dislike: { t: <ThumbsDown size={12} aria-hidden="true" />,                          c: 'bg-transparent border border-pulse-red/60 text-pulse-red' },
 };
 const markOf = p => p.voided ? MARK.void : (MARK[p.grade] || MARK.pending);
 
@@ -667,8 +674,15 @@ const VotesTab = ({ history, onFightClick }) => {
       {/* Chips, not tabs: the old three-way tab meant you could never see voting as one
           history. Defaults to All in date order, which groups by card naturally. */}
       <div className="flex gap-1.5 flex-wrap">
-        {[['all', `All ${counts.all}`], ['favorite', `★ ${counts.favorite}`], ['like', `👍 ${counts.like}`], ['dislike', `👎 ${counts.dislike}`]].map(([v, l]) => (
-          <Chip key={v} on={filter === v} onClick={() => { setFilter(v); setLimit(PAGE); }}>{l}</Chip>
+        {[
+          ['all', <>All {counts.all}</>],
+          ['favorite', <><Star size={11} className="fill-current text-yellow-400" aria-hidden="true" /> {counts.favorite}</>],
+          ['like', <><ThumbsUp size={11} className="fill-current text-pulse-blue" aria-hidden="true" /> {counts.like}</>],
+          ['dislike', <><ThumbsDown size={11} className="text-pulse-red" aria-hidden="true" /> {counts.dislike}</>],
+        ].map(([v, l]) => (
+          <Chip key={v} on={filter === v} onClick={() => { setFilter(v); setLimit(PAGE); }}>
+            <span className="inline-flex items-center gap-1">{l}</span>
+          </Chip>
         ))}
       </div>
       <div className="mt-3">
@@ -679,6 +693,7 @@ const VotesTab = ({ history, onFightClick }) => {
             <Row key={f.id} mark={m.t} markClass={m.c}
               title={<>{a} <span className="text-pulse-text-3">vs</span> {b}</>}
               meta={[f.event_name, f.event_date].filter(Boolean).join(' · ')}
+              srLabel={`${f.userVote === 'favorite' ? 'Favorited' : f.userVote === 'like' ? 'Liked' : 'Disliked'}: ${f.bout}`}
               onClick={() => onFightClick(f)} />
           );
         })}
