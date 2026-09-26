@@ -5,6 +5,7 @@ import { dataService } from './dataService';
 import LoginPage from './Login';
 import * as guestStorage from './guestStorage';
 import { gradePrediction } from './fighterNames';
+import * as predictionStats from './predictionStats';
 import CombatDNAVisual from './CombatDNAVisual';
 
 import FightDetailView from './components/FightDetailView';
@@ -406,6 +407,215 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 };
 
 
+// --- Prediction record (profile) ---
+
+const Seg = ({ options, value, onChange }) => (
+  <div className="flex bg-pulse-surface-2 p-0.5 rounded-btn gap-0.5 mb-4">
+    {options.map(o => (
+      <button
+        key={o.v}
+        onClick={() => onChange(o.v)}
+        aria-pressed={value === o.v}
+        className={`flex-1 py-1.5 rounded-[7px] font-heading font-bold text-[11.5px] uppercase tracking-wider transition-colors
+          ${value === o.v ? 'bg-pulse-red text-white' : 'text-pulse-text-3 hover:text-pulse-text-2'}`}
+      >{o.l}</button>
+    ))}
+  </div>
+);
+
+// One breakdown row. Under MIN_FOR_PCT graded picks it shows the raw count instead of a
+// percentage and no bar — 2-0 rendered as 100% would outrank a 6-2 record built on four
+// times the evidence. Sub-50% bars go grey, never red: red is the fighter-one corner
+// colour everywhere else in this app.
+const BRow = ({ label, row }) => (
+  <div className={`flex items-center gap-2.5 py-2 border-b border-white/[0.06] last:border-b-0 ${row.showPct ? '' : 'opacity-50'}`}>
+    <span className="flex-1 min-w-0 font-heading font-semibold text-sm uppercase tracking-wider truncate">{label}</span>
+    {row.showPct && (
+      <span className="w-[72px] h-1.5 rounded-full bg-pulse-surface-2 overflow-hidden flex-shrink-0">
+        <span className={`block h-full rounded-full ${row.pct >= 50 ? 'bg-pulse-green' : 'bg-pulse-text-3'}`} style={{ width: `${row.pct}%` }} />
+      </span>
+    )}
+    <span className="font-mono text-xs text-pulse-text-2 w-11 text-right tabular-nums flex-shrink-0">{row.w}–{row.l}</span>
+    {row.showPct
+      ? <span className="font-heading font-bold text-sm w-10 text-right tabular-nums flex-shrink-0">{row.pct}%</span>
+      : <span className="text-[10.5px] text-pulse-text-3 w-14 text-right flex-shrink-0">{row.graded || 0} pick{row.graded === 1 ? '' : 's'}</span>}
+  </div>
+);
+
+const Panel = ({ label, right, children }) => (
+  <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-4 mb-3">
+    <div className="flex items-center justify-between gap-2">
+      <span className="font-heading font-bold text-[13px] uppercase tracking-[0.12em] text-pulse-text-3">{label}</span>
+      {right}
+    </div>
+    {children}
+  </div>
+);
+
+const PredictionProfile = ({ picks, loading }) => {
+  const [scope, setScope] = useState('all');
+  const [year, setYear] = useState(null);
+  const [openEvent, setOpenEvent] = useState(null);
+
+  const years = predictionStats.availableYears(picks);
+  const activeYear = year || years[0] || null;
+
+  const scoped = scope === 'year' ? picks.filter(p => p.year === activeYear)
+               : scope === 'event' && openEvent ? picks.filter(p => p.event_name === openEvent)
+               : picks;
+
+  const rec = predictionStats.tally(scoped);
+  const pending = scoped.filter(p => p.pending && !p.ended);
+  const graded = scoped.filter(p => p.grade === 'correct' || p.grade === 'wrong');
+
+  if (loading) return <div className="text-center py-16 opacity-40 italic">Loading your picks…</div>;
+  if (!picks.length) return (
+    <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-8 text-center mb-3">
+      <p className="font-heading font-bold text-lg uppercase tracking-wider text-pulse-text-2">No picks yet</p>
+      <p className="text-xs text-pulse-text-3 mt-1.5">Swipe or tap a fighter on an upcoming card to make your first pick.</p>
+    </div>
+  );
+
+  // Event scope is a LIST, not a filter — the other scopes answer "how good am I",
+  // this one answers "how did that card go", and you don't know which card until you see them.
+  const eventRows = predictionStats.byEvent(picks);
+
+  return (
+    <>
+      <Seg
+        value={scope}
+        onChange={(v) => { setScope(v); setOpenEvent(null); }}
+        options={[{ v: 'all', l: 'All time' }, { v: 'year', l: 'Year' }, { v: 'event', l: 'Event' }]}
+      />
+
+      {scope === 'year' && years.length > 1 && (
+        <div className="flex gap-1.5 flex-wrap mb-3">
+          {years.map(y => (
+            <button key={y} onClick={() => setYear(y)}
+              className={`font-mono text-[11px] px-2.5 py-1 rounded-pill border transition-colors
+                ${y === activeYear ? 'border-pulse-red text-pulse-red' : 'border-transparent bg-pulse-surface-2 text-pulse-text-3'}`}
+            >{y}</button>
+          ))}
+        </div>
+      )}
+
+      {scope === 'event' && !openEvent ? (
+        <Panel label="By event">
+          <div className="mt-2">
+            {eventRows.map(e => {
+              const allPending = e.graded === 0 && e.pending > 0;
+              return (
+                <button key={e.key} onClick={() => setOpenEvent(e.key)}
+                  className="w-full flex items-center gap-2.5 py-2.5 border-b border-white/[0.06] last:border-b-0 text-left">
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-[13px] font-semibold truncate">{e.key}</span>
+                    <span className="block font-mono text-[10.5px] text-pulse-text-3">{e.picks[0]?.event_date || ''}</span>
+                  </span>
+                  {/* A card with picks but no results shows "pending", never 0–0 —
+                      which would read as a card you went winless on. */}
+                  {allPending
+                    ? <span className="font-mono text-[11px] text-pulse-amber flex-shrink-0">{e.pending} pending</span>
+                    : <span className="font-heading font-bold text-[15px] tabular-nums flex-shrink-0">
+                        <span className="text-pulse-green">{e.w}</span><span className="text-pulse-text-3">–</span><span className="text-pulse-text-2">{e.l}</span>
+                      </span>}
+                </button>
+              );
+            })}
+          </div>
+        </Panel>
+      ) : (
+        <>
+          <Panel label={scope === 'event' ? openEvent : scope === 'year' ? `Pick record · ${activeYear}` : 'Pick record'}
+                 right={scope === 'event' ? <button onClick={() => setOpenEvent(null)} className="text-[11px] text-pulse-red font-semibold">All events</button> : null}>
+            <div className="flex items-end gap-3 mt-2">
+              <span className="font-heading font-extrabold text-[54px] leading-[0.85] tabular-nums">
+                <span className="text-pulse-green">{rec.w}</span><span className="text-pulse-text-3">–</span><span className="text-pulse-text-2">{rec.l}</span>
+              </span>
+              {rec.showPct && <span className="font-heading font-bold text-xl text-pulse-text-2 pb-1.5 tabular-nums">{rec.pct}%</span>}
+            </div>
+            <div className="text-xs text-pulse-text-3 mt-2">
+              {rec.graded} graded
+              {rec.pending ? ` · ${rec.pending} pending` : ''}
+              {rec.draw ? ` · ${rec.draw} draw${rec.draw === 1 ? '' : 's'}` : ''}
+              {rec.voided ? ` · ${rec.voided} voided` : ''}
+              {!rec.showPct && rec.graded > 0 ? ` · too few for a percentage` : ''}
+            </div>
+          </Panel>
+
+          {pending.length > 0 && scope !== 'event' && (
+            <Panel label="Pending">
+              <div className="mt-2">
+                {pending.map(p => {
+                  const isF1 = p.bout?.split(/ vs /i)[0]?.trim() === p.predicted_fighter;
+                  return (
+                    <div key={p.fight_id} className="flex items-center gap-2.5 py-2 border-b border-white/[0.06] last:border-b-0">
+                      <span className={`w-[7px] h-[7px] rounded-full flex-shrink-0 ${isF1 ? 'bg-pulse-red' : 'bg-pulse-blue'}`} />
+                      <span className="flex-1 min-w-0 text-[13px] truncate">
+                        <b className="font-semibold">{p.predicted_fighter?.split(' ').pop()}</b>
+                        <span className="text-pulse-text-3"> over {(p.bout || '').split(/ vs /i).map(s => s.trim()).find(n => n !== p.predicted_fighter)?.split(' ').pop()}</span>
+                      </span>
+                      <span className="font-mono text-[10.5px] text-pulse-text-3 flex-shrink-0">{p.division || ''}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </Panel>
+          )}
+
+          {/* No breakdowns at event scope: a division cut of one card is one pick per row,
+              every row under the floor. Technically correct, completely useless. */}
+          {scope !== 'event' && graded.length > 0 && (
+            <>
+              <Panel label="By division">
+                <div className="mt-2">
+                  {predictionStats.groupBy(scoped, p => p.division).map(r => <BRow key={r.key} label={r.key} row={r} />)}
+                </div>
+              </Panel>
+              <Panel label="By division sex">
+                <div className="mt-2">
+                  {predictionStats.groupBy(scoped, p => (p.isWomens ? "Women's" : "Men's")).map(r => <BRow key={r.key} label={r.key} row={r} />)}
+                </div>
+              </Panel>
+              <Panel label="By stakes">
+                <div className="mt-2">
+                  {predictionStats.groupBy(scoped, p => (p.isTitle ? 'Title fights' : 'Non-title')).map(r => <BRow key={r.key} label={r.key} row={r} />)}
+                </div>
+              </Panel>
+            </>
+          )}
+
+          <Panel label={scope === 'event' ? 'Picks' : 'Recent picks'}>
+            <div className="mt-2">
+              {[...scoped]
+                .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')) || (a.card_position ?? 99) - (b.card_position ?? 99))
+                .slice(0, scope === 'event' ? 99 : 8)
+                .map(p => {
+                  const other = (p.bout || '').split(/ vs /i).map(s => s.trim()).find(n => n !== p.predicted_fighter);
+                  const mark = p.voided ? { c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10', t: '—' }
+                            : p.grade === 'correct' ? { c: 'bg-pulse-green text-[#08130b]', t: '✓' }
+                            : p.grade === 'wrong' ? { c: 'bg-pulse-text-3 text-pulse-bg', t: '✕' }
+                            : p.grade === 'draw' ? { c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10', t: '—' }
+                            : { c: 'bg-pulse-amber/15 text-pulse-amber', t: '·' };
+                  return (
+                    <div key={p.fight_id} className="flex items-center gap-2.5 py-2.5 border-b border-white/[0.06] last:border-b-0">
+                      <span className={`w-5 h-5 rounded-[5px] flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${mark.c}`}>{mark.t}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="block text-[13px] font-semibold truncate">{p.predicted_fighter} over {other}</span>
+                        <span className="block text-[11px] text-pulse-text-3 truncate">
+                          {[p.event_name, p.division, p.isTitle ? 'title' : null, p.voided ? 'voided' : null].filter(Boolean).join(' · ')}
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+            </div>
+          </Panel>
+        </>
+      )}
+    </>
+  );
+};
+
 // --- Main App Component ---
 export default function UFCFightRating() {
   const [session, setSession] = useState(null);
@@ -421,6 +631,8 @@ export default function UFCFightRating() {
   // changed matchup (opponent swap / scratch) is detectable and the pick can be voided.
   const [predictions, setPredictions] = useState({});             // { [fightId]: { pick, f1, f2 } }
   const [predictionClosed, setPredictionClosed] = useState({});   // { [fightId]: true }
+  const [allPicks, setAllPicks] = useState([]);                   // enriched, for the profile
+  const [picksLoading, setPicksLoading] = useState(false);
   const [loadingFights, setLoadingFights] = useState(false);
   const [selectedFight, setSelectedFight] = useState(null);
   const [previousView, setPreviousView] = useState('events');
@@ -582,6 +794,19 @@ export default function UFCFightRating() {
     dataService.getScoringInsights().then(setScoringInsights);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentView, isGuest]);
+
+  // Load every pick when the profile opens. Refetched on each visit rather than cached —
+  // a pick made on the events tab minutes ago should show up here.
+  useEffect(() => {
+    if (currentView !== 'profile' || isGuest || !session) { return; }
+    let cancelled = false;
+    setPicksLoading(true);
+    dataService.getAllPredictions()
+      .then(rows => { if (!cancelled) setAllPicks((rows || []).map(predictionStats.enrichPick)); })
+      .finally(() => { if (!cancelled) setPicksLoading(false); });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentView, isGuest, session]);
 
   // Keep ref in sync so the ESPN poll can read latest eventFights without re-triggering the effect
   useEffect(() => { eventFightsRef.current = eventFights; }, [eventFights]);
@@ -1676,9 +1901,26 @@ export default function UFCFightRating() {
         {/* --- 5. PROFILE PAGE (Reordered) --- */}
         {currentView === 'profile' && (
           <div className="animate-in slide-in-from-right pb-20">
-            <div className="flex items-center gap-2 mb-6 opacity-60">
+            <div className="flex items-center gap-2 mb-5 opacity-60">
                  <User size={20} />
-                 <span className="font-bold">VOTING HISTORY</span>
+                 <span className="font-bold">PICK RECORD</span>
+             </div>
+
+            {isGuest ? (
+              <div className="bg-pulse-surface border border-white/[0.06] rounded-fight p-6 text-center mb-8">
+                <p className="font-heading font-bold text-base uppercase tracking-wider text-pulse-text-2">Sign in to track picks</p>
+                <p className="text-xs text-pulse-text-3 mt-1.5">A guest record would vanish when the tab closes.</p>
+              </div>
+            ) : (
+              <div className="mb-8">
+                <PredictionProfile picks={allPicks} loading={picksLoading} />
+              </div>
+            )}
+
+            {/* Voting history sits below the record: it's retrospective browsing, where
+                the record above is the thing actually being tracked. */}
+            <div className="flex items-center gap-2 mb-4 opacity-60">
+                 <span className="font-bold text-sm">VOTING HISTORY</span>
              </div>
 
             <div role="tablist" aria-label="Voting history" className={`flex ${currentTheme.tabBg} p-1 ${currentTheme.rounded} mb-8`}>
