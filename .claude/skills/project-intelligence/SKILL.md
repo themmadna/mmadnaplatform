@@ -1,14 +1,12 @@
 ---
 name: project-intelligence
 description: Initializes and maintains the Project Intelligence System — a two-brain memory architecture that gives Claude persistent context across a project's lifespan. Use when the user asks to set up project memory, initialize a new project, onboard Claude to an existing codebase, run a session start or session end, update project files, or reconcile existing Skills against the framework. Trigger phrases include: "set up project memory", "initialize project", "read my project context", "session start", "session end", "update progress", "reconcile skills", "audit skills".
-version: 0.1.0
+version: 0.2.0
 claude_native_features: []
 validates_with: |
   memory/ files written after explicit approval,
   CLAUDE.md router includes tier system and session contract
 division: Project Intelligence
-metadata:
-  author: Bastian
 ---
 
 # Project Intelligence System
@@ -87,7 +85,7 @@ Also check `Last refreshed:` in PROGRESS.md. If the line is missing or more than
 30 days old, flag: "Memory refresh is overdue — run /memory-refresh when ready."
 Non-blocking — proceed with the session regardless.
 
-Also check `provisional/` in the global brain (`~/bastian-global-brain/provisional/`). If any `.md` files are present (excluding README.md), flag: "[N] dreaming candidate(s) pending review — run /dreaming-review when ready." Non-blocking — proceed with the session regardless.
+Also check the dreaming queue in the global brain. Check **both** `~/bastian-global-brain/provisional/*.md` (excluding README.md and TRIAGE-*.md) **and** whether any `origin/dreaming/*` branch is ahead of `main` — a candidate that never merged is invisible to a check that only looks locally, which is how 43 candidates accumulated unseen between 2026-05-17 and 2026-08-30. If either is non-zero, flag: "[N] dreaming candidate(s) pending ([M] on unmerged branches) — run /dreaming-review, or /merge-dreaming first if M > 0." Non-blocking — proceed with the session regardless.
 
 **First session only (cold start):**
 If PROGRESS.md is empty or this is the first session, read PROJECT.md
