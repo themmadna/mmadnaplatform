@@ -27,8 +27,11 @@ Schema decisions worth keeping:
   UNIQUE (user_id, fight_id) — one pick per fight per user. Changing your mind is an
     upsert, clearing it is a delete.
 
-  Both FKs CASCADE, matching every sibling user-data table (user_round_scores,
+  user_id CASCADEs, matching every sibling user-data table (user_round_scores,
     user_fight_scorecard_state, fight_ratings, and user_votes since S-P1-7).
+    fight_id originally CASCADEd too; it is now ON DELETE SET NULL plus an event_name
+    column — see migrate_prediction_keep_on_delete.py (2026-10-03). Run that after this
+    one on a fresh database.
 
 Run once:
     python supabase/migrate_fight_predictions.py

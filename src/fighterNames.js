@@ -58,6 +58,32 @@ export function matchesFighter(jsName, metaName) {
 }
 
 /**
+ * Split a bout string ("Fighter1 vs Fighter2") into its two names.
+ * Returns [] if the string doesn't read as a two-fighter bout.
+ */
+export function splitBout(bout) {
+  const parts = (bout || '').split(/\s+vs\.?\s+/i).map(s => s.trim()).filter(Boolean);
+  return parts.length === 2 ? parts : [];
+}
+
+/**
+ * Do two bout strings describe the same matchup?
+ *
+ * Corner order is NOT meaningful: the post-event scraper routinely rewrites a bout
+ * reversed relative to how it read pre-event (conventions #1/#9), so
+ * "A vs B" and "B vs A" are the same fight. Names compare via matchesFighter so a
+ * respelling between scrapes doesn't read as an opponent swap either.
+ * Unparseable input falls back to exact equality.
+ */
+export function sameMatchup(boutA, boutB) {
+  const a = splitBout(boutA);
+  const b = splitBout(boutB);
+  if (a.length !== 2 || b.length !== 2) return (boutA || '') === (boutB || '');
+  return (matchesFighter(a[0], b[0]) && matchesFighter(a[1], b[1]))
+      || (matchesFighter(a[0], b[1]) && matchesFighter(a[1], b[0]));
+}
+
+/**
  * Grade a prediction against a known winner.
  *
  * Returns 'correct' | 'wrong' | 'draw' | null (not yet gradeable).

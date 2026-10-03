@@ -67,11 +67,13 @@ export const dataService = {
 
     const { data: picks, error } = await supabase
       .from('user_fight_predictions')
-      .select('fight_id, predicted_fighter, bout_snapshot, created_at');
+      .select('id, fight_id, predicted_fighter, bout_snapshot, event_name, created_at');
     if (error) { console.error('getAllPredictions error:', error); return []; }
     if (!picks?.length) return [];
 
-    const ids = picks.map(p => p.fight_id);
+    // fight_id is NULL once the scraper deletes a cancelled bout (FK is ON DELETE SET NULL),
+    // so those picks carry their own event_name to stay on the right card.
+    const ids = picks.map(p => p.fight_id).filter(id => id != null);
     const { data: fights } = await supabase
       .from('fights')
       .select('id, bout, winner, weight_class, event_name, fight_url, card_position, status, fight_started_at, fight_ended_at')
@@ -79,7 +81,7 @@ export const dataService = {
     const fightById = Object.fromEntries((fights || []).map(f => [f.id, f]));
 
     const urls = (fights || []).map(f => f.fight_url).filter(Boolean);
-    const events = [...new Set((fights || []).map(f => f.event_name).filter(Boolean))];
+    const events = [...new Set([...(fights || []).map(f => f.event_name), ...picks.map(p => p.event_name)].filter(Boolean))];
 
     const [{ data: metas }, { data: evs }] = await Promise.all([
       urls.length
@@ -94,9 +96,12 @@ export const dataService = {
 
     return picks.map(p => {
       const f = fightById[p.fight_id] || {};
-      const ev = evByName[f.event_name] || {};
+      const eventName = f.event_name || p.event_name;
+      const ev = evByName[eventName] || {};
       return {
+        id: p.id,
         fight_id: p.fight_id,
+        fight_deleted: p.fight_id == null,                  // bout was scratched off the card
         predicted_fighter: p.predicted_fighter,
         bout_snapshot: p.bout_snapshot,
         created_at: p.created_at,
@@ -104,7 +109,7 @@ export const dataService = {
         winner: f.winner,
         weight_class: f.weight_class,                       // RAW — carries title wording
         weight_class_clean: cleanByUrl[f.fight_url] || null, // CLEAN — division + sex
-        event_name: f.event_name,
+        event_name: eventName,
         event_date: ev.event_date || null,
         card_position: f.card_position,
         status: f.status,

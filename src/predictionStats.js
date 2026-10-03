@@ -6,7 +6,7 @@
  * percentage is honest enough to show.
  */
 
-import { gradePrediction } from './fighterNames';
+import { gradePrediction, sameMatchup } from './fighterNames';
 
 /** Below this many graded picks, a row shows its raw count instead of a percentage. */
 export const MIN_FOR_PCT = 5;
@@ -53,7 +53,10 @@ export function enrichPick(p) {
 
   // A pick refers to a specific MATCHUP. If the bout no longer reads the way it did when
   // picked — opponent swap, withdrawal, scratch — the pick is void and counts neither way.
-  const voided = !!p.bout_snapshot && !!p.bout && p.bout_snapshot !== p.bout;
+  // Order-insensitive: the scraper often re-writes a bout reversed, which is NOT a swap.
+  // A deleted fight row (cancelled bout, auto-deleted by the scraper) is the scratch case.
+  const voided = !!p.fight_deleted
+    || (!!p.bout_snapshot && !!p.bout && !sameMatchup(p.bout_snapshot, p.bout));
 
   const ended = !!p.fight_ended_at || p.status === 'completed';
   // gradePrediction distinguishes '' (draw / no contest) from null (not graded yet),

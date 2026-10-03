@@ -4,7 +4,7 @@ import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
 import * as guestStorage from './guestStorage';
-import { gradePrediction } from './fighterNames';
+import { gradePrediction, matchesFighter, sameMatchup } from './fighterNames';
 import * as predictionStats from './predictionStats';
 import CombatDNAVisual from './CombatDNAVisual';
 
@@ -604,7 +604,7 @@ const PicksTab = ({ picks, loading }) => {
           <span className="font-mono text-[10px] text-pulse-text-3 uppercase tracking-widest flex-shrink-0">Last {form.length}</span>
           <span className="flex gap-[3px] flex-1">
             {form.map(p => (
-              <span key={p.fight_id} title={p.predicted_fighter}
+              <span key={p.id} title={p.predicted_fighter}
                 className={`flex-1 h-4 rounded-[3px] ${p.grade === 'correct' ? 'bg-pulse-green' : p.grade === 'wrong' ? 'bg-pulse-text-3' : p.grade === 'draw' ? 'bg-pulse-surface-2' : 'bg-pulse-amber/35'}`} />
             ))}
           </span>
@@ -636,11 +636,13 @@ const PicksTab = ({ picks, loading }) => {
       </div>
       {shown.length === 0 ? <Empty title="Nothing here" /> : shown.slice(0, limit).map(p => {
         const m = markOf(p);
-        const other = (p.bout || '').split(/ vs /i).map(s => s.trim()).find(n => n !== p.predicted_fighter);
+        // A void shows the matchup you actually picked, not whatever replaced it (or nothing,
+        // if the bout was scratched and its fight row deleted).
+        const other = (p.voided ? p.bout_snapshot : p.bout || '').split(/ vs /i).map(s => s.trim()).find(n => n !== p.predicted_fighter);
         return (
-          <Row key={p.fight_id} mark={m.t} markClass={m.c}
+          <Row key={p.id} mark={m.t} markClass={m.c}
             title={<><b className="font-semibold">{p.predicted_fighter}</b> <span className="text-pulse-text-3">over {other}</span></>}
-            meta={[p.event_name, p.division, p.isTitle ? 'title' : null, p.voided ? 'voided' : null].filter(Boolean).join(' · ')} />
+            meta={[p.event_name, p.division, p.isTitle ? 'title' : null, p.fight_deleted ? 'bout cancelled' : p.voided ? 'voided' : null].filter(Boolean).join(' · ')} />
         );
       })}
       {shown.length > limit && (
@@ -1273,12 +1275,17 @@ export default function UFCFightRating() {
           const p = stored[b.id];
           if (!p) continue;
           const parts = (b.bout || '').split(/ vs /i);
-          loaded[b.id] = {
-            pick: p.predicted_fighter,
-            f1: parts[0]?.trim(),
-            f2: parts[1]?.trim(),
-            voided: (p.bout_snapshot || '') !== (b.bout || ''),
-          };
+          const f1 = parts[0]?.trim();
+          const f2 = parts[1]?.trim();
+          // Order-insensitive: the scraper often re-writes a bout reversed, which is NOT a swap.
+          const voided = !sameMatchup(p.bout_snapshot, b.bout);
+          // The card highlights and clears a pick by exact name, so map the stored pick onto
+          // the bout's current spelling in case it was respelled between scrapes.
+          const pick = voided ? p.predicted_fighter
+            : matchesFighter(p.predicted_fighter, f1) ? f1
+            : matchesFighter(p.predicted_fighter, f2) ? f2
+            : p.predicted_fighter;
+          loaded[b.id] = { pick, f1, f2, voided };
         }
         setPredictions(loaded);
       } else {

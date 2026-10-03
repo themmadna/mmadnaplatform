@@ -134,15 +134,16 @@ Unique constraint: `(user_id, fight_id)`.
 | `created_at` | timestamptz | NULL | default now() |
 
 ### `user_fight_predictions`
-Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_id)` — one pick per fight, changing your mind is an upsert and clearing it is a delete. RLS on, all four policies scoped to `auth.uid()`; `anon` revoked (guests cannot predict — a sessionStorage record would evaporate on tab close). Created by `supabase/migrate_fight_predictions.py`.
+Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_id)` — one pick per fight, changing your mind is an upsert and clearing it is a delete. RLS on, all four policies scoped to `auth.uid()`; `anon` revoked (guests cannot predict — a sessionStorage record would evaporate on tab close). Created by `supabase/migrate_fight_predictions.py`; `fight_id` FK changed to SET NULL + `event_name` added by `supabase/migrate_prediction_keep_on_delete.py` (2026-10-03).
 
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
 | `id` | bigint PK | NOT NULL | bigserial |
 | `user_id` | uuid | NOT NULL | FK → auth.users ON DELETE CASCADE |
-| `fight_id` | bigint | NOT NULL | FK → fights.id ON DELETE CASCADE |
+| `fight_id` | bigint | NULL | FK → fights.id **ON DELETE SET NULL**. NULL = the fight row was deleted (scraper auto-delete of a cancelled bout); the pick is kept and shown as **void** (`fight_deleted` in `getAllPredictions`). Postgres NULLs are distinct, so the unique constraint allows any number of orphans |
+| `event_name` | text | NULL | Copied from `fights.event_name` by trigger `trg_ufp_event_name` on insert / fight_id change — client never sends it. Kept when fight_id goes NULL, so an orphaned pick still groups under its card |
 | `predicted_fighter` | text | NOT NULL | fighter NAME, never a corner index — bout strings get re-scraped reversed (conventions #1/#9) |
-| `bout_snapshot` | text | NOT NULL | `fights.bout` as it read at pick time; if it no longer matches, the matchup changed and the pick is **void** |
+| `bout_snapshot` | text | NOT NULL | `fights.bout` as it read at pick time; if it no longer describes the same two fighters, the matchup changed and the pick is **void**. Compare with `sameMatchup()` (`src/fighterNames.js`), never `===` — the post-event scraper re-writes bouts reversed |
 | `created_at` | timestamptz | NOT NULL | default now() |
 | `updated_at` | timestamptz | NOT NULL | default now(), maintained by `trg_ufp_updated_at` |
 
