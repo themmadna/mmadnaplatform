@@ -141,6 +141,7 @@ Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_i
 | `id` | bigint PK | NOT NULL | bigserial |
 | `user_id` | uuid | NOT NULL | FK → auth.users ON DELETE CASCADE |
 | `fight_id` | bigint | NULL | FK → fights.id **ON DELETE SET NULL**. NULL = the fight row was deleted (scraper auto-delete of a cancelled bout); the pick is kept and shown as **void** (`fight_deleted` in `getAllPredictions`). Postgres NULLs are distinct, so the unique constraint allows any number of orphans |
+| `revealed_at` | timestamptz | NULL | When the user revealed this pick's verdict under spoiler protection (card tap, event Reveal all, profile row, or fight detail's Reveal / finishing the scorecard). NULL = not explicitly revealed; fight detail's Hide clears it. Winner-only reveal — no effect on scorecard eligibility. Rule: `src/spoilers.js`. Added by `supabase/migrate_prediction_revealed_at.py` |
 | `event_name` | text | NULL | Copied from `fights.event_name` by trigger `trg_ufp_event_name` on insert / fight_id change — client never sends it. Kept when fight_id goes NULL, so an orphaned pick still groups under its card |
 | `predicted_fighter` | text | NOT NULL | fighter NAME, never a corner index — bout strings get re-scraped reversed (conventions #1/#9) |
 | `bout_snapshot` | text | NOT NULL | `fights.bout` as it read at pick time; if it no longer describes the same two fighters, the matchup changed and the pick is **void**. Compare with `sameMatchup()` (`src/fighterNames.js`), never `===` — the post-event scraper re-writes bouts reversed |

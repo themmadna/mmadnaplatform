@@ -7,6 +7,7 @@
  */
 
 import { gradePrediction, sameMatchup } from './fighterNames';
+import { isResultRevealed } from './spoilers';
 
 /** Below this many graded picks, a row shows its raw count instead of a percentage. */
 export const MIN_FOR_PCT = 5;
@@ -46,7 +47,7 @@ export function divisionFromRaw(raw) {
   return s || null;
 }
 
-export function enrichPick(p) {
+export function enrichPick(p, { spoilerProtection = false } = {}) {
   const raw = p.weight_class || '';
   // Prefer the analytics column; fall back to the raw one until the scraper has run.
   const clean = p.weight_class_clean || divisionFromRaw(raw);
@@ -61,14 +62,19 @@ export function enrichPick(p) {
   const ended = !!p.fight_ended_at || p.status === 'completed';
   // gradePrediction distinguishes '' (draw / no contest) from null (not graded yet),
   // so only pass a winner through once the fight has actually ended.
-  const grade = voided ? null : gradePrediction(p.predicted_fighter, ended ? (p.winner ?? null) : undefined);
+  const rawGrade = voided ? null : gradePrediction(p.predicted_fighter, ended ? (p.winner ?? null) : undefined);
+  // A grade names the winner. Under spoiler protection it stays hidden until the user
+  // reveals it or scores every round — see src/spoilers.js.
+  const hidden = !!rawGrade && !isResultRevealed({ spoilerProtection, revealedAt: p.revealed_at, allScored: p.all_scored });
+  const grade = hidden ? null : rawGrade;
 
   return {
     ...p,
     voided,
     ended,
     grade,                                           // 'correct' | 'wrong' | 'draw' | null
-    pending: !voided && !grade,                      // picked, no verdict yet
+    hidden,                                          // has a verdict, spoiler-protected
+    pending: !voided && !grade && !hidden,           // picked, no verdict yet
     division: clean,
     isWomens: !!clean && /^women'?s\b/i.test(clean),
     isTitle: /\btitle\b/i.test(raw),
@@ -82,12 +88,14 @@ export function enrichPick(p) {
  *
  * Draws and voids are deliberately outside the win/loss denominator: a draw counts
  * neither way, and a void is a fight the user never really picked. Folding either in
- * would quietly distort the record.
+ * would quietly distort the record. Hidden (spoiler-protected) results stay out too —
+ * otherwise the record ticking from 4–6 to 5–6 would itself give the result away.
  */
 export function tally(picks) {
-  let w = 0, l = 0, draw = 0, pending = 0, voided = 0;
+  let w = 0, l = 0, draw = 0, pending = 0, voided = 0, hidden = 0;
   for (const p of picks) {
     if (p.voided) voided++;
+    else if (p.hidden) hidden++;
     else if (p.grade === 'correct') w++;
     else if (p.grade === 'wrong') l++;
     else if (p.grade === 'draw') draw++;
@@ -95,7 +103,7 @@ export function tally(picks) {
   }
   const graded = w + l;
   return {
-    w, l, draw, pending, voided, graded,
+    w, l, draw, pending, voided, hidden, graded,
     pct: graded ? Math.round((w / graded) * 100) : null,
     /** Percentages below MIN_FOR_PCT graded picks are noise — the UI shows the count instead. */
     showPct: graded >= MIN_FOR_PCT,

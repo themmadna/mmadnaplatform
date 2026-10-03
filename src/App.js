@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, MapPin, Search, X, Dna, Sparkles, Settings2, Calendar, Scale, Share2, Check } from 'lucide-react';
+import { ThumbsUp, ThumbsDown, Star, ChevronLeft, ChevronRight, User, MapPin, Search, X, Dna, Sparkles, Settings2, Calendar, Scale, Share2, Check, EyeOff } from 'lucide-react';
 import { supabase } from './supabaseClient';
 import { dataService } from './dataService';
 import LoginPage from './Login';
@@ -7,6 +7,7 @@ import * as guestStorage from './guestStorage';
 import { gradePrediction, matchesFighter, sameMatchup } from './fighterNames';
 import * as predictionStats from './predictionStats';
 import { predictionsEnabled } from './featureFlags';
+import { allRoundsScored, isResultRevealed } from './spoilers';
 import CombatDNAVisual from './CombatDNAVisual';
 
 import FightDetailView from './components/FightDetailView';
@@ -63,7 +64,19 @@ function boutMatchesComp(bout, comp) {
 }
 
 // --- FightCard Component (Favorites First) ---
-const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0, prediction = null, onPredict = null, predictionClosed = false, isGuest = false }) => {
+// A pick's verdict on this fight, and whether spoiler protection is holding it back.
+// Shared by FightCard and the event's Reveal-all so the two can't disagree.
+// Grades against the DB winner first (scraper, authoritative), falling back to the one
+// ESPN reported live this session — via matchesFighter, never exact string equality.
+const pickResult = (fight, prediction, spoilerProtection) => {
+  const pick = prediction?.voided ? null : (prediction?.pick || null);
+  const grade = gradePrediction(pick, fight.winner ?? fight.espn_winner);   // 'correct' | 'wrong' | 'draw' | null
+  // A grade names the winner, so under spoiler protection it waits for a reveal (src/spoilers.js).
+  const hidden = !!grade && !isResultRevealed({ spoilerProtection, revealedAt: prediction?.revealedAt, allScored: prediction?.allScored });
+  return { grade: hidden ? null : grade, hidden };
+};
+
+const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked = false, onClick = null, index = 0, prediction = null, onPredict = null, predictionClosed = false, isGuest = false, spoilerProtection = false, onReveal = null }) => {
   const likes = fight.ratings?.likes_count || 0;
   const favorites = fight.ratings?.favorites_count || 0;
   const dislikes = fight.ratings?.dislikes_count || 0;
@@ -158,11 +171,7 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
 
   const dragTarget = armed ? (drag < 0 ? f1 : f2) : null;
 
-  // Grade against the DB winner first (scraper, authoritative), falling back to the one
-  // ESPN reported live this session. Never exact string equality — ESPN and ufcstats spell
-  // the same fighter differently ("Matthieu Letho Duclos" vs "Matthieu Duclos").
-  const knownWinner = fight.winner ?? fight.espn_winner;
-  const grade = gradePrediction(pick, knownWinner);   // 'correct' | 'wrong' | 'draw' | null
+  const { grade, hidden: resultHidden } = pickResult(fight, prediction, spoilerProtection);
 
   const glow = grade === 'correct' ? 'shadow-[0_0_0_1px_rgba(34,197,94,.55),0_0_30px_-6px_rgba(34,197,94,.60)]'
              : grade === 'wrong'   ? 'shadow-[0_0_0_1px_rgba(255,255,255,.07)]'
@@ -240,7 +249,17 @@ const FightCard = ({ fight, currentTheme, handleVote, showEvent = false, locked 
             — Draw
           </span>
         )}
-        {isCompleted && pick && !grade && (
+        {/* Spoiler-protected verdict: tap reveals this fight only. Shows the winner, nothing
+            else — scorecard eligibility is untouched. */}
+        {resultHidden && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onReveal?.(fight); }}
+            aria-label="Reveal whether your pick won"
+            className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-badge bg-pulse-surface-2 text-pulse-text-2 border border-white/10 uppercase tracking-wider font-semibold">
+            <EyeOff size={11} aria-hidden="true" /> Pick in · tap to reveal
+          </button>
+        )}
+        {isCompleted && pick && !grade && !resultHidden && (
           <span className="text-[11px] px-2 py-0.5 rounded-badge bg-pulse-amber/10 text-pulse-amber uppercase tracking-wider font-semibold">
             Awaiting result
           </span>
@@ -499,14 +518,15 @@ const MARK = {
   wrong:   { t: '✕', c: 'bg-pulse-text-3 text-pulse-bg' },
   draw:    { t: '—', c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10' },
   void:    { t: '—', c: 'bg-pulse-surface-2 text-pulse-text-3 border border-white/10' },
+  hidden:  { t: <EyeOff size={12} aria-hidden="true" />, c: 'bg-pulse-surface-2 text-pulse-text-2 border border-white/10' },
   pending: { t: '·', c: 'bg-pulse-amber/15 text-pulse-amber' },
   favorite:{ t: <Star size={12} className="fill-current" aria-hidden="true" />,      c: 'bg-yellow-500 text-black' },
   like:    { t: <ThumbsUp size={12} className="fill-current" aria-hidden="true" />,  c: 'bg-pulse-blue text-white' },
   dislike: { t: <ThumbsDown size={12} aria-hidden="true" />,                          c: 'bg-transparent border border-pulse-red/60 text-pulse-red' },
 };
-const markOf = p => p.voided ? MARK.void : (MARK[p.grade] || MARK.pending);
+const markOf = p => p.voided ? MARK.void : p.hidden ? MARK.hidden : (MARK[p.grade] || MARK.pending);
 
-const PicksTab = ({ picks, loading }) => {
+const PicksTab = ({ picks, loading, onReveal }) => {
   const [scope, setScope] = useState('all');
   const [year, setYear] = useState(null);
   const [openEvent, setOpenEvent] = useState(null);
@@ -535,17 +555,21 @@ const PicksTab = ({ picks, loading }) => {
         <Seg value={scope} onChange={v => { setScope(v); setOpenEvent(null); }}
              options={[{ v: 'all', l: 'All time' }, { v: 'year', l: 'Year' }, { v: 'event', l: 'Event' }]} />
         <SLab>By event</SLab>
-        {predictionStats.byEvent(picks).map(e => (
-          <Row key={e.key}
-            mark={e.graded === 0 && e.pending > 0 ? '·' : `${e.w}`}
-            markClass={e.graded === 0 && e.pending > 0 ? MARK.pending.c : 'bg-pulse-surface-2 text-pulse-text font-mono'}
-            title={e.key}
-            // A card with picks but no results reads "pending", never 0–0, which would
-            // look like a card you went winless on.
-            meta={e.graded === 0 && e.pending > 0 ? `${e.picks[0]?.event_date || ''} · ${e.pending} pending`
-                                                  : `${e.picks[0]?.event_date || ''} · ${e.w}–${e.l}`}
-            onClick={() => setOpenEvent(e.key)} />
-        ))}
+        {predictionStats.byEvent(picks).map(e => {
+          // A card with picks but no visible results reads "pending" / "hidden", never 0–0,
+          // which would look like a card you went winless on.
+          const noResults = e.graded === 0 && (e.pending > 0 || e.hidden > 0);
+          return (
+            <Row key={e.key}
+              mark={noResults ? (e.pending ? '·' : MARK.hidden.t) : `${e.w}`}
+              markClass={noResults ? (e.pending ? MARK.pending.c : MARK.hidden.c) : 'bg-pulse-surface-2 text-pulse-text font-mono'}
+              title={e.key}
+              meta={[e.picks[0]?.event_date || '', noResults ? null : `${e.w}–${e.l}`,
+                     e.pending && noResults ? `${e.pending} pending` : null,
+                     e.hidden ? `${e.hidden} hidden` : null].filter(Boolean).join(' · ')}
+              onClick={() => setOpenEvent(e.key)} />
+          );
+        })}
       </>
     );
   }
@@ -559,7 +583,7 @@ const PicksTab = ({ picks, loading }) => {
 
   // Form = last 10 picks that actually resolved or are still live. Voids are excluded
   // entirely: the fight never happened, so it is neither a result nor a pending one.
-  const form = [...scoped].filter(p => !p.voided)
+  const form = [...scoped].filter(p => !p.voided && !p.hidden)
     .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')))
     .slice(0, 10).reverse();
 
@@ -594,6 +618,7 @@ const PicksTab = ({ picks, loading }) => {
           {rec.graded} graded
           {rec.pending ? ` · ${rec.pending} pending` : ''}
           {rec.draw ? ` · ${rec.draw} draw${rec.draw === 1 ? '' : 's'}` : ''}
+          {rec.hidden ? ` · ${rec.hidden} hidden` : ''}
           {rec.voided ? ` · ${rec.voided} voided` : ''}
           {!rec.showPct && rec.graded > 0 ? ' · too few for a percentage' : ''}
         </div>
@@ -643,7 +668,9 @@ const PicksTab = ({ picks, loading }) => {
         return (
           <Row key={p.id} mark={m.t} markClass={m.c}
             title={<><b className="font-semibold">{p.predicted_fighter}</b> <span className="text-pulse-text-3">over {other}</span></>}
-            meta={[p.event_name, p.division, p.isTitle ? 'title' : null, p.fight_deleted ? 'bout cancelled' : p.voided ? 'voided' : null].filter(Boolean).join(' · ')} />
+            meta={[p.event_name, p.division, p.isTitle ? 'title' : null, p.fight_deleted ? 'bout cancelled' : p.voided ? 'voided' : null, p.hidden ? 'tap to reveal' : null].filter(Boolean).join(' · ')}
+            onClick={p.hidden && onReveal ? () => onReveal(p.fight_id) : undefined}
+            srLabel={p.hidden ? `Reveal result: ${p.predicted_fighter} over ${other}` : undefined} />
         );
       })}
       {shown.length > limit && (
@@ -768,7 +795,7 @@ const ProfileView = (props) => {
 
       {tab === 'picks' && props.showPicks && (props.isGuest
         ? <Empty title="Sign in to track picks" sub="A guest record would vanish when the tab closes." />
-        : <PicksTab picks={props.picks} loading={props.picksLoading} />)}
+        : <PicksTab picks={props.picks} loading={props.picksLoading} onReveal={props.onRevealPick} />)}
       {tab === 'votes' && <VotesTab history={props.history} onFightClick={props.onFightClick} />}
       {tab === 'settings' && <SettingsTab {...props} />}
     </div>
@@ -790,7 +817,7 @@ export default function UFCFightRating() {
   // changed matchup (opponent swap / scratch) is detectable and the pick can be voided.
   const [predictions, setPredictions] = useState({});             // { [fightId]: { pick, f1, f2 } }
   const [predictionClosed, setPredictionClosed] = useState({});   // { [fightId]: true }
-  const [allPicks, setAllPicks] = useState([]);                   // enriched, for the profile
+  const [allPicks, setAllPicks] = useState([]);                   // raw rows; enriched at render (spoiler setting can change)
   const [picksLoading, setPicksLoading] = useState(false);
   const [loadingFights, setLoadingFights] = useState(false);
   const [selectedFight, setSelectedFight] = useState(null);
@@ -960,7 +987,7 @@ export default function UFCFightRating() {
     let cancelled = false;
     setPicksLoading(true);
     dataService.getAllPredictions()
-      .then(rows => { if (!cancelled) setAllPicks((rows || []).map(predictionStats.enrichPick)); })
+      .then(rows => { if (!cancelled) setAllPicks(rows || []); })
       .finally(() => { if (!cancelled) setPicksLoading(false); });
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1272,6 +1299,11 @@ export default function UFCFightRating() {
       // re-pick without ever knowing the first one went.
       if (predictionsEnabled(session)) {
         const stored = await dataService.getPredictionsForFights(bouts.map(b => b.id));
+        // For the spoiler rule: scoring every round of a fight counts as having watched it.
+        const [scored, resultMeta] = await Promise.all([
+          dataService.getScoredRoundCounts(Object.keys(stored).map(Number)),
+          dataService.getResultMeta(bouts.filter(b => stored[b.id]).map(b => b.fight_url)),
+        ]);
         const loaded = {};
         for (const b of bouts) {
           const p = stored[b.id];
@@ -1287,7 +1319,11 @@ export default function UFCFightRating() {
             : matchesFighter(p.predicted_fighter, f1) ? f1
             : matchesFighter(p.predicted_fighter, f2) ? f2
             : p.predicted_fighter;
-          loaded[b.id] = { pick, f1, f2, voided };
+          loaded[b.id] = {
+            pick, f1, f2, voided,
+            revealedAt: p.revealed_at,
+            allScored: allRoundsScored(b, resultMeta[b.fight_url], scored[b.id] || 0),
+          };
         }
         setPredictions(loaded);
       } else {
@@ -1313,6 +1349,23 @@ export default function UFCFightRating() {
     });
     dataService.upsertPrediction(fight.id, clearing ? null : fighterName, fight.bout)
       .catch(e => { console.error('prediction save failed:', e); setPredictions(before); });
+  };
+
+  // Reveal (or re-hide) pick verdicts under spoiler protection — from a card, the
+  // event's Reveal-all, the profile, or fight detail's spoiler toggle. Shows the winner
+  // only; scorecard eligibility is untouched. Optimistic with rollback, like handlePredict.
+  const handleRevealPicks = (fightIds, revealed = true) => {
+    if (!predictionsEnabled(session) || !fightIds.length) return;
+    const at = revealed ? new Date().toISOString() : null;
+    const before = { predictions, allPicks };
+    setPredictions(prev => {
+      const next = { ...prev };
+      for (const id of fightIds) if (next[id]) next[id] = { ...next[id], revealedAt: at };
+      return next;
+    });
+    setAllPicks(prev => prev.map(p => fightIds.includes(p.fight_id) ? { ...p, revealed_at: at } : p));
+    dataService.setPredictionsRevealed(fightIds, revealed)
+      .catch(e => { console.error('reveal save failed:', e); setPredictions(before.predictions); setAllPicks(before.allPicks); });
   };
 
   const handleFightClick = (fight) => {
@@ -1912,7 +1965,24 @@ export default function UFCFightRating() {
                 const visibleFights = eventConcluded
                     ? eventFights.filter(f => f.fight_started_at || f.fight_ended_at || f.status === 'completed')
                     : eventFights;
-                return visibleFights.map((f, i) => (
+                // Reveal-all covers every spoiler-protected verdict on the card in one tap;
+                // each card's own badge reveals just that fight.
+                const hiddenIds = predictionsEnabled(session)
+                    ? visibleFights.filter(f => pickResult(f, predictions[f.id], spoilerDefault).hidden).map(f => f.id)
+                    : [];
+                return (<>
+                  {hiddenIds.length > 0 && (
+                    <button
+                      onClick={() => handleRevealPicks(hiddenIds)}
+                      className="w-full flex items-center justify-between bg-pulse-surface border border-white/[0.06] rounded-card px-4 py-2.5 mb-3 active:scale-[0.98] transition-transform">
+                      <span className="flex items-center gap-2 text-xs font-heading font-semibold uppercase tracking-widest text-pulse-text-3">
+                        <EyeOff size={14} aria-hidden="true" />
+                        {hiddenIds.length} pick result{hiddenIds.length === 1 ? '' : 's'} hidden
+                      </span>
+                      <span className="text-[11px] text-pulse-red uppercase tracking-widest font-semibold">Reveal all</span>
+                    </button>
+                  )}
+                  {visibleFights.map((f, i) => (
                     <FightCard
                         key={f.id}
                         fight={f}
@@ -1927,8 +1997,11 @@ export default function UFCFightRating() {
                         onPredict={predictionsEnabled(session) ? handlePredict : null}
                         predictionClosed={!!predictionClosed[f.id]}
                         isGuest={isGuest}
+                        spoilerProtection={spoilerDefault}
+                        onReveal={fight => handleRevealPicks([fight.id])}
                     />
-                ));
+                  ))}
+                </>);
             })()}
           </div>
         )}
@@ -1942,6 +2015,7 @@ export default function UFCFightRating() {
             isGuest={isGuest}
             spoilerDefault={spoilerDefault}
             onSpoilerDefaultChange={handleSpoilerDefaultChange}
+            onResultRevealed={(fightId, revealed) => handleRevealPicks([fightId], revealed)}
           />
         )}
 
@@ -2067,7 +2141,8 @@ export default function UFCFightRating() {
         {currentView === 'profile' && (
           <ProfileView
             showPicks={predictionsEnabled(session)}
-            picks={allPicks}
+            picks={allPicks.map(p => predictionStats.enrichPick(p, { spoilerProtection: spoilerDefault }))}
+            onRevealPick={fightId => handleRevealPicks([fightId])}
             picksLoading={picksLoading}
             history={userHistory}
             onFightClick={handleFightClick}

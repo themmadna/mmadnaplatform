@@ -1,4 +1,5 @@
 import { supabase } from './supabaseClient';
+import { allRoundsScored } from './spoilers';
 
 export const dataService = {
   // --- VOTING LOGIC ---
@@ -28,7 +29,7 @@ export const dataService = {
     if (!user) return {};
     const { data, error } = await supabase
       .from('user_fight_predictions')
-      .select('fight_id, predicted_fighter, bout_snapshot')
+      .select('fight_id, predicted_fighter, bout_snapshot, revealed_at')
       .in('fight_id', fightIds);
     if (error) { console.error('getPredictionsForFights error:', error); return {}; }
     return Object.fromEntries((data || []).map(p => [p.fight_id, p]));
@@ -58,6 +59,46 @@ export const dataService = {
     if (error) throw error;
   },
 
+  // Mark pick results revealed (or re-hide them) under spoiler protection. Shows the
+  // winner only — no effect on scorecard eligibility. A fight the user didn't pick
+  // matches no row, which is fine: there's no pick result to hide.
+  async setPredictionsRevealed(fightIds, revealed) {
+    if (!fightIds?.length) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { error } = await supabase
+      .from('user_fight_predictions')
+      .update({ revealed_at: revealed ? new Date().toISOString() : null })
+      .eq('user_id', user.id)
+      .in('fight_id', fightIds);
+    if (error) throw error;
+  },
+
+  // Rounds this user has scored per fight → { [fightId]: count }. Feeds the
+  // "scored every round = watched it" spoiler rule (src/spoilers.js).
+  async getScoredRoundCounts(fightIds) {
+    if (!fightIds?.length) return {};
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {};
+    const { data, error } = await supabase
+      .from('user_round_scores')
+      .select('fight_id')
+      .eq('user_id', user.id)
+      .in('fight_id', fightIds);
+    if (error) { console.error('getScoredRoundCounts error:', error); return {}; }
+    const counts = {};
+    for (const r of data || []) counts[r.fight_id] = (counts[r.fight_id] || 0) + 1;
+    return counts;
+  },
+
+  // { [fight_url]: { time_format } } — what roundsToScore() needs when scheduled_rounds is unset.
+  async getResultMeta(fightUrls) {
+    const urls = (fightUrls || []).filter(Boolean);
+    if (!urls.length) return {};
+    const { data } = await supabase.from('fight_meta_details').select('fight_url, time_format').in('fight_url', urls);
+    return Object.fromEntries((data || []).map(m => [m.fight_url, m]));
+  },
+
   // Every pick the user has made, with everything the profile cuts need.
   // Four queries rather than a view: the three cuts straddle two tables, because
   // weight_class_clean strips title wording and only the raw column keeps it.
@@ -67,7 +108,7 @@ export const dataService = {
 
     const { data: picks, error } = await supabase
       .from('user_fight_predictions')
-      .select('id, fight_id, predicted_fighter, bout_snapshot, event_name, created_at');
+      .select('id, fight_id, predicted_fighter, bout_snapshot, event_name, revealed_at, created_at');
     if (error) { console.error('getAllPredictions error:', error); return []; }
     if (!picks?.length) return [];
 
@@ -76,22 +117,23 @@ export const dataService = {
     const ids = picks.map(p => p.fight_id).filter(id => id != null);
     const { data: fights } = await supabase
       .from('fights')
-      .select('id, bout, winner, weight_class, event_name, fight_url, card_position, status, fight_started_at, fight_ended_at')
+      .select('id, bout, winner, weight_class, event_name, fight_url, card_position, status, fight_started_at, fight_ended_at, scheduled_rounds')
       .in('id', ids);
     const fightById = Object.fromEntries((fights || []).map(f => [f.id, f]));
 
     const urls = (fights || []).map(f => f.fight_url).filter(Boolean);
     const events = [...new Set([...(fights || []).map(f => f.event_name), ...picks.map(p => p.event_name)].filter(Boolean))];
 
-    const [{ data: metas }, { data: evs }] = await Promise.all([
+    const [{ data: metas }, { data: evs }, scoredCounts] = await Promise.all([
       urls.length
-        ? supabase.from('fight_meta_details').select('fight_url, weight_class_clean').in('fight_url', urls)
+        ? supabase.from('fight_meta_details').select('fight_url, weight_class_clean, time_format').in('fight_url', urls)
         : Promise.resolve({ data: [] }),
       events.length
         ? supabase.from('ufc_events').select('event_name, event_date, start_time').in('event_name', events)
         : Promise.resolve({ data: [] }),
+      dataService.getScoredRoundCounts(ids),
     ]);
-    const cleanByUrl = Object.fromEntries((metas || []).map(m => [m.fight_url, m.weight_class_clean]));
+    const metaByUrl  = Object.fromEntries((metas || []).map(m => [m.fight_url, m]));
     const evByName   = Object.fromEntries((evs || []).map(e => [e.event_name, e]));
 
     return picks.map(p => {
@@ -104,11 +146,13 @@ export const dataService = {
         fight_deleted: p.fight_id == null,                  // bout was scratched off the card
         predicted_fighter: p.predicted_fighter,
         bout_snapshot: p.bout_snapshot,
+        revealed_at: p.revealed_at,
+        all_scored: allRoundsScored(f, metaByUrl[f.fight_url], scoredCounts[p.fight_id] || 0),
         created_at: p.created_at,
         bout: f.bout,
         winner: f.winner,
         weight_class: f.weight_class,                       // RAW — carries title wording
-        weight_class_clean: cleanByUrl[f.fight_url] || null, // CLEAN — division + sex
+        weight_class_clean: metaByUrl[f.fight_url]?.weight_class_clean || null, // CLEAN — division + sex
         event_name: eventName,
         event_date: ev.event_date || null,
         card_position: f.card_position,

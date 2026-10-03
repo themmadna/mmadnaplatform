@@ -6,6 +6,7 @@ import RoundScoringPanel from './RoundScoringPanel';
 import ScorecardComparison from './ScorecardComparison';
 import * as guestStorage from '../guestStorage';
 import { matchesFighter } from '../fighterNames';
+import { allRoundsScored } from '../spoilers';
 
 // 10-8 detection threshold: empirically derived from judge_scores data.
 // 83% of real 10-8 rounds had zero KD advantage, so KD alone is not the signal.
@@ -158,7 +159,7 @@ function fmtControlTime(stats) {
 const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
 const ESPN_SCOREBOARD = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard';
 
-const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoilerDefault = true, onSpoilerDefaultChange }) => {
+const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoilerDefault = true, onSpoilerDefaultChange, onResultRevealed }) => {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -168,6 +169,10 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
   // Whether the current user has submitted any scores for this fight
   // Gates the Final Scorecard and Scorecard Comparison reveal
   const [hasUserScores, setHasUserScores] = useState(false);
+  // Spoilers lift only once EVERY round is scored (src/spoilers.js) — a
+  // half-scored fight stays hidden. Distinct from hasUserScores, which gates the comparison.
+  const [scoredCount, setScoredCount] = useState(0);
+  const [allScored, setAllScored] = useState(false);
 
   // Per-fight spoiler protection: initialised from user's profile default.
   // Auto-reveals when the user has existing scores (watched already) or finishes scoring.
@@ -178,26 +183,50 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
   useEffect(() => {
     if (fight.status !== 'completed') return;
     if (isGuest) {
-      const scores = guestStorage.getFightScores(fight.id);
-      if (Object.keys(scores).length > 0) setHasUserScores(true);
+      const n = Object.keys(guestStorage.getFightScores(fight.id)).length;
+      setScoredCount(n);
+      if (n > 0) setHasUserScores(true);
       return;
     }
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { count } = await supabase
-        .from('user_round_scores')
-        .select('id', { count: 'exact', head: true })
-        .eq('fight_id', fight.id)
-        .eq('user_id', user.id);
+      const [{ count }, picks] = await Promise.all([
+        supabase
+          .from('user_round_scores')
+          .select('id', { count: 'exact', head: true })
+          .eq('fight_id', fight.id)
+          .eq('user_id', user.id),
+        dataService.getPredictionsForFights([fight.id]),
+      ]);
+      setScoredCount(count || 0);
       if (count > 0) setHasUserScores(true);
+      // Revealed the pick's result from a card / the profile → the winner is already
+      // known, so hiding it here too would just be friction.
+      if (picks[fight.id]?.revealed_at) setSpoilerActive(false);
     })();
   }, [fight.id, fight.status, isGuest]);
 
-  // Auto-reveal spoilers once the user has existing scores (they've watched this fight)
+  // Every round already scored = watched it. Same count the blind shield asks for.
   useEffect(() => {
-    if (hasUserScores) setSpoilerActive(false);
-  }, [hasUserScores]);
+    if (allRoundsScored(fight, meta, scoredCount)) setAllScored(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, scoredCount]);
+
+  // Auto-reveal spoilers once every round is scored
+  useEffect(() => {
+    if (allScored) setSpoilerActive(false);
+  }, [allScored]);
+
+  // Finishing the scorecard. On a completed fight that reveals the result, so the pick's
+  // verdict is revealed with it (card + profile stay in step). Mid-fight it reveals nothing.
+  const handleAllRoundsScored = () => {
+    setHasUserScores(true);
+    if (fight.status === 'completed') {
+      setAllScored(true);
+      onResultRevealed?.(fight.id, true);
+    }
+  };
 
   // Live fight status — seeded from DB, updated by ESPN polling
   const [fightStartedAt, setFightStartedAt] = useState(fight.fight_started_at || null);
@@ -645,7 +674,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
 
           {/* LIVE / UPCOMING SCORING */}
           {fight.status === 'upcoming' && (isLive || isLocked) && (
-            <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
+            <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={handleAllRoundsScored} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
           )}
 
           {/* COMPLETED — no meta yet */}
@@ -655,7 +684,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
             </div>
           )}
           {fight.status === 'completed' && !meta && scorableRounds > 0 && (
-            <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
+            <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={handleAllRoundsScored} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
           )}
 
           {/* COMPLETED — has meta: TAB BAR + CONTENT */}
@@ -663,7 +692,9 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
             <>
               {/* Spoiler toggle row — always visible for completed fights */}
               <button
-                onClick={() => setSpoilerActive(v => !v)}
+                // Same reveal as a pick card's: persisted on the pick (if any), winner only,
+                // no effect on scorecard eligibility. Hide re-hides the pick's verdict too.
+                onClick={() => { const hide = !spoilerActive; setSpoilerActive(hide); onResultRevealed?.(fight.id, !hide); }}
                 className="w-full flex items-center justify-between bg-pulse-surface border border-white/[0.06] rounded-card px-4 py-2.5 mb-3 active:scale-[0.98] transition-transform"
               >
                 <span className="flex items-center gap-2 text-xs font-heading font-semibold uppercase tracking-widest text-pulse-text-3">
@@ -688,7 +719,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
                     meta={meta}
                     isLocked={false}
                     currentTheme={currentTheme}
-                    onAllRoundsScored={() => { setHasUserScores(true); setSpoilerActive(false); }}
+                    onAllRoundsScored={handleAllRoundsScored}
                     totalRoundsOverride={fight.scheduled_rounds || parseInt(meta?.time_format?.match(/^(\d+)\s*Rnd/)?.[1]) || 3}
                     isGuest={isGuest}
                   />
@@ -838,7 +869,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
                         meta={meta}
                         isLocked={false}
                         currentTheme={currentTheme}
-                        onAllRoundsScored={() => setHasUserScores(true)}
+                        onAllRoundsScored={handleAllRoundsScored}
                         isGuest={isGuest}
                       />
                     );
