@@ -1,18 +1,18 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-03 (Spoiler protection for pick results built on `feature-predictions` — migration `migrate_prediction_revealed_at.py` awaiting Bastian, branch not pushed until then. Earlier same day: reversed-bout void fix, keep-picks-on-deleted-fights, soft-launch flag.)
+Last updated: 2026-10-03 (Spoiler protection for pick results built on `feature-predictions` — migration applied, branch pushed. Earlier same day: reversed-bout void fix, keep-picks-on-deleted-fights, soft-launch flag.)
 Next session: (1) Decide whether to merge `feature-predictions` to `main` — Vercel auto-deploys, so this is the go-live call. (2) Optional: deploy the `record-fight-status` change so ESPN's live winner is persisted rather than only held in session (needs Bastian to run — production deploys are blocked for Claude). Then resume Phase C — S-P2-10 (drop redundant fight_ratings SELECT policy), S-P2-12 (fmd→fights FK ON DELETE CASCADE), S-P2-14 (revoke update_fight_ratings EXECUTE from PUBLIC/anon/authenticated). Then new follow-up S-P2-19 (DROP dead get_liked_fight_stats — destructive, needs approval). S-P2-8/9/13 done + committed.
 Last refreshed: 2026-05-16
 
 ---
 
-## Spoiler protection for pick results — 2026-10-03 (branch `feature-predictions`, NOT pushed)
+## Spoiler protection for pick results — 2026-10-03 (branch `feature-predictions`)
 
 **Checkpoint**
 - **Goal:** a graded pick ("Called it" / "Missed") names the winner; under spoiler protection it must stay hidden until the user has watched or chooses to see it.
 - **Constraints:** same semantics as fight detail's spoiler Reveal — winner only, no effect on scorecard eligibility (judges reveal is the separate, consequential one). Claude is blocked from running production migrations.
-- **Progress:** [x] `src/spoilers.js` — one rule (protection off OR every scheduled round scored OR `revealed_at`). [x] Cards: "Pick in · tap to reveal" badge, no green glow. [x] Event view: "N pick results hidden · Reveal all" bar. [x] Profile: hidden picks counted as "N hidden", out of W–L, form strip and breakdowns; row tap reveals. [x] Fight detail reads/writes `revealed_at`; load check tightened from ANY scored round to ALL (Bastian's call). [x] 45/45 tests, build clean. [!] **`supabase/migrate_prediction_revealed_at.py` NOT yet run — Bastian must run it BEFORE pushing** (new code selects `revealed_at`; without the column the pick queries fail and picks vanish from the preview).
+- **Progress:** [x] `src/spoilers.js` — one rule (protection off OR every scheduled round scored OR `revealed_at`). [x] Cards: "Pick in · tap to reveal" badge, no green glow. [x] Event view: "N pick results hidden · Reveal all" bar. [x] Profile: hidden picks counted as "N hidden", out of W–L, form strip and breakdowns; row tap reveals. [x] Fight detail reads/writes `revealed_at`; load check tightened from ANY scored round to ALL (Bastian's call). [x] 45/45 tests, build clean. [x] `supabase/migrate_prediction_revealed_at.py` applied 2026-10-03 (Bastian approved), column verified; branch pushed.
 - **Decisions:** per-fight tap + event-level Reveal all (Bastian). "All rounds" = scheduled count, not rounds fought, so a blind scorer of an early finish isn't spoiled. Hide in fight detail clears `revealed_at`. Live viewers with protection on tap to reveal (accepted friction). Scoring right after a live finish, before the scrape marks it completed, doesn't persist a reveal — tap needed.
-- **NextSteps:** (1) Bastian runs the migration. (2) Push `feature-predictions`, check preview: Rosas Jr. vs Barcelos shows "10 pick results hidden" with protection on; Reveal all → 4–6.
+- **NextSteps:** Check preview: Rosas Jr. vs Barcelos shows "10 pick results hidden" with protection on; Reveal all → 4–6.
 
 ---
 
