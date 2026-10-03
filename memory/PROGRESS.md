@@ -5,6 +5,16 @@ Last refreshed: 2026-05-16
 
 ---
 
+## UFC 332 live check + open follow-ups — 2026-10-03
+
+- **Running tonight (read-only, this session):** `espn_winner_probe.py --date 20261003` → `espn_probe_logs/espn_winners_20261003.jsonl`; pick watcher → `espn_probe_logs/pick_watch_20261003.jsonl` (picks + fight rows, changes only). Report due when both exit: walkout lock held, McGhee swap → pick void, Smith vs Whitehead missing from DB, ESPN winners vs picks, gap between fight_ended_at and winner landing.
+- **Pre-card finding:** ESPN lists 14 bouts, DB 13 — McGhee's opponent changed Sopaj → Anthony Romero (Bastian picked Sopaj; should void once the poller rewrites the bout after 20:00 UTC start), and Jacobe Smith vs Bruce Whitehead isn't in the DB.
+- [ ] **Persist ESPN winner on the backend** (`poll-live-fights`). Live grading currently only works if the app is open on the event when the fight ends: App.js polls only fights without `fight_ended_at`, and the cron poller stamps that within a minute — so anyone opening the event afterwards sees "Awaiting result" until the post-event scrape. Deploy needs Bastian.
+- [ ] **Server-side pick lock.** Lock is client-only; RLS lets a signed-in user change a pick via the API after the fight. Add a trigger rejecting insert/update once `fight_started_at` is set (walkout lock would also need the backend to record walkouts). Before public launch.
+- [ ] Bastian to check in the app after the card: spoiler "tap to reveal" / Reveal all, Sopaj pick shown as void.
+
+---
+
 ## Spoiler protection for pick results — 2026-10-03 (branch `feature-predictions`)
 
 **Checkpoint**
