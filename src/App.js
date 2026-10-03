@@ -6,6 +6,7 @@ import LoginPage from './Login';
 import * as guestStorage from './guestStorage';
 import { gradePrediction, matchesFighter, sameMatchup } from './fighterNames';
 import * as predictionStats from './predictionStats';
+import { predictionsEnabled } from './featureFlags';
 import CombatDNAVisual from './CombatDNAVisual';
 
 import FightDetailView from './components/FightDetailView';
@@ -745,12 +746,13 @@ const SettingsTab = ({ spoilerDefault, onSpoilerChange, onShare, shareCopied, is
 );
 
 const ProfileView = (props) => {
-  const [tab, setTab] = useState('picks');
+  // Picks tab only exists for accounts with predictions enabled (src/featureFlags.js).
+  const [tab, setTab] = useState(props.showPicks ? 'picks' : 'votes');
   const tabs = [
-    { v: 'picks', l: 'Picks', n: props.isGuest ? null : props.picks.length },
+    props.showPicks && { v: 'picks', l: 'Picks', n: props.isGuest ? null : props.picks.length },
     { v: 'votes', l: 'Votes', n: props.history.length },
     { v: 'settings', l: 'Settings', n: null },
-  ];
+  ].filter(Boolean);
   return (
     <div className="animate-in slide-in-from-right pb-20">
       {/* Tabs sit at the top: vertical stacking is what made this page endless. */}
@@ -764,7 +766,7 @@ const ProfileView = (props) => {
         ))}
       </div>
 
-      {tab === 'picks' && (props.isGuest
+      {tab === 'picks' && props.showPicks && (props.isGuest
         ? <Empty title="Sign in to track picks" sub="A guest record would vanish when the tab closes." />
         : <PicksTab picks={props.picks} loading={props.picksLoading} />)}
       {tab === 'votes' && <VotesTab history={props.history} onFightClick={props.onFightClick} />}
@@ -954,7 +956,7 @@ export default function UFCFightRating() {
   // Load every pick when the profile opens. Refetched on each visit rather than cached —
   // a pick made on the events tab minutes ago should show up here.
   useEffect(() => {
-    if (currentView !== 'profile' || isGuest || !session) { return; }
+    if (currentView !== 'profile' || isGuest || !predictionsEnabled(session)) { return; }
     let cancelled = false;
     setPicksLoading(true);
     dataService.getAllPredictions()
@@ -1268,7 +1270,7 @@ export default function UFCFightRating() {
       // the bout string has changed since it was made (opponent swap, withdrawal, scratch)
       // the pick is void — surfaced as such rather than silently dropped, otherwise you'd
       // re-pick without ever knowing the first one went.
-      if (session) {
+      if (predictionsEnabled(session)) {
         const stored = await dataService.getPredictionsForFights(bouts.map(b => b.id));
         const loaded = {};
         for (const b of bouts) {
@@ -1299,7 +1301,7 @@ export default function UFCFightRating() {
   // Optimistic, with a rollback if the write fails — a pick that silently didn't save
   // is worse than one that visibly bounced back.
   const handlePredict = (fight, fighterName) => {
-    if (isGuest || !session) return;
+    if (isGuest || !predictionsEnabled(session)) return;
     const parts = (fight.bout || '').split(/ vs /i);
     const clearing = predictions[fight.id]?.pick === fighterName;
     const before = predictions;
@@ -1920,7 +1922,9 @@ export default function UFCFightRating() {
                         onClick={handleFightClick}
                         index={i}
                         prediction={predictions[f.id] || null}
-                        onPredict={handlePredict}
+                        // null hides the prediction row entirely — the card falls back to
+                        // the vote row, i.e. the pre-predictions behaviour.
+                        onPredict={predictionsEnabled(session) ? handlePredict : null}
                         predictionClosed={!!predictionClosed[f.id]}
                         isGuest={isGuest}
                     />
@@ -2062,6 +2066,7 @@ export default function UFCFightRating() {
         {/* --- 5. PROFILE PAGE (Reordered) --- */}
         {currentView === 'profile' && (
           <ProfileView
+            showPicks={predictionsEnabled(session)}
             picks={allPicks}
             picksLoading={picksLoading}
             history={userHistory}
