@@ -581,10 +581,14 @@ const PicksTab = ({ picks, loading, onReveal }) => {
                : p.pending)
     .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')) || (a.card_position ?? 99) - (b.card_position ?? 99));
 
-  // Form = last 10 picks that actually resolved or are still live. Voids are excluded
-  // entirely: the fight never happened, so it is neither a result nor a pending one.
-  const form = [...scoped].filter(p => !p.voided && !p.hidden)
-    .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || '')))
+  // Form = your last 10 RESULTS. Pending picks only fill in while your whole history is
+  // under 10 picks — otherwise an upcoming card's picks crowd every result out of the strip.
+  // Voids never count (the fight never happened); hidden ones would spoil.
+  // Newest first: event date, then card position (lowest = main event = fought last).
+  const form = [...scoped]
+    .filter(p => !p.voided && !p.hidden && (!p.pending || picks.length < 10))
+    .sort((a, b) => String(b.event_date || '').localeCompare(String(a.event_date || ''))
+                 || (a.card_position ?? 99) - (b.card_position ?? 99))
     .slice(0, 10).reverse();
 
   return (
