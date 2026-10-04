@@ -47,6 +47,8 @@ ESPN sets a boolean `winner` on each competitor once a bout reaches `STATUS_FINA
 
 ---
 
+> **KNOWN BROKEN (2026-10-04):** `poll-live-fights` gets HTTP 403 from ESPN on every call — ESPN blocks Deno's default `User-Agent`. Live stamps currently come only from users' apps (`record-fight-status`). Fix pending: explicit User-Agent on the ESPN fetch. Verify via `SELECT status_code, content FROM net._http_response ORDER BY created DESC LIMIT 5;` — pg_cron's `succeeded` does NOT mean the function worked.
+
 ## Edge Function — `record-fight-status`
 
 Deployed at `{SUPABASE_URL}/functions/v1/record-fight-status` (current: v6).
