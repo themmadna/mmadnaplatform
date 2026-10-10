@@ -5,6 +5,8 @@ import { supabase } from '../supabaseClient';
 import RoundScoringPanel from './RoundScoringPanel';
 import ScorecardComparison from './ScorecardComparison';
 import * as guestStorage from '../guestStorage';
+import { matchesFighter } from '../fighterNames';
+import { allRoundsScored } from '../spoilers';
 
 // 10-8 detection threshold: empirically derived from judge_scores data.
 // 83% of real 10-8 rounds had zero KD advantage, so KD alone is not the signal.
@@ -97,52 +99,10 @@ function scoreRound(f1Stats, f2Stats, eventYear) {
 
 // --- DATA JOIN ---
 
-// Normalize fighter names for fuzzy matching across data sources.
-// Strips punctuation and lowercases so "Lone'er" matches "Loner", etc.
-// CANONICAL copy — supabase/functions/poll-live-fights/index.ts mirrors this exactly.
-// If you change this, update that file too (and vice versa).
-function normName(name) {
-  return (name || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
-}
-
-function matchesFighter(jsName, metaName) {
-  const a = normName(jsName);
-  const b = normName(metaName);
-  if (!a || !b) return false;
-  if (a === b) return true;
-
-  // Handles "Rong Zhu" vs "Rongzhu" — same letters, different spacing
-  const aCol = a.replace(/\s/g, '');
-  const bCol = b.replace(/\s/g, '');
-  if (aCol === bCol) return true;
-
-  // Handles "Zha Yi" vs "Yizha", "Sulangrangbo" vs "Rangbo Sulang" —
-  // same characters in different segment order (cross-source Chinese name transliterations)
-  if (aCol.length >= 5 && aCol.length === bCol.length) {
-    if ([...aCol].sort().join('') === [...bCol].sort().join('')) return true;
-  }
-
-  const aWords = a.split(' ');
-  const bWords = b.split(' ');
-
-  // Fallback 1: first-name prefix with same last name (handles "Josh Van" vs "Joshua Van",
-  // "Alex Perez" vs "Alexander Perez", etc.)
-  if (aWords.length >= 2 && bWords.length >= 2) {
-    const aLast = aWords.slice(1).join(' ');
-    const bLast = bWords.slice(1).join(' ');
-    if (aLast === bLast && (aWords[0].startsWith(bWords[0]) || bWords[0].startsWith(aWords[0]))) return true;
-  }
-
-  // Fallback 2: same last name (handles nickname/middle-name differences)
-  const aLast = aWords[aWords.length - 1];
-  const bLast = bWords[bWords.length - 1];
-  if (aLast === bLast && aLast.length > 3) return true;
-
-  // Fallback 3: all words of the shorter name appear in the longer (handles Jr., suffixes, middle names)
-  const shorter = aWords.length <= bWords.length ? aWords : bWords;
-  const longer  = aWords.length <= bWords.length ? bWords : aWords;
-  return shorter.filter(w => w.length > 1).every(w => longer.includes(w));
-}
+// normName + matchesFighter moved to src/fighterNames.js (imported above) — they were
+// duplicated in three places. That module is now the single JS source of truth;
+// supabase/functions/poll-live-fights/index.ts keeps its own copy because a Deno edge
+// function can't import from src/, and mirrors it exactly.
 
 // Match an ESPN competition to a bout string using the existing matchesFighter logic
 function boutMatchesComp(bout, comp) {
@@ -199,7 +159,7 @@ function fmtControlTime(stats) {
 const EDGE_FN_URL = `${process.env.REACT_APP_SUPABASE_URL}/functions/v1/record-fight-status`;
 const ESPN_SCOREBOARD = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard';
 
-const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoilerDefault = true, onSpoilerDefaultChange }) => {
+const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoilerDefault = true, onSpoilerDefaultChange, onResultRevealed }) => {
   const [loading, setLoading] = useState(true);
   const [meta, setMeta] = useState(null);
   const [rounds, setRounds] = useState([]);
@@ -209,6 +169,10 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
   // Whether the current user has submitted any scores for this fight
   // Gates the Final Scorecard and Scorecard Comparison reveal
   const [hasUserScores, setHasUserScores] = useState(false);
+  // Spoilers lift only once EVERY round is scored (src/spoilers.js) — a
+  // half-scored fight stays hidden. Distinct from hasUserScores, which gates the comparison.
+  const [scoredCount, setScoredCount] = useState(0);
+  const [allScored, setAllScored] = useState(false);
 
   // Per-fight spoiler protection: initialised from user's profile default.
   // Auto-reveals when the user has existing scores (watched already) or finishes scoring.
@@ -219,26 +183,50 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
   useEffect(() => {
     if (fight.status !== 'completed') return;
     if (isGuest) {
-      const scores = guestStorage.getFightScores(fight.id);
-      if (Object.keys(scores).length > 0) setHasUserScores(true);
+      const n = Object.keys(guestStorage.getFightScores(fight.id)).length;
+      setScoredCount(n);
+      if (n > 0) setHasUserScores(true);
       return;
     }
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { count } = await supabase
-        .from('user_round_scores')
-        .select('id', { count: 'exact', head: true })
-        .eq('fight_id', fight.id)
-        .eq('user_id', user.id);
+      const [{ count }, picks] = await Promise.all([
+        supabase
+          .from('user_round_scores')
+          .select('id', { count: 'exact', head: true })
+          .eq('fight_id', fight.id)
+          .eq('user_id', user.id),
+        dataService.getPredictionsForFights([fight.id]),
+      ]);
+      setScoredCount(count || 0);
       if (count > 0) setHasUserScores(true);
+      // Revealed the pick's result from a card / the profile → the winner is already
+      // known, so hiding it here too would just be friction.
+      if (picks[fight.id]?.revealed_at) setSpoilerActive(false);
     })();
   }, [fight.id, fight.status, isGuest]);
 
-  // Auto-reveal spoilers once the user has existing scores (they've watched this fight)
+  // Every round already scored = watched it. Same count the blind shield asks for.
   useEffect(() => {
-    if (hasUserScores) setSpoilerActive(false);
-  }, [hasUserScores]);
+    if (allRoundsScored(fight, meta, scoredCount)) setAllScored(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meta, scoredCount]);
+
+  // Auto-reveal spoilers once every round is scored
+  useEffect(() => {
+    if (allScored) setSpoilerActive(false);
+  }, [allScored]);
+
+  // Finishing the scorecard. On a completed fight that reveals the result, so the pick's
+  // verdict is revealed with it (card + profile stay in step). Mid-fight it reveals nothing.
+  const handleAllRoundsScored = () => {
+    setHasUserScores(true);
+    if (fight.status === 'completed') {
+      setAllScored(true);
+      onResultRevealed?.(fight.id, true);
+    }
+  };
 
   // Live fight status — seeded from DB, updated by ESPN polling
   const [fightStartedAt, setFightStartedAt] = useState(fight.fight_started_at || null);
@@ -686,7 +674,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
 
           {/* LIVE / UPCOMING SCORING */}
           {fight.status === 'upcoming' && (isLive || isLocked) && (
-            <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
+            <RoundScoringPanel fight={fight} meta={meta} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={handleAllRoundsScored} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
           )}
 
           {/* COMPLETED — no meta yet */}
@@ -696,7 +684,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
             </div>
           )}
           {fight.status === 'completed' && !meta && scorableRounds > 0 && (
-            <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={() => setHasUserScores(true)} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
+            <RoundScoringPanel fight={fight} meta={null} isLocked={false} currentTheme={currentTheme} onAllRoundsScored={handleAllRoundsScored} totalRoundsOverride={scorableRounds} isGuest={isGuest} />
           )}
 
           {/* COMPLETED — has meta: TAB BAR + CONTENT */}
@@ -704,7 +692,9 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
             <>
               {/* Spoiler toggle row — always visible for completed fights */}
               <button
-                onClick={() => setSpoilerActive(v => !v)}
+                // Same reveal as a pick card's: persisted on the pick (if any), winner only,
+                // no effect on scorecard eligibility. Hide re-hides the pick's verdict too.
+                onClick={() => { const hide = !spoilerActive; setSpoilerActive(hide); onResultRevealed?.(fight.id, !hide); }}
                 className="w-full flex items-center justify-between bg-pulse-surface border border-white/[0.06] rounded-card px-4 py-2.5 mb-3 active:scale-[0.98] transition-transform"
               >
                 <span className="flex items-center gap-2 text-xs font-heading font-semibold uppercase tracking-widest text-pulse-text-3">
@@ -729,7 +719,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
                     meta={meta}
                     isLocked={false}
                     currentTheme={currentTheme}
-                    onAllRoundsScored={() => { setHasUserScores(true); setSpoilerActive(false); }}
+                    onAllRoundsScored={handleAllRoundsScored}
                     totalRoundsOverride={fight.scheduled_rounds || parseInt(meta?.time_format?.match(/^(\d+)\s*Rnd/)?.[1]) || 3}
                     isGuest={isGuest}
                   />
@@ -879,7 +869,7 @@ const FightDetailView = ({ fight, currentTheme, onBack, isGuest = false, spoiler
                         meta={meta}
                         isLocked={false}
                         currentTheme={currentTheme}
-                        onAllRoundsScored={() => setHasUserScores(true)}
+                        onAllRoundsScored={handleAllRoundsScored}
                         isGuest={isGuest}
                       />
                     );

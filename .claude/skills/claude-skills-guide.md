@@ -44,8 +44,9 @@ claude_native_features:        # empty list = portable; list actual Claude depen
   - sub_agents                 # example entries: sub_agents, thinking, extended_thinking
 validates_with: |              # completion signal — what "done" looks like for this skill
   BRAIN-USAGE.md logged, output artifact written, no step blocked by missing data
-metadata:                      # optional
-  author: Name
+division: Governance           # held on review, not consumed — see the note below
+metadata:                      # optional; omit the key entirely if it would be empty
+  routine: daily, 3:00 AM ET   # only on scheduled skills; omit otherwise
   mcp-server: server-name      # omit if not applicable; version promoted to top level
 ---
 ```
@@ -57,6 +58,20 @@ metadata:                      # optional
 - Description must be under 1024 characters and include trigger phrases
 - `claude_native_features` should list only features the skill actually depends on — empty list `[]` if the skill is portable
 - Every proposed field in `claude_native_features` or `validates_with` must have a named consumer before shipping
+
+**Field consumers — reviewed 2026-09-06.** A field whose only reader is `/brain-audit` checking that the field exists is not consumed; by `daily-feed`'s own standing rule, "a proposal whose only consumer is 'brain-audit will check it' is proposing two things."
+
+| Field | Reader | Status |
+|---|---|---|
+| `name`, `description` | Claude Code's skill matcher | consumed |
+| `version` | `/brain-audit` compares repo vs `~/.claude/skills/` and reports `version-mismatch` — the drift detector for the sync hook | consumed |
+| `validates_with` | the executing agent, as prose. Nothing runs the conditions | held — documentation, not a gate |
+| `claude_native_features` | none. Presence-checked only | **held** — revive when skills are distributed (S10) and portability must be machine-queryable |
+| `division` | none. Presence-checked only | **held** — revive at **20+ skills**, the threshold its own origin note names (`wiki/skill-design.md`, E431). There are 11 |
+| `metadata.routine` | none automated; accurate documentation on the 2 scheduled skills | held |
+| ~~`metadata.author`~~ | none. `Bastian` on 11 of 11 for 18 weeks | **removed 2026-09-06** — a constant carries no information |
+
+The two **held** fields stay because the cost of carrying one accurate line is below the cost of churning 11 files twice. That is a decision with a named revival trigger, not an oversight — if either trigger fires, the field gets a real consumer or it goes.
 
 ---
 
