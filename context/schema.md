@@ -23,7 +23,7 @@ Full table and view definitions. Update this file whenever a migration adds, rem
 | `id` | bigint PK | NOT NULL | auto-increment; insertion order = UFC card order (main event first → lowest id) |
 | `event_name` | text | NOT NULL | |
 | `bout` | text | NOT NULL | **often reversed vs `fight_meta_details.bout`** — always join on `fight_url` |
-| `winner` | text | NULL | |
+| `winner` | text | NULL | Written live by `poll-live-fights` from ESPN on FINAL (ESPN spelling), then overwritten with ufcstats' spelling by the scrape. `''` = draw / NC (ESPN flagged nobody for 10 min; the scrape never overwrites a draw). NULL = no result yet. Set ≠ scraped — check `status` for that |
 | `fight_url` | text | NULL | upcoming: `fighter-details/` URL; corrected to `fight-details/` on completion |
 | `status` | text | NULL | `'upcoming'` / `'completed'` |
 | `weight_class` | text | NULL | raw scraped value e.g. "UFC Bantamweight Title Bout" — shown on fight cards only |

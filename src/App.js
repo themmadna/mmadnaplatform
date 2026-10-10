@@ -1064,15 +1064,19 @@ export default function UFCFightRating() {
             // the post-event scraper wrote fights.winner — hours later. Measured across all
             // 12 bouts of UFC 331: 11 of 12 carried the winner in the same poll that first
             // reported FINAL, the 12th on the next one.
-            // Local state only. Persisting it needs a record-fight-status change.
-            // '' (not null) = FINAL with nobody flagged, i.e. a draw or no contest — the
-            // distinction a nullable winner column can't make on its own.
+            // Local state only — poll-live-fights persists it to fights.winner server-side.
+            // Only a FLAGGED winner is taken here: nobody flagged is usually ESPN's flag
+            // lagging FINAL by a poll, and this poll stops watching the fight once it ends,
+            // so reading that as a draw would stick. Real draws arrive as '' from the
+            // server poller after its grace period (visible on the next load).
             if (statusName === 'STATUS_FINAL') {
               const won = (comp.competitors || []).find(c => c.winner === true);
-              const espnWinner = won ? (won.athlete?.displayName || '') : '';
-              setEventFights(prev => prev.map(f =>
-                f.id === fight.id && f.espn_winner === undefined ? { ...f, espn_winner: espnWinner } : f
-              ));
+              const espnWinner = won?.athlete?.displayName || '';
+              if (espnWinner) {
+                setEventFights(prev => prev.map(f =>
+                  f.id === fight.id && f.espn_winner === undefined ? { ...f, espn_winner: espnWinner } : f
+                ));
+              }
             }
             if (statusName === prevStatuses[fight.id]) continue;
             prevStatuses[fight.id] = statusName;

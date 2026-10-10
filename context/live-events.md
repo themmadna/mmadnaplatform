@@ -40,14 +40,15 @@ ESPN sets a boolean `winner` on each competitor once a bout reaches `STATUS_FINA
 
 - **A FINAL bout with NO competitor flagged `winner: true` is a draw or no contest.** This is the only signal separating "drew" from "not graded yet" — the nullable `fights.winner` column cannot.
 - **Comparing this name to anything stored is cross-source.** Use `matchesFighter` from `src/fighterNames.js`, never exact equality: ESPN reported `Matthieu Letho Duclos` where ufcstats stored `Matthieu Duclos`.
-- **Neither Edge Function reads it** as of 2026-09 — both look only at `status.type.name`, which is why `fights.winner` is populated by the post-event scraper hours later. The frontend event poll (`App.js`) reads it into local state for prediction grading, but does **not** persist it; persisting requires a `record-fight-status` change.
+- **`poll-live-fights` persists it into `fights.winner`** (2026-10-10) — ESPN naming, overwritten by ufcstats' spelling when the post-event scrape runs. `''` = draw / NC, written only after `NO_WINNER_GRACE_MS` (10 min) of FINAL with nobody flagged, since the flag can lag FINAL by a poll. The frontend event poll (`App.js`) also reads it into local state (`espn_winner`) but takes only a *flagged* winner — it stops watching a fight at FINAL, so a lagging flag read as a draw would stick.
+- **`fights.winner` being set no longer means "scraped".** `check_data_freshness.py` counts winners on `status = 'completed'` rows only.
 - Verify any time with `python espn_winner_probe.py --date YYYYMMDD --once` — read-only, never writes to Supabase.
 
 **ESPN scoreboard is ephemeral** — only serves live data during the event window. Always persist data to DB immediately; do not rely on ESPN being available after the event.
 
 ---
 
-> **KNOWN BROKEN (2026-10-04):** `poll-live-fights` gets HTTP 403 from ESPN on every call — ESPN blocks Deno's default `User-Agent`. Live stamps currently come only from users' apps (`record-fight-status`). Fix pending: explicit User-Agent on the ESPN fetch. Verify via `SELECT status_code, content FROM net._http_response ORDER BY created DESC LIMIT 5;` — pg_cron's `succeeded` does NOT mean the function worked.
+> **ESPN blocks Deno's default `User-Agent`** (403 — `poll-live-fights` was dead for at least UFC 331 + 332 because of it). The poller now sends a browser UA (`ESPN_HEADERS`), fixed 2026-10-10. Any new server-side ESPN fetch needs the same. Verify the poller via `SELECT status_code, content FROM net._http_response ORDER BY created DESC LIMIT 5;` — pg_cron's `succeeded` does NOT mean the function worked.
 
 ## Edge Function — `record-fight-status`
 
@@ -144,7 +145,7 @@ Called by pg_cron every minute. No JWT required (`verify_jwt: false`).
 **Guards (in order):**
 1. Exit if no `ufc_events` row with `event_date` in the last 2 days (yesterday–today UTC). UFC events start late US time and can still be running after UTC midnight, so `event_date` may be "yesterday" in UTC. Uses `event_date.desc limit 1` to get the most recent.
 2. Exit if `ufc_events.start_time` (ISO 8601 string from ESPN) is in the future
-3. Exit if all `status = 'upcoming'` fights for the event already have `fight_ended_at IS NOT NULL`
+3. Exit if every `status = 'upcoming'` fight is *settled*: `fight_ended_at` set AND (`winner` not NULL OR ended > `WINNER_CHASE_MAX_MS` = 6h ago). An ended fight with a NULL winner stays in the loop so the winner can be read; the 6h cap stops one unmatchable fight keeping ESPN polled for the whole 2-day window.
 
 **Stamps `ufc_events.ended_at`:** after the fight loop, if `event.ended_at` is null and the main event (lowest `card_position`, fallback lowest `id`) has `fight_ended_at` (already set or written this cycle), it PATCHes `ufc_events.ended_at` (with `&ended_at=is.null` for idempotency). This is the signal that clears the frontend LIVE badge. Deliberately keyed off the main event rather than "all fights ended" — scratched/replaced bouts never reach FINAL, so an all-ended check would never trip, but the main event always finishes last.
 
@@ -154,7 +155,9 @@ Called by pg_cron every minute. No JWT required (`verify_jwt: false`).
 - Fetches `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=YYYYMMDD`
 - For each upcoming fight without `fight_ended_at`: find matching ESPN competition (by `espn_competition_id` first, then `boutMatchesComp` name fallback, then **swap-resolution**)
 - **Swap-resolution:** a late opponent change makes ESPN re-create the competition under a NEW id with one fighter changed, defeating both the id match (stale) and `boutMatchesComp` (needs both fighters). Since a fighter is unique within an event, an UNCLAIMED comp (not matched to any other fight) that shares exactly ONE fighter is a confident match. Requires a single unambiguous candidate, then re-links `espn_competition_id` + rewrites `bout` to ESPN's fighters. This tracks the swapped bout live AND lets the post-event ufcstats scrape update the row in place (the corrected bout now matches both fighters) instead of inserting a duplicate. ESPN naming is used until the scrape finalizes it. Limitation: the `FightDetailView` client-side poll does NOT do swap-resolution — only the server poller does.
-- Updates `fight_started_at` / `fight_ended_at` / `rounds_fought` / `ended_by_decision` / `scheduled_rounds` / `card_position` via service role REST PATCH (same null-safe logic as `record-fight-status`)
+- Updates `fight_started_at` / `fight_ended_at` / `rounds_fought` / `ended_by_decision` / `scheduled_rounds` / `card_position` via service role REST PATCH (same null-safe logic as `record-fight-status`). End-of-fight fields are stamped once; later cycles on an ended fight only chase `winner`
+- On FINAL with `winner` NULL: writes the flagged competitor's name, or `''` once the fight has been FINAL ≥ 10 min with nobody flagged (see `competitors[].winner` above)
+- **Test before deploy:** `node supabase/replay/replay_poll_live_fights.mjs` runs the real `index.ts` under Node with a Deno shim, Supabase REST mocked in memory (writes nothing), ESPN fetched for real. Replays UFC 332 from its pre-event rows (incl. the McGhee swap) and checks stamps, winners vs ufcstats, swap resolution, the winner-lag grace, the chase cap and guard 3
 - `card_position` derived from ESPN competition order: main event = 1, first fight of night = highest number. Synced on every poll cycle so card reshuffles are reflected automatically
 - `period=0` guard on STATUS_FINAL: falls back to last known `rounds_fought`, then `scheduled_rounds`, then 3
 
