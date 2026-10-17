@@ -37,6 +37,11 @@ New tables: `user_round_scores`, `user_fight_scorecard_state` — see [schema.md
 - Live/upcoming → `totalRoundsOverride` from `scorableRounds`
 - Historical under spoiler protection → `totalRoundsOverride` from `fight.scheduled_rounds || parseInt(meta?.time_format?.match(/^(\d+)\s*Rnd/)?.[1]) || 3` (avoids revealing finish round from actual round count)
 
+### Spoiler reveal vs judges reveal (two different things)
+- **Spoiler reveal** (fight detail's Reveal toggle, a pick card's "tap to reveal", the event's Reveal all): shows the result/winner only. **No effect on scorecard eligibility.** One shared rule in `src/spoilers.js` — revealed when protection is off, OR every round is scored, OR the user revealed it (`user_fight_predictions.revealed_at`, only exists if they picked). Fight detail reads `revealed_at` on load and writes it on Reveal/Hide and on finishing the scorecard of a completed fight, so cards, profile and detail never disagree.
+- **"Every round scored"** = the SCHEDULED round count (`fight.scheduled_rounds` → `time_format` → unknown = never auto-reveal) — the same number the blind shield asks for. Not rounds fought: a blind scorer can't know the fight ended early. Before 2026-10-03 fight detail auto-revealed on load after ANY scored round; now partial scoring stays hidden. `hasUserScores` (any round) still gates ScorecardComparison — unchanged.
+- **Judges reveal** (forfeit / view judges mid-scoring): consequential — `forfeited`, `judges_revealed_at`, `modified_after_reveal` → leaderboard-ineligible. Untouched by the spoiler reveal.
+
 ### Historical fights
 - `judgesRevealed = true` from the start
 - Every save marks `modified_after_reveal = true` → leaderboard-ineligible automatically

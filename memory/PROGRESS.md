@@ -1,7 +1,93 @@
 # UFC Web App — Project Plan
-Last updated: 2026-09-05 (Data pipeline had been dead for a month — both GitHub Actions scraper crons were auto-disabled for 60-day repo inactivity. Backfilled 4 missing events + repaired the Gamrot card; keepalive workflow added. **Workflows still need manual re-enabling by Bastian.**)
-Next session: (1) **Re-enable both disabled workflows in the GitHub Actions tab** — nothing scrapes until this is done. (2) Commit + push the 2026-09-05 pipeline-recovery work. Then resume Phase C — S-P2-10 (drop redundant fight_ratings SELECT policy), S-P2-12 (fmd→fights FK ON DELETE CASCADE), S-P2-14 (revoke update_fight_ratings EXECUTE from PUBLIC/anon/authenticated). Then new follow-up S-P2-19 (DROP dead get_liked_fight_stats — destructive, needs approval). S-P2-8/9/13 done + committed.
+Last updated: 2026-10-17 (Gatto vs Kareckaite confirmed a majority draw by the scrape — `''` correct. Picks on never-started bouts now void once the card has concluded.)
+Next session: **(4) DB trigger rejecting pick insert/update once `fight_started_at` is set** (Claude writes the migration, Bastian runs it) — also covers the walkout lock, which two live cards have failed to exercise. Then merge decision. Phase C items (S-P2-10/12/14/19) still queued behind this.
 Last refreshed: 2026-05-16
+
+---
+
+## Void picks on never-started bouts — 2026-10-17 (branch `feature-predictions`)
+
+**Checkpoint**
+- **Goal:** a pick on a bout that never happened (scratch, or a swap the scraper added as a new row) reads void once the card is over, not "pending" until auto-delete ≥34h later.
+- **Constraints:** frontend only, no stored data changes; must agree with the event view, which already hides those bouts.
+- **Progress:** [x] (a) 9082 Gatto vs Kareckaite: scrape ran, fmd = Decision - Majority / draw, `fights.winner` stays `''`. [x] `src/eventStatus.js` — `isEventConcluded(event, mainEventFight)` (ended_at OR main event ended OR 8h past start_time), moved out of App.js; event view uses it. [x] `getAllPredictions` returns `fight_started_at` + `event_concluded` (reads `ufc_events.ended_at`). [x] `enrichPick`: `scratched` = fight deleted OR (event concluded AND never started AND not ended) → voided; profile row shows "bout cancelled" for both. [x] 53/53 Jest (+3 void cases, +5 eventStatus), build clean (+22 B). [x] Live check: 35 picks, none newly voided (the only scratch, McGhee vs Sopaj, was already auto-deleted → void via SET NULL).
+- **Decisions:** "ended" (fight_ended_at OR status completed) wins over "never started", so a bout the poller missed but the scrape completed grades normally. Accepted risk: if the poller is down again, bouts it never stamped read void between the 8h window and the scrape — the event view already hides them in that case.
+- **NextSteps:** see Next session line.
+
+---
+
+## Live poller fix + live test — 2026-10-10 (branch `feature-predictions`)
+
+**Checkpoint**
+- **Goal:** `poll-live-fights` works again (ESPN 403) and persists ESPN's winner, so picks grade for anyone opening the event after a fight — tested live on tonight's card.
+- **Constraints:** deploy is Bastian's (`python supabase/deploy_poll_live_fights.py`), must land before 21:00Z card start. Poller is shared with production `main`.
+- **Progress:** [x] `ESPN_HEADERS` browser UA on the ESPN fetch (curl today: Deno UA → 403, new headers → 200). [x] FINAL writes `fights.winner` (ESPN name); `''` = draw/NC only after 10 min of FINAL with nobody flagged; ended-but-winnerless fights stay in the loop, capped at 6h (`isSettled`). [x] App.js local poll takes only a flagged winner (was recording a lagging flag as a sticky draw). [x] `check_data_freshness.py` counts winners on completed rows only (ESPN winners would have masked a dead scraper). [x] `supabase/replay/replay_poll_live_fights.mjs` — real index.ts under Node, Supabase mocked, real ESPN; UFC 332 replay: 13/13 winners match ufcstats, McGhee swap resolved in place, lag/grace/cap/guard-3 cases pass. [x] 45/45 Jest, build clean. [x] `pick_watcher.py` committed (args, + poller HTTP health per cycle). [x] Poller deployed 2026-10-10 16:16Z as v7 (Bastian approved; Claude ran the deploy script) — first run 200 `before_start_time`. [x] Tonight's monitors running: pick watcher + `espn_winner_probe.py --date 20261010`. 12 picks saved 16:10Z.
+- **Decisions:** draw stored as `''` in `fights.winner` (scraper never overwrites a draw, so it stays; it overwrites any real winner with ufcstats spelling). Main's UI only shows `fights.winner` on the Judges tab, which needs scraped round stats — no live spoiler on production.
+- **LIVE RESULTS (2026-10-10/11):**
+  - Poller: **every** `net._http_response` 200 — `before_start_time` until 21:00Z, then event polling through 02:48Z. 403 fix confirmed.
+  - All 12 bouts stamped live by the poller (first bell 21:14Z → main event end 02:48:01Z); `ufc_events.ended_at` stamped in the same cycle the main event went FINAL.
+  - Winners in `fights.winner` 0.3–1.2 min after `fight_ended_at` on all 11 decided bouts (watcher polls every 2 min, so real lag is lower).
+  - 9082 Gatto vs Kareckaite: ESPN `winner:false` on both, 3 full rounds, no type-22 decision detail → `''` written at +10.8 min (grace path exercised for real). Likely a draw; confirm after scrape.
+  - Picks: **7–4, 1 draw/NC** (wrong: Kamaka, Shahbazyan, Franco, Harris). No pick changed during the card → walkout lock not exercised (2nd card running). Nothing revealed yet.
+  - Probe note: `espn_winner_probe.py` loads DB rows once at start, so its "ESPN has it, DB does not" lines are stale by the end — read the watcher log for DB state.
+- **NextSteps:** see Next session line.
+
+---
+
+## UFC 332 live check + open follow-ups — 2026-10-03
+
+- **Running tonight (read-only, this session):** `espn_winner_probe.py --date 20261003` → `espn_probe_logs/espn_winners_20261003.jsonl`; pick watcher → `espn_probe_logs/pick_watch_20261003.jsonl` (picks + fight rows, changes only). Report due when both exit: walkout lock held, McGhee swap → pick void, Smith vs Whitehead missing from DB, ESPN winners vs picks, gap between fight_ended_at and winner landing.
+- **Pre-card finding:** ESPN lists 14 bouts, DB 13 — McGhee's opponent changed Sopaj → Anthony Romero (Bastian picked Sopaj; should void once the poller rewrites the bout after 20:00 UTC start), and Jacobe Smith vs Bruce Whitehead isn't in the DB.
+- **UFC 332 RESULTS (2026-10-04):**
+  - **Backend poller is broken: ESPN 403s every request** — 359/359 `net._http_response` rows in the retained window (20:54–02:53Z) are `ESPN fetch failed, espnStatus 403`. Reproduced: ESPN returns 403 for `User-Agent: Deno/…` (Deno fetch's default), 200 with none or a browser UA. Previous two cards show the same pattern (UFC 331: 1/12 fights started, Rosas Jr.: 3/12, all with start==end = stamped late by the app, not live). **All live stamps tonight came from the app** (00:39Z, 3 fights at once; 01:08Z one start). Fix: set an explicit User-Agent on the poller's ESPN fetch — same deploy as the winner fix below.
+  - Picks: **5–7** by ESPN (Silva, Talbott, Pinas, Wint, Naurdiev). Spoiler reveal worked live: single tap 02:12Z (9054), Reveal all 02:13Z (11 picks). No pick saved during the card, so the walkout lock was not exercised.
+  - **Swap not resolved in place:** scraper inserted a NEW row 9070 `Marcus McGhee vs Anthony Romero`; 9060 `McGhee vs Sopaj` was left as-is, so the Sopaj pick isn't voided — it reads pending (hidden from the card list as a never-started bout) until auto-delete removes 9060 ≥34h post-event, then it becomes void via the SET NULL path. Smith vs Whitehead added as 9069.
+  - ESPN walkout → first bell: 3–12 min (13 bouts), walkout status seen on 14/14.
+- [x] **Persist ESPN winner on the backend** (`poll-live-fights`) — done 2026-10-10, deployed v7. Live grading currently only works if the app is open on the event when the fight ends: App.js polls only fights without `fight_ended_at`, and the cron poller stamps that within a minute — so anyone opening the event afterwards sees "Awaiting result" until the post-event scrape. Deploy needs Bastian.
+- [ ] **Server-side pick lock.** Lock is client-only; RLS lets a signed-in user change a pick via the API after the fight. Add a trigger rejecting insert/update once `fight_started_at` is set (walkout lock would also need the backend to record walkouts). Before public launch.
+- [ ] Bastian to check in the app after the card: spoiler "tap to reveal" / Reveal all, Sopaj pick shown as void.
+
+---
+
+## Spoiler protection for pick results — 2026-10-03 (branch `feature-predictions`)
+
+**Checkpoint**
+- **Goal:** a graded pick ("Called it" / "Missed") names the winner; under spoiler protection it must stay hidden until the user has watched or chooses to see it.
+- **Constraints:** same semantics as fight detail's spoiler Reveal — winner only, no effect on scorecard eligibility (judges reveal is the separate, consequential one). Claude is blocked from running production migrations.
+- **Progress:** [x] `src/spoilers.js` — one rule (protection off OR every scheduled round scored OR `revealed_at`). [x] Cards: "Pick in · tap to reveal" badge, no green glow. [x] Event view: "N pick results hidden · Reveal all" bar. [x] Profile: hidden picks counted as "N hidden", out of W–L, form strip and breakdowns; row tap reveals. [x] Fight detail reads/writes `revealed_at`; load check tightened from ANY scored round to ALL (Bastian's call). [x] 45/45 tests, build clean. [x] `supabase/migrate_prediction_revealed_at.py` applied 2026-10-03 (Bastian approved), column verified; branch pushed.
+- **Decisions:** per-fight tap + event-level Reveal all (Bastian). "All rounds" = scheduled count, not rounds fought, so a blind scorer of an early finish isn't spoiled. Hide in fight detail clears `revealed_at`. Live viewers with protection on tap to reveal (accepted friction). Scoring right after a live finish, before the scrape marks it completed, doesn't persist a reveal — tap needed.
+- **NextSteps:** Check preview: Rosas Jr. vs Barcelos shows "10 pick results hidden" with protection on; Reveal all → 4–6.
+
+---
+
+## Prediction void fix — 2026-10-03 (branch `feature-predictions`)
+
+**Checkpoint**
+- **Goal:** Bastian picked every bout on UFC Fight Night: Rosas Jr. vs Barcelos but the app counted ~6.
+- **Constraints:** no stored data changes; fix on the feature branch before merging.
+- **Progress:** [x] Root cause: the post-event scrape reversed 4 of 10 bouts, and the void check exact-compared `bout_snapshot` to `fights.bout`. [x] Added `splitBout` + `sameMatchup` to `src/fighterNames.js`, used in `predictionStats.enrichPick` and the App.js card loader (which now also maps the stored pick onto the bout's current spelling so the highlight and tap-to-clear still work). [x] `src/predictionVoid.test.js`, 32/32 Jest passing, build clean. [x] Live check: that card now has 10 graded, 0 void (4–6); UFC 332 has 13 pending.
+- **Decisions:** matchup equality is order-insensitive and uses `matchesFighter` per name, so a respelling isn't treated as a swap. Accepted trade-off: replacing an opponent with someone of the same last name (>3 chars) won't void.
+- **Follow-up (same day):** [x] Bastian chose to keep picks on deleted fights. Wrote `supabase/migrate_prediction_keep_on_delete.py` (fight_id → nullable, FK ON DELETE SET NULL, `event_name` column filled by trigger + backfill). Frontend: `getAllPredictions` loads orphans (`fight_deleted` = null fight_id), `enrichPick` voids them, profile row reads "bout cancelled" and shows the snapshot opponent; React keys moved to prediction `id`. 33/33 tests, build clean. [x] Migration applied 2026-10-03 and verified: 23 rows before/after, FK `ON DELETE SET NULL`, 0 rows missing event_name; rolled-back end-to-end test confirmed a deleted fight leaves its pick with fight_id NULL and event_name intact. Code pushed as a6e30eb. The 9042 pick itself is unrecoverable.
+- **Soft launch (same day):** Bastian wants predictions in production but hidden from the public. Added `src/featureFlags.js` — `predictionsEnabled(session)` allowlists Bastian's auth user id. Off = no prediction row (card falls back to the vote row, same as `main`), no Picks tab, no prediction queries. UI gate only; RLS still lets any signed-in user write their own picks via the API (accepted). To launch publicly: make it return `!!session`.
+- **NextSteps:** (1) Check the preview signed in (prediction row + Picks tab, Rosas Jr. vs Barcelos 4–6) and as a guest (vote rows only, no Picks tab). (2) Merge `feature-predictions` → `main` with Bastian's go — that's the production deploy. Note the profile rebuild (Votes/Settings tabs) DOES go public with it.
+
+---
+
+## Swipe-to-Predict — 2026-09-26 (branch `feature-predictions`, NOT merged)
+
+**Checkpoint**
+- **Goal:** let signed-in users pick a winner on upcoming fights, grade those picks automatically, and give the profile page a record worth looking at — broken down by division, sex and title status.
+- **Constraints:** guests cannot predict (a sessionStorage record evaporates on tab close); production untouched until Bastian merges; Claude is blocked from production deploys by the auto-mode classifier, so the migration and any Edge Function deploy must be run by Bastian.
+- **Progress:** feature complete on branch, 10 commits, all verified on the Vercel preview against live data. Table `user_fight_predictions` created and RLS-verified. 29 unit cases passing across `fighterNames.js` + `predictionStats.js`. 11 real picks stored on the 2026-09-26 card.
+- **Decisions:**
+  - **One action row, never two** — prediction owns the card before and during a fight, voting takes the slot back after. They're complementary: a pick is about a fight that hasn't happened, while dislike ‹ like ‹ **favorite** is a quality ranking of a fight you've *watched* (favorite is the tier above like, NOT a pre-event bookmark — Bastian corrected this).
+  - **Vote gate moves from event-level to fight-level.** `isVotingLocked` opened voting on all 13 bouts the moment the first prelim started, hours before most fights happened. Fixing that is what makes one row possible.
+  - **Predictions close at the WALKOUT**, not the first bell — client-side only, so `fight_started_at` keeps meaning "first bell" and no stored data changes meaning.
+  - **A pick refers to a MATCHUP, not a fighter.** If the bout no longer reads as it did when picked (swap, withdrawal, scratch), the pick is void — shown as such, never silently dropped. That's why `bout_snapshot` stores the whole bout string: if only the *opponent* is replaced, the chosen name still matches and the swap goes undetected.
+  - **No stored `correct` column** — correctness is derived, so a scraper correction can't leave a stale verdict.
+  - **Under 5 graded picks, no percentage.** Groups sort by volume, never accuracy. Draws and voids sit outside the win/loss denominator.
+  - Dropped after review: identity strip, winner shown on vote rows, voids in the form strip. Paging at 50.
+- **NextSteps:** (1) Merge to `main` when ready — that's the go-live decision, Vercel deploys on push. (2) Optionally deploy the `record-fight-status` change so ESPN's live winner persists instead of living only in session. (3) `context/live-events.md` still needs the poller changes written up (walkout detection + winner read) — `context/schema.md` is already updated.
 
 ---
 

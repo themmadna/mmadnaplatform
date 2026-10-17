@@ -23,7 +23,7 @@ Full table and view definitions. Update this file whenever a migration adds, rem
 | `id` | bigint PK | NOT NULL | auto-increment; insertion order = UFC card order (main event first → lowest id) |
 | `event_name` | text | NOT NULL | |
 | `bout` | text | NOT NULL | **often reversed vs `fight_meta_details.bout`** — always join on `fight_url` |
-| `winner` | text | NULL | |
+| `winner` | text | NULL | Written live by `poll-live-fights` from ESPN on FINAL (ESPN spelling), then overwritten with ufcstats' spelling by the scrape. `''` = draw / NC (ESPN flagged nobody for 10 min; the scrape never overwrites a draw). NULL = no result yet. Set ≠ scraped — check `status` for that |
 | `fight_url` | text | NULL | upcoming: `fighter-details/` URL; corrected to `fight-details/` on completion |
 | `status` | text | NULL | `'upcoming'` / `'completed'` |
 | `weight_class` | text | NULL | raw scraped value e.g. "UFC Bantamweight Title Bout" — shown on fight cards only |
@@ -132,6 +132,30 @@ Unique constraint: `(user_id, fight_id)`.
 | `fight_id` | bigint | NOT NULL | FK → fights.id ON DELETE CASCADE |
 | `vote_type` | text | NULL | `'like'` / `'dislike'` / `'favorite'` |
 | `created_at` | timestamptz | NULL | default now() |
+
+### `user_fight_predictions`
+Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_id)` — one pick per fight, changing your mind is an upsert and clearing it is a delete. RLS on, all four policies scoped to `auth.uid()`; `anon` revoked (guests cannot predict — a sessionStorage record would evaporate on tab close). Created by `supabase/migrate_fight_predictions.py`; `fight_id` FK changed to SET NULL + `event_name` added by `supabase/migrate_prediction_keep_on_delete.py` (2026-10-03).
+
+| Column | Type | Nullable | Notes |
+|---|---|---|---|
+| `id` | bigint PK | NOT NULL | bigserial |
+| `user_id` | uuid | NOT NULL | FK → auth.users ON DELETE CASCADE |
+| `fight_id` | bigint | NULL | FK → fights.id **ON DELETE SET NULL**. NULL = the fight row was deleted (scraper auto-delete of a cancelled bout); the pick is kept and shown as **void** (`fight_deleted` in `getAllPredictions`). Postgres NULLs are distinct, so the unique constraint allows any number of orphans |
+| `revealed_at` | timestamptz | NULL | When the user revealed this pick's verdict under spoiler protection (card tap, event Reveal all, profile row, or fight detail's Reveal / finishing the scorecard). NULL = not explicitly revealed; fight detail's Hide clears it. Winner-only reveal — no effect on scorecard eligibility. Rule: `src/spoilers.js`. Added by `supabase/migrate_prediction_revealed_at.py` |
+| `event_name` | text | NULL | Copied from `fights.event_name` by trigger `trg_ufp_event_name` on insert / fight_id change — client never sends it. Kept when fight_id goes NULL, so an orphaned pick still groups under its card |
+| `predicted_fighter` | text | NOT NULL | fighter NAME, never a corner index — bout strings get re-scraped reversed (conventions #1/#9) |
+| `bout_snapshot` | text | NOT NULL | `fights.bout` as it read at pick time; if it no longer describes the same two fighters, the matchup changed and the pick is **void**. Compare with `sameMatchup()` (`src/fighterNames.js`), never `===` — the post-event scraper re-writes bouts reversed |
+| `created_at` | timestamptz | NOT NULL | default now() |
+| `updated_at` | timestamptz | NOT NULL | default now(), maintained by `trg_ufp_updated_at` |
+
+**No `correct` column by design.** Correctness is derived at read time against `fights.winner` using `matchesFighter`, *not* exact equality — ESPN and ufcstats spell the same fighter differently (`Matthieu Letho Duclos` vs `Matthieu Duclos`). Storing the verdict would go stale when the scraper corrects a winner.
+
+**The three profile cuts need two columns**, and no single one carries all three:
+| Cut | Source |
+|---|---|
+| Division | `fight_meta_details.weight_class_clean` |
+| Sex | `weight_class_clean` starts with `Women's` |
+| Title / Interim | **raw `fights.weight_class` only** — `weight_class_clean` strips title wording (verified: 0 of 6 real title fights retained it) |
 
 ### `fight_ratings`
 Aggregated vote counts, maintained by `update_fight_ratings` trigger.

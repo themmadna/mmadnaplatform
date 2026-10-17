@@ -5,7 +5,15 @@
 // Guards (in order):
 //   1. Exit if no UFC event today (event_date = UTC today)
 //   2. Exit if current time is before event start_time
-//   3. Exit if all upcoming fights already have fight_ended_at set
+//   3. Exit if all upcoming fights already have fight_ended_at AND a settled winner
+//      (or ended > WINNER_CHASE_MAX_MS ago)
+//
+// On FINAL it also persists ESPN's result (competitors[].winner) into fights.winner, so a
+// prediction is graded for anyone who opens the event afterwards — not only for users who
+// had the app open when the bout ended. ESPN sometimes flags the winner one poll after
+// FINAL, so an ended fight with winner NULL keeps being polled; '' (nobody flagged after
+// NO_WINNER_GRACE_MS) records a draw / no contest. The post-event scrape overwrites any
+// non-empty winner with ufcstats' spelling.
 //
 // Matches each fight to an ESPN competition by id, then by both-fighter name, then by
 // swap-resolution (an unclaimed comp sharing exactly one fighter — a late opponent swap
@@ -17,7 +25,8 @@
 // Uses native fetch + Supabase REST API only — NO esm.sh imports.
 
 // ---------- helpers ----------
-// normName + matchesFighter mirror src/components/FightDetailView.js exactly.
+// normName + matchesFighter mirror src/fighterNames.js exactly (the single JS source of
+// truth). This copy exists only because a Deno edge function cannot import from src/.
 // If you change either copy, update the other too.
 
 function normName(name: string): string {
@@ -61,6 +70,31 @@ function boutMatchesComp(bout: string, comp: any): boolean {
 
 // ---------- main ----------
 
+// ESPN returns 403 for Deno fetch's default `User-Agent: Deno/x.y` (verified 2026-10-04;
+// the poller was dead for at least UFC 331 + UFC 332 because of it). A browser UA gets 200.
+const ESPN_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+}
+
+// How long a FINAL bout may show no flagged winner before it is recorded as a draw / NC.
+// Measured on UFC 331: 11/12 bouts carried the winner on the first FINAL poll, the 12th
+// one poll (≤2 min) later. 10 min leaves a wide margin; a wrong '' is still corrected by
+// the post-event scrape, which writes any real winner over it.
+const NO_WINNER_GRACE_MS = 10 * 60 * 1000
+
+// Stop chasing a winner this long after the fight ended (e.g. a bout ESPN can't be matched
+// to). Without a cap one unmatched fight keeps the poller hitting ESPN every minute for the
+// whole 2-day event window. The post-event scrape fills the winner either way.
+const WINNER_CHASE_MAX_MS = 6 * 60 * 60 * 1000
+
+// Done = ended, and the winner is settled or no longer worth chasing.
+function isSettled(f: any, nowMs: number): boolean {
+  if (!f.fight_ended_at) return false
+  if (f.winner !== null) return true
+  return nowMs - new Date(f.fight_ended_at).getTime() > WINNER_CHASE_MAX_MS
+}
+
 Deno.serve(async (_req) => {
   try {
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
@@ -97,17 +131,17 @@ Deno.serve(async (_req) => {
       }
     }
 
-    // Guard 3: All upcoming fights already ended?
+    // Guard 3: All upcoming fights already ended with a settled winner?
     const fightsRes = await fetch(
       `${SUPABASE_URL}/rest/v1/fights?event_name=eq.${encodeURIComponent(event.event_name)}&status=eq.upcoming` +
-      `&select=id,bout,fight_started_at,fight_ended_at,rounds_fought,scheduled_rounds,ended_by_decision,espn_competition_id,card_position`,
+      `&select=id,bout,winner,fight_started_at,fight_ended_at,rounds_fought,scheduled_rounds,ended_by_decision,espn_competition_id,card_position`,
       { headers: dbHeaders }
     )
     const fights = await fightsRes.json()
     if (!fights.length) {
       return json({ ok: true, skipped: 'no_upcoming_fights' })
     }
-    if (fights.every((f: any) => f.fight_ended_at !== null)) {
+    if (fights.every((f: any) => isSettled(f, nowMs))) {
       return json({ ok: true, skipped: 'all_fights_ended' })
     }
 
@@ -115,7 +149,8 @@ Deno.serve(async (_req) => {
     // the event may span midnight UTC so event_date is the local US start date)
     const espnDate = event.event_date.replace(/-/g, '') // YYYYMMDD
     const espnRes = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${espnDate}`
+      `https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates=${espnDate}`,
+      { headers: ESPN_HEADERS }
     )
     if (!espnRes.ok) {
       return json({ ok: false, error: 'ESPN fetch failed', espnStatus: espnRes.status }, 502)
@@ -154,7 +189,8 @@ Deno.serve(async (_req) => {
     const updatesById = new Map<number, Record<string, unknown>>()
 
     for (const fight of fights) {
-      if (fight.fight_ended_at) {
+      // An ended fight stays in the loop only while its winner is unsettled (NULL).
+      if (isSettled(fight, nowMs)) {
         results.push({ fight_id: fight.id, skipped: 'already_ended' })
         continue
       }
@@ -228,17 +264,35 @@ Deno.serve(async (_req) => {
         if (espnScheduled) updates.scheduled_rounds = espnScheduled
 
       } else if (statusName === 'STATUS_FINAL') {
-        if (!fight.fight_started_at) updates.fight_started_at = now
-        if (!fight.fight_ended_at)   updates.fight_ended_at   = now
+        // Stamp the end once; later cycles for this fight only chase the winner.
+        if (!fight.fight_ended_at) {
+          if (!fight.fight_started_at) updates.fight_started_at = now
+          updates.fight_ended_at = now
 
-        // Guard: ESPN occasionally returns period=0 on STATUS_FINAL
-        const finalPeriod = period > 0
-          ? period
-          : ((fight.rounds_fought || 0) > 0 ? fight.rounds_fought : (fight.scheduled_rounds || 3))
+          // Guard: ESPN occasionally returns period=0 on STATUS_FINAL
+          const finalPeriod = period > 0
+            ? period
+            : ((fight.rounds_fought || 0) > 0 ? fight.rounds_fought : (fight.scheduled_rounds || 3))
 
-        if (!fight.rounds_fought) updates.rounds_fought = finalPeriod
-        updates.ended_by_decision = isDecision
-        if (espnScheduled) updates.scheduled_rounds = espnScheduled
+          if (!fight.rounds_fought) updates.rounds_fought = finalPeriod
+          updates.ended_by_decision = isDecision
+          if (espnScheduled) updates.scheduled_rounds = espnScheduled
+        }
+
+        // Persist the result. A flagged competitor = the winner (ESPN naming; grading
+        // uses matchesFighter, never exact equality). Nobody flagged = draw / NC, but
+        // only once the grace period has passed — before that it is usually just ESPN's
+        // winner flag lagging the FINAL status by a poll.
+        if (fight.winner === null) {
+          const won = (comp.competitors || []).find((cc: any) => cc.winner === true)
+          const wonName: string = won?.athlete?.displayName || ''
+          if (wonName) {
+            updates.winner = wonName
+          } else {
+            const endedMs = fight.fight_ended_at ? new Date(fight.fight_ended_at).getTime() : nowMs
+            if (nowMs - endedMs >= NO_WINNER_GRACE_MS) updates.winner = ''
+          }
+        }
       }
 
       // On a resolved swap, re-link the new comp id and correct the bout to ESPN's

@@ -11,3 +11,4 @@ nul
 *.csv
 scoring_model/ml_dataset.csv
 supabase/.temp/
+espn_probe_logs/
