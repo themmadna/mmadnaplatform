@@ -1,5 +1,6 @@
 import { supabase } from './supabaseClient';
 import { allRoundsScored } from './spoilers';
+import { isEventConcluded } from './eventStatus';
 
 export const dataService = {
   // --- VOTING LOGIC ---
@@ -129,7 +130,7 @@ export const dataService = {
         ? supabase.from('fight_meta_details').select('fight_url, weight_class_clean, time_format').in('fight_url', urls)
         : Promise.resolve({ data: [] }),
       events.length
-        ? supabase.from('ufc_events').select('event_name, event_date, start_time').in('event_name', events)
+        ? supabase.from('ufc_events').select('event_name, event_date, start_time, ended_at').in('event_name', events)
         : Promise.resolve({ data: [] }),
       dataService.getScoredRoundCounts(ids),
     ]);
@@ -157,7 +158,9 @@ export const dataService = {
         event_date: ev.event_date || null,
         card_position: f.card_position,
         status: f.status,
+        fight_started_at: f.fight_started_at,
         fight_ended_at: f.fight_ended_at,
+        event_concluded: isEventConcluded(ev),
       };
     });
   },

@@ -54,6 +54,34 @@ describe('enrichPick void + grade', () => {
     expect(p.grade).toBe(null);
   });
 
+  // Regression: UFC 332 (2026-10-03) — McGhee's opponent changed Sopaj → Romero, the scraper
+  // added the new bout as a new row and left McGhee vs Sopaj untouched, so the pick read
+  // pending until auto-delete removed the old row.
+  test('never-started bout on a concluded event is void', () => {
+    const p = enrichPick({ predicted_fighter: 'Marcus McGhee', status: 'upcoming', winner: null,
+      bout_snapshot: 'Marcus McGhee vs Sopaj', bout: 'Marcus McGhee vs Sopaj',
+      fight_started_at: null, fight_ended_at: null, event_concluded: true });
+    expect(p.voided).toBe(true);
+    expect(p.scratched).toBe(true);
+    expect(p.pending).toBe(false);
+  });
+
+  test('never-started bout on a card still running stays pending', () => {
+    const p = enrichPick({ predicted_fighter: 'Marcus McGhee', status: 'upcoming', winner: null,
+      bout_snapshot: 'Marcus McGhee vs Sopaj', bout: 'Marcus McGhee vs Sopaj',
+      fight_started_at: null, fight_ended_at: null, event_concluded: false });
+    expect(p.voided).toBe(false);
+    expect(p.pending).toBe(true);
+  });
+
+  test('scraped bout the poller never stamped is graded, not voided', () => {
+    const p = enrichPick({ ...base, predicted_fighter: 'Ailin Perez', winner: 'Ailin Perez',
+      bout_snapshot: 'Norma Dumont vs Ailin Perez', bout: 'Norma Dumont vs Ailin Perez',
+      fight_started_at: null, fight_ended_at: null, event_concluded: true });
+    expect(p.voided).toBe(false);
+    expect(p.grade).toBe('correct');
+  });
+
   test('opponent swap still voids', () => {
     const p = enrichPick({ ...base, predicted_fighter: 'Ailin Perez', winner: 'Ailin Perez',
       bout_snapshot: 'Norma Dumont vs Ailin Perez', bout: 'Ailin Perez vs Karol Rosa' });

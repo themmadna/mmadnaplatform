@@ -1,7 +1,18 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-11 (Live test PASSED on UFC Fight Night: Allen vs Duncan — poller v7 200 all night, 12/12 bouts stamped live, winners persisted 0.3–1.2 min after each end, event ended_at stamped with the main event. Walkout lock still not exercised.)
-Next session: **(a) After the post-event scrape, confirm 9082 Gatto vs Kareckaite** — ESPN flagged neither fighter (3 full rounds, no decision detail → likely draw), poller wrote `''`; the scrape should leave it (draw) or overwrite with a winner. Then (3) frontend: void picks on never-started bouts once the event concluded, (4) DB trigger rejecting pick insert/update once `fight_started_at` is set (migration is Bastian's) — this also covers the walkout lock, which two live cards have now failed to exercise. Then merge decision. Phase C items (S-P2-10/12/14/19) still queued behind this.
+Last updated: 2026-10-17 (Gatto vs Kareckaite confirmed a majority draw by the scrape — `''` correct. Picks on never-started bouts now void once the card has concluded.)
+Next session: **(4) DB trigger rejecting pick insert/update once `fight_started_at` is set** (Claude writes the migration, Bastian runs it) — also covers the walkout lock, which two live cards have failed to exercise. Then merge decision. Phase C items (S-P2-10/12/14/19) still queued behind this.
 Last refreshed: 2026-05-16
+
+---
+
+## Void picks on never-started bouts — 2026-10-17 (branch `feature-predictions`)
+
+**Checkpoint**
+- **Goal:** a pick on a bout that never happened (scratch, or a swap the scraper added as a new row) reads void once the card is over, not "pending" until auto-delete ≥34h later.
+- **Constraints:** frontend only, no stored data changes; must agree with the event view, which already hides those bouts.
+- **Progress:** [x] (a) 9082 Gatto vs Kareckaite: scrape ran, fmd = Decision - Majority / draw, `fights.winner` stays `''`. [x] `src/eventStatus.js` — `isEventConcluded(event, mainEventFight)` (ended_at OR main event ended OR 8h past start_time), moved out of App.js; event view uses it. [x] `getAllPredictions` returns `fight_started_at` + `event_concluded` (reads `ufc_events.ended_at`). [x] `enrichPick`: `scratched` = fight deleted OR (event concluded AND never started AND not ended) → voided; profile row shows "bout cancelled" for both. [x] 53/53 Jest (+3 void cases, +5 eventStatus), build clean (+22 B). [x] Live check: 35 picks, none newly voided (the only scratch, McGhee vs Sopaj, was already auto-deleted → void via SET NULL).
+- **Decisions:** "ended" (fight_ended_at OR status completed) wins over "never started", so a bout the poller missed but the scrape completed grades normally. Accepted risk: if the poller is down again, bouts it never stamped read void between the 8h window and the scrape — the event view already hides them in that case.
+- **NextSteps:** see Next session line.
 
 ---
 

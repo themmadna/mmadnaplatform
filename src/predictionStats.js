@@ -56,10 +56,16 @@ export function enrichPick(p, { spoilerProtection = false } = {}) {
   // picked — opponent swap, withdrawal, scratch — the pick is void and counts neither way.
   // Order-insensitive: the scraper often re-writes a bout reversed, which is NOT a swap.
   // A deleted fight row (cancelled bout, auto-deleted by the scraper) is the scratch case.
-  const voided = !!p.fight_deleted
+  const ended = !!p.fight_ended_at || p.status === 'completed';
+  // Before that delete lands (≥34h post-event), a scratched bout is a row that never
+  // started on a card that's over — the event view already hides it (src/eventStatus.js).
+  // A replacement often arrives as a NEW row, so the old one still reads like the snapshot
+  // and the matchup check below can't catch it.
+  const scratched = !!p.fight_deleted
+    || (!!p.event_concluded && !p.fight_started_at && !ended);
+  const voided = scratched
     || (!!p.bout_snapshot && !!p.bout && !sameMatchup(p.bout_snapshot, p.bout));
 
-  const ended = !!p.fight_ended_at || p.status === 'completed';
   // gradePrediction distinguishes '' (draw / no contest) from null (not graded yet),
   // so only pass a winner through once the fight has actually ended.
   const rawGrade = voided ? null : gradePrediction(p.predicted_fighter, ended ? (p.winner ?? null) : undefined);
@@ -71,6 +77,7 @@ export function enrichPick(p, { spoilerProtection = false } = {}) {
   return {
     ...p,
     voided,
+    scratched,                                       // bout never happened (subset of voided)
     ended,
     grade,                                           // 'correct' | 'wrong' | 'draw' | null
     hidden,                                          // has a verdict, spoiler-protected

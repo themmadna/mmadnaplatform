@@ -8,6 +8,7 @@ import { gradePrediction, matchesFighter, sameMatchup } from './fighterNames';
 import * as predictionStats from './predictionStats';
 import { predictionsEnabled } from './featureFlags';
 import { allRoundsScored, isResultRevealed } from './spoilers';
+import { isPastEventWindow, isEventConcluded } from './eventStatus';
 import CombatDNAVisual from './CombatDNAVisual';
 
 import FightDetailView from './components/FightDetailView';
@@ -672,7 +673,7 @@ const PicksTab = ({ picks, loading, onReveal }) => {
         return (
           <Row key={p.id} mark={m.t} markClass={m.c}
             title={<><b className="font-semibold">{p.predicted_fighter}</b> <span className="text-pulse-text-3">over {other}</span></>}
-            meta={[p.event_name, p.division, p.isTitle ? 'title' : null, p.fight_deleted ? 'bout cancelled' : p.voided ? 'voided' : null, p.hidden ? 'tap to reveal' : null].filter(Boolean).join(' · ')}
+            meta={[p.event_name, p.division, p.isTitle ? 'title' : null, p.scratched ? 'bout cancelled' : p.voided ? 'voided' : null, p.hidden ? 'tap to reveal' : null].filter(Boolean).join(' · ')}
             onClick={p.hidden && onReveal ? () => onReveal(p.fight_id) : undefined}
             srLabel={p.hidden ? `Reveal result: ${p.predicted_fighter} over ${other}` : undefined} />
         );
@@ -1561,16 +1562,6 @@ export default function UFCFightRating() {
     return eventDate >= today;
   };
 
-  // An event is definitely over this many hours after start_time. Safety net for the
-  // rare case where ended_at was never stamped (e.g. the main event was itself an
-  // unmatchable opponent swap, so the poller never saw it finalize). UFC cards run
-  // ~5-6h; 8h covers overruns.
-  const EVENT_MAX_LIVE_HOURS = 8;
-  const isPastEventWindow = (event) => {
-    if (!event?.start_time) return false;
-    return Date.now() > new Date(event.start_time).getTime() + EVENT_MAX_LIVE_HOURS * 3600 * 1000;
-  };
-
   const isLiveEvent = (event) => {
     if (!event?.event_date) return false;
     // Main event has finalized → event is over, regardless of clock time.
@@ -1969,7 +1960,7 @@ export default function UFCFightRating() {
                 // Once the event has concluded (main event finalized), a fight that never
                 // started is a scratched/replaced bout — hide it instead of showing "Upcoming".
                 // eventFights is ordered by card_position ASC, so [0] is the main event.
-                const eventConcluded = !!selectedEvent?.ended_at || !!eventFights[0]?.fight_ended_at || isPastEventWindow(selectedEvent);
+                const eventConcluded = isEventConcluded(selectedEvent, eventFights[0]);
                 const visibleFights = eventConcluded
                     ? eventFights.filter(f => f.fight_started_at || f.fight_ended_at || f.status === 'completed')
                     : eventFights;
