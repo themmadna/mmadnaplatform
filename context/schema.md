@@ -136,6 +136,8 @@ Unique constraint: `(user_id, fight_id)`.
 ### `user_fight_predictions`
 Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_id)` — one pick per fight, changing your mind is an upsert and clearing it is a delete. RLS on, all four policies scoped to `auth.uid()`; `anon` revoked (guests cannot predict — a sessionStorage record would evaporate on tab close). Created by `supabase/migrate_fight_predictions.py`; `fight_id` FK changed to SET NULL + `event_name` added by `supabase/migrate_prediction_keep_on_delete.py` (2026-10-03).
 
+**Server-side pick lock** — trigger `trg_ufp_lock_started` → `lock_started_fight_predictions()` (`supabase/migrate_prediction_lock.py`, 2026-10-18). For `authenticated`/`anon` it rejects INSERT, UPDATE and DELETE of a pick on a fight with `fight_started_at` OR `fight_ended_at` set OR `status = 'completed'` (moving a pick checks both fights). Error: `Pick locked: fight N has started` (SQLSTATE 23514). Allowed after the start: UPDATEs that leave `fight_id`/`predicted_fighter`/`bout_snapshot` unchanged (the `revealed_at` spoiler reveal), and any write not run as an API role — referential actions (fight deleted → SET NULL, user deleted → CASCADE) run as the table owner, `service_role` is for admin fixes. Locks at the **first bell**, not the walkout (no walkout timestamp in the DB); the app locks at the walkout.
+
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
 | `id` | bigint PK | NOT NULL | bigserial |

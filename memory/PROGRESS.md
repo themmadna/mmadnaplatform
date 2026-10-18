@@ -1,7 +1,18 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-18 (Live test PASSED on UFC Fight Night: Buckley vs Malott — walkout lock confirmed live for the first time; poller 3rd clean card; picks 6–7.)
-Next session: **(4) DB trigger rejecting pick insert/update once `fight_started_at` is set** (Claude writes the migration, Bastian runs it; test it in a rolled-back transaction — no live card needed). Then merge decision. Phase C items (S-P2-10/12/14/19) still queued behind this.
+Last updated: 2026-10-18 (Server-side pick lock deployed — trigger `trg_ufp_lock_started`, 11/11 self-test cases in dry run and live.)
+Next session: **Merge decision** — `feature-predictions` → `main` is the production deploy (Vercel). Predictions stay allowlisted to Bastian (`predictionsEnabled`), but the profile rebuild (Votes/Settings tabs) goes public. Still open: `context/live-events.md` poller write-up (walkout detection + winner persistence). Phase C items (S-P2-10/12/14/19) queued after the merge.
 Last refreshed: 2026-05-16
+
+---
+
+## Server-side pick lock — 2026-10-18 (branch `feature-predictions`)
+
+**Checkpoint**
+- **Goal:** close the API path that let a signed-in user insert/change/clear a pick after the fight started (lock was client-only).
+- **Constraints:** production migration — Bastian approved, Claude ran it. Reveal (`revealed_at`) must keep working after the fight; scratched-bout picks must still orphan via ON DELETE SET NULL.
+- **Progress:** [x] `supabase/migrate_prediction_lock.py` — BEFORE INSERT/UPDATE/DELETE trigger, API roles only; locked = started OR ended OR completed. [x] Dry run (trigger + self-test in one rolled-back transaction) 11/11 PASS; applied; trigger present; rows 48 = 48; live self-test 11/11 PASS (fixtures o1=9106 o2=9105 d=9095). [x] `context/schema.md` updated.
+- **Decisions:** clearing a pick after the start is blocked too (would let a miss be erased from the record). Locks at the first bell — no walkout timestamp in the DB; the app keeps the walkout lock. Exemption is by `current_user` (RI actions run as table owner). Not exercised for real: an actual fight-row DELETE (simulated as an owner UPDATE to NULL).
+- **NextSteps:** see Next session line.
 
 ---
 
@@ -55,7 +66,7 @@ Last refreshed: 2026-05-16
   - **Swap not resolved in place:** scraper inserted a NEW row 9070 `Marcus McGhee vs Anthony Romero`; 9060 `McGhee vs Sopaj` was left as-is, so the Sopaj pick isn't voided — it reads pending (hidden from the card list as a never-started bout) until auto-delete removes 9060 ≥34h post-event, then it becomes void via the SET NULL path. Smith vs Whitehead added as 9069.
   - ESPN walkout → first bell: 3–12 min (13 bouts), walkout status seen on 14/14.
 - [x] **Persist ESPN winner on the backend** (`poll-live-fights`) — done 2026-10-10, deployed v7. Live grading currently only works if the app is open on the event when the fight ends: App.js polls only fights without `fight_ended_at`, and the cron poller stamps that within a minute — so anyone opening the event afterwards sees "Awaiting result" until the post-event scrape. Deploy needs Bastian.
-- [ ] **Server-side pick lock.** Lock is client-only; RLS lets a signed-in user change a pick via the API after the fight. Add a trigger rejecting insert/update once `fight_started_at` is set (walkout lock would also need the backend to record walkouts). Before public launch.
+- [x] **Server-side pick lock.** ✅ 2026-10-18 `trg_ufp_lock_started`. Lock is client-only; RLS lets a signed-in user change a pick via the API after the fight. Add a trigger rejecting insert/update once `fight_started_at` is set (walkout lock would also need the backend to record walkouts). Before public launch.
 - [ ] Bastian to check in the app after the card: spoiler "tap to reveal" / Reveal all, Sopaj pick shown as void.
 
 ---
