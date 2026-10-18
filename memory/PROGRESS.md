@@ -12,6 +12,7 @@ Last refreshed: 2026-05-16
 - **Constraints:** production migration — Bastian approved, Claude ran it. Reveal (`revealed_at`) must keep working after the fight; scratched-bout picks must still orphan via ON DELETE SET NULL.
 - **Progress:** [x] `supabase/migrate_prediction_lock.py` — BEFORE INSERT/UPDATE/DELETE trigger, API roles only; locked = started OR ended OR completed. [x] Dry run (trigger + self-test in one rolled-back transaction) 11/11 PASS; applied; trigger present; rows 48 = 48; live self-test 11/11 PASS (fixtures o1=9106 o2=9105 d=9095). [x] `context/schema.md` updated.
 - **Decisions:** clearing a pick after the start is blocked too (would let a miss be erased from the record). Locks at the first bell — no walkout timestamp in the DB; the app keeps the walkout lock. Exemption is by `current_user` (RI actions run as table owner). Not exercised for real: an actual fight-row DELETE (simulated as an owner UPDATE to NULL).
+- **Cleanup (same day):** all 48 test picks deleted (Bastian's call, all his, 4 cards) before the merge; backup at `espn_probe_logs/predictions_backup_20261018.json` (gitignored, local only). Table now empty.
 - **NextSteps:** see Next session line.
 
 ---
