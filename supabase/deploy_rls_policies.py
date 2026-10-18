@@ -12,13 +12,19 @@ Tables this script secures:
   - user_fight_scorecard_state (private: own scorecard state only)
   - user_votes              (private: own votes only)
   - profiles                (private: own profile only)
+  - fight_ratings           (public read only — one policy)
 
 Public data tables (fights, fight_meta_details, etc.) need no RLS change —
 their data is public, and the scraper writes via service key which bypasses RLS.
 
-fight_ratings is intentionally excluded: it is maintained by a trigger on user_votes.
-Enabling RLS on fight_ratings risks breaking the trigger. Its data (aggregate counts)
-is not user-private and does not require RLS.
+fight_ratings: aggregate vote counts, public to read. RLS is ON with a single
+read-everything SELECT policy and no write policies, so API roles can't write it.
+The update_fight_ratings() trigger on user_votes still writes it because the function
+is SECURITY DEFINER (runs as postgres). S-P2-10 (2026-10-18) dropped the duplicate
+"Public Read Ratings" policy; this script keeps it dropped.
+
+After deploying, the script verifies fight_ratings has exactly one SELECT policy and
+that the anon key can still read it (the vote counts on every fight card).
 """
 
 import sys
@@ -101,9 +107,9 @@ CREATE POLICY "ufss_delete_own"
 -- ============================================================
 -- user_votes
 -- Each user can only read/write their own votes.
--- The update_fight_ratings trigger fires on mutations here;
--- it updates fight_ratings (no RLS) and runs in the user's
--- session context — no SECURITY DEFINER change needed.
+-- The update_fight_ratings trigger fires on mutations here and
+-- recounts into fight_ratings. It is SECURITY DEFINER, so it
+-- writes past fight_ratings' RLS (see deploy_triggers.py).
 -- ============================================================
 ALTER TABLE user_votes ENABLE ROW LEVEL SECURITY;
 
@@ -164,6 +170,21 @@ DROP POLICY IF EXISTS "profiles_delete_own" ON profiles;
 CREATE POLICY "profiles_delete_own"
   ON profiles FOR DELETE
   USING (user_id = auth.uid());
+
+
+-- ============================================================
+-- fight_ratings
+-- Public aggregate counts: anyone reads, nobody writes via the API.
+-- ============================================================
+ALTER TABLE fight_ratings ENABLE ROW LEVEL SECURITY;
+
+-- S-P2-10: exact duplicate of the policy below (both SELECT, qual true, role public).
+DROP POLICY IF EXISTS "Public Read Ratings" ON fight_ratings;
+
+DROP POLICY IF EXISTS "Enable read access for all users" ON fight_ratings;
+CREATE POLICY "Enable read access for all users"
+  ON fight_ratings FOR SELECT
+  USING (true);
 """
 
 print("Deploying RLS policies to Supabase...")
@@ -175,6 +196,7 @@ if r.ok:
     print("   - user_fight_scorecard_state (select/insert/update/delete: own rows only)")
     print("   - user_votes             (select/insert/update/delete: own rows only)")
     print("   - profiles               (select/insert/update/delete: own rows only)")
+    print("   - fight_ratings          (select: everyone; no write policies)")
     print()
     print("⚠️  Verify the app still works:")
     print("   1. Log in and score a round — should still save correctly")
@@ -184,3 +206,25 @@ if r.ok:
 else:
     print(f"❌ RLS deployment failed {r.status_code}: {r.text}")
     sys.exit(1)
+
+print("\nVerifying fight_ratings...")
+v = requests.post(MGMT_QUERY_URL, headers=HEADERS, timeout=30, json={"query": """
+    SELECT policyname, cmd, qual FROM pg_policies
+    WHERE schemaname = 'public' AND tablename = 'fight_ratings' ORDER BY policyname;
+"""})
+v.raise_for_status()
+policies = v.json()
+print("   policies:", [(p["policyname"], p["cmd"], p["qual"]) for p in policies])
+ok_policies = [(p["policyname"], p["cmd"], p["qual"]) for p in policies] == [("Enable read access for all users", "SELECT", "true")]
+
+# The anon key is what every guest (and the fight cards) reads vote counts with.
+anon_key = os.environ.get("REACT_APP_SUPABASE_ANON_KEY", "")
+a = requests.get(f"{supabase_url}/rest/v1/fight_ratings?select=fight_id&limit=1",
+                 headers={"apikey": anon_key, "Authorization": f"Bearer {anon_key}"}, timeout=30)
+anon_rows = len(a.json()) if a.ok else 0
+print(f"   anon read: HTTP {a.status_code}, {anon_rows} row(s)")
+
+if not ok_policies or anon_rows != 1:
+    print("\n❌ VERIFY FAILED — check the output above.")
+    sys.exit(1)
+print("✅ fight_ratings: one public read policy, anon can read.")

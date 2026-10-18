@@ -160,7 +160,7 @@ Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_i
 | Title / Interim | **raw `fights.weight_class` only** — `weight_class_clean` strips title wording (verified: 0 of 6 real title fights retained it) |
 
 ### `fight_ratings`
-Aggregated vote counts, maintained by the `update_fight_ratings_trigger` trigger on `user_votes` (one trigger — duplicate `sync_fight_ratings` dropped 2026-10-18; see `context/rpc-functions.md`).
+Aggregated vote counts, maintained by the `update_fight_ratings_trigger` trigger on `user_votes` (one trigger — duplicate `sync_fight_ratings` dropped 2026-10-18; see `context/rpc-functions.md`). RLS on, one policy: `"Enable read access for all users"` (SELECT, `true`) — guests read counts with the anon key; no write policies, so only the SECURITY DEFINER trigger writes. Managed by `supabase/deploy_rls_policies.py` (duplicate `"Public Read Ratings"` dropped 2026-10-18, S-P2-10).
 
 | Column | Type | Nullable | Notes |
 |---|---|---|---|

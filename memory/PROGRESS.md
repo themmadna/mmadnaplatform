@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-18 (Phase C: S-P2-14 done — update_fight_ratings EXECUTE revoked, duplicate sync_fight_ratings trigger dropped. Earlier same day: predictions merged to main.)
-Next session: **Phase C** — S-P2-10 (drop redundant fight_ratings SELECT policy), S-P2-19 (DROP dead get_liked_fight_stats), S-P2-12 (fmd→fights FK — check fights.fight_url uniqueness + orphans first). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
+Last updated: 2026-10-18 (Phase C: S-P2-14 + S-P2-10 done; S-P2-20 filed. Earlier same day: predictions merged to main.)
+Next session: **Phase C** — S-P2-19 (DROP dead get_liked_fight_stats), S-P2-12 (fmd→fights FK — check fights.fight_url uniqueness + orphans first), S-P2-20 (trim fight_ratings grants). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
 Last refreshed: 2026-05-16
 
 ---
