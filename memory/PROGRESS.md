@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
 Last updated: 2026-10-18 (Server-side pick lock deployed — trigger `trg_ufp_lock_started`, 11/11 self-test cases in dry run and live.)
-Next session: **Merge decision** — `feature-predictions` → `main` is the production deploy (Vercel). Predictions stay allowlisted to Bastian (`predictionsEnabled`), but the profile rebuild (Votes/Settings tabs) goes public. Still open: `context/live-events.md` poller write-up (walkout detection + winner persistence). Phase C items (S-P2-10/12/14/19) queued after the merge.
+Next session: **Merge decision** — `feature-predictions` → `main` is the production deploy (Vercel). Predictions stay allowlisted to Bastian (`predictionsEnabled`), but the profile rebuild (Votes/Settings tabs) goes public. Phase C items (S-P2-10/12/14/19) queued after the merge.
 Last refreshed: 2026-05-16
 
 ---
@@ -109,7 +109,7 @@ Last refreshed: 2026-05-16
   - **No stored `correct` column** — correctness is derived, so a scraper correction can't leave a stale verdict.
   - **Under 5 graded picks, no percentage.** Groups sort by volume, never accuracy. Draws and voids sit outside the win/loss denominator.
   - Dropped after review: identity strip, winner shown on vote rows, voids in the form strip. Paging at 50.
-- **NextSteps:** (1) Merge to `main` when ready — that's the go-live decision, Vercel deploys on push. (2) Optionally deploy the `record-fight-status` change so ESPN's live winner persists instead of living only in session. (3) `context/live-events.md` still needs the poller changes written up (walkout detection + winner read) — `context/schema.md` is already updated.
+- **NextSteps:** (1) Merge to `main` when ready — that's the go-live decision, Vercel deploys on push. (2) ~~Persist ESPN's live winner~~ done in `poll-live-fights` 2026-10-10. (3) ~~`context/live-events.md` write-up~~ done 2026-10-18 ("Prediction locks + pick grading").
 
 ---
 

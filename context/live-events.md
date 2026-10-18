@@ -104,9 +104,24 @@ The Edge Function is the only path — it runs with service role and validates t
 
 ### Event LIVE badge + scratched-fight hiding
 - **`isLiveEvent(event)`** returns false if `event.ended_at` is set — the LIVE badge clears the moment the main event finalizes, not at local midnight. Without this it was purely `event_date === today && start_time <= now`, so an event showed LIVE all day. The events list uses `ufc_events.select('*')`, so `ended_at` flows through automatically.
-- **Time-based safety net:** `isLiveEvent` also returns false once `now > start_time + EVENT_MAX_LIVE_HOURS` (8h) via `isPastEventWindow(event)`, even if `ended_at` was never stamped (covers the rare case where the main event itself was an unmatchable opponent swap). `eventConcluded` in the fights view uses the same fallback.
+- **Time-based safety net:** `isLiveEvent` also returns false once `now > start_time + EVENT_MAX_LIVE_HOURS` (8h) via `isPastEventWindow(event)`, even if `ended_at` was never stamped (covers the rare case where the main event itself was an unmatchable opponent swap). Both live in `src/eventStatus.js`, with `isEventConcluded(event, mainEventFight)` = `ended_at` OR main event `fight_ended_at` OR past the window — one rule shared by the fights view and the profile's pick record.
 - The "Upcoming" event badge is also gated on `!event.ended_at` so a concluded event today shows no badge (not "Upcoming").
 - **Scratched/replaced bouts:** once an event has concluded (`selectedEvent.ended_at`, the main event `eventFights[0].fight_ended_at`, or `isPastEventWindow`), the fights view hides any fight that never started (`!fight_started_at && !fight_ended_at && status !== 'completed'`). Belt-and-braces with the poller's swap-resolution (below): the poller now usually converts swapped bouts into the real fight in place, but if ESPN data is gone before it runs (or a double-swap), this hides the leftover so it never lingers as "Upcoming."
+
+### Prediction locks + pick grading
+Three layers, in time order — see `context/schema.md` (`user_fight_predictions`) for the table.
+
+| When | Where | Mechanism |
+|---|---|---|
+| **Walkout** | App only (`App.js` event poll, every 60 s) | `STATUS_FIGHTERS_WALKING` or `STATUS_FIGHTERS_INTRODUCTION` → `predictionClosed[fight.id] = true` → card shows "Locked at the walkout". Local state only — deliberately does NOT call an Edge Function, so `fight_started_at` keeps meaning "first bell". Confirmed live 2026-10-17 (Buckley vs Malott). |
+| **First bell** | Database | Trigger `trg_ufp_lock_started` rejects insert/update/delete of a pick by `authenticated`/`anon` once `fight_started_at` / `fight_ended_at` is set or `status = 'completed'`. Reveals (`revealed_at` only) still pass. A rejected save rolls the app's optimistic pick back. |
+| **After the card** | Frontend (`enrichPick`, `src/predictionStats.js`) | A pick on a bout that never started, on a concluded event (`isEventConcluded`), is **void** ("bout cancelled") — before auto-delete orphans it ≥34h later. A swap the scraper adds as a NEW row leaves the old row reading like the snapshot, so `sameMatchup` alone can't catch it. |
+
+The DB has no walkout timestamp, so the server lock is a few minutes behind the app's. A reload during the walkout clears `predictionClosed` until the next event poll.
+
+**Grading** reads `fights.winner`, written live by `poll-live-fights` (0.2–2 min after `fight_ended_at` across 13/13 bouts on 2026-10-17), so a pick grades for anyone opening the event afterwards — not only users who had it open at the finish. Under spoiler protection the verdict stays hidden until revealed (`src/spoilers.js`).
+
+**Live test kit (read-only):** `pick_watcher.py --event "<fights.event_name>" --date YYYYMMDD` logs pick changes, fight-row changes and poller HTTP status every 2 min; `espn_winner_probe.py --date YYYYMMDD` logs ESPN's status/winner per bout (its DB rows load once at start — trust the watcher for DB state). Run `espn_winner_probe.py --once` before the card to catch a late swap (ESPN bouts vs DB).
 
 ### Fight card ordering
 Frontend orders fights by `card_position ASC` (nulls last), then `id ASC` as fallback for older events without `card_position`. This ensures the display always matches the real UFC card order even after reshuffles.
