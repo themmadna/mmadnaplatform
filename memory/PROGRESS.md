@@ -1,7 +1,18 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-17 (Gatto vs Kareckaite confirmed a majority draw by the scrape — `''` correct. Picks on never-started bouts now void once the card has concluded.)
-Next session: **(4) DB trigger rejecting pick insert/update once `fight_started_at` is set** (Claude writes the migration, Bastian runs it) — also covers the walkout lock, which two live cards have failed to exercise. Then merge decision. Phase C items (S-P2-10/12/14/19) still queued behind this.
+Last updated: 2026-10-18 (Live test PASSED on UFC Fight Night: Buckley vs Malott — walkout lock confirmed live for the first time; poller 3rd clean card; picks 6–7.)
+Next session: **(4) DB trigger rejecting pick insert/update once `fight_started_at` is set** (Claude writes the migration, Bastian runs it; test it in a rolled-back transaction — no live card needed). Then merge decision. Phase C items (S-P2-10/12/14/19) still queued behind this.
 Last refreshed: 2026-05-16
+
+---
+
+## Final live test — UFC Fight Night: Buckley vs Malott — 2026-10-17/18 (branch `feature-predictions`)
+
+**Checkpoint**
+- **Goal:** exercise the walkout lock on a live card (missed on the previous two) and confirm the poller holds for a third card.
+- **Constraints:** read-only monitoring (`pick_watcher.py`, `espn_winner_probe.py`); refused pick changes write nothing, so the lock result comes from Bastian's report, not the logs.
+- **Progress:** [x] Pre-card: ESPN 13 bouts = DB 13, all matched, no swaps. [x] Poller: 200 on every response (219 `before_start_time`, 339 live polls); one pg_net 5 s timeout at 01:45Z, next minute fine. [x] 13/13 bouts stamped live (21:16Z → 02:43Z); `ufc_events.ended_at` 02:43:00Z with the main event. [x] Winners in DB 0.2–2.0 min after `fight_ended_at` on all 13 (watcher polls every 2 min). [x] 7 pick changes at 23:06Z, all on bouts not yet started (first bell of those 23:40Z) — correctly allowed. [x] **Walkout lock confirmed** (Bastian, screenshot): Leblanc vs Galanti showed "LOCKED AT THE WALKOUT" while upcoming; changes refused at walkout and after first bell. [x] Profile event view 6–7, 13 graded; spoiler "tap to reveal" badge shown on final bouts.
+- **Decisions:** no more live cards needed for predictions. The server-side lock is tested in a rolled-back transaction instead.
+- **NextSteps:** see Next session line.
 
 ---
 
