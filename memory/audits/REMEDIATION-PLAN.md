@@ -5,7 +5,7 @@ Consolidated execution plan for the two May 16 audits:
 - App frontend: [`memory/audits/2026-05-16-app/`](2026-05-16-app/)
 
 **Status markers:** `[ ]` not started · `[~]` in progress · `[x]` complete · `[!]` blocked
-**Last updated:** 2026-10-18 (S-P2-19 dropped get_liked_fight_stats. Earlier: S-P2-10 dropped duplicate fight_ratings policy; filed S-P2-20. Earlier: S-P2-14 — revoked update_fight_ratings EXECUTE + dropped duplicate sync_fight_ratings trigger.) Previous: 2026-05-31 (S-P2-9 — revoked anon/PUBLIC EXECUTE on 4 user-scoped RPCs + frontend guard; flagged dead orphan `get_liked_fight_stats` for DROP (S-P2-19). Earlier same day: S-P2-8 search_path, S-P2-13 indexes.)
+**Last updated:** 2026-10-18 (S-P2-12 fmd→fights FK added; filed S-P2-21. Earlier: S-P2-19 dropped get_liked_fight_stats. Earlier: S-P2-10 dropped duplicate fight_ratings policy; filed S-P2-20. Earlier: S-P2-14 — revoked update_fight_ratings EXECUTE + dropped duplicate sync_fight_ratings trigger.) Previous: 2026-05-31 (S-P2-9 — revoked anon/PUBLIC EXECUTE on 4 user-scoped RPCs + frontend guard; flagged dead orphan `get_liked_fight_stats` for DROP (S-P2-19). Earlier same day: S-P2-8 search_path, S-P2-13 indexes.)
 
 ---
 
@@ -98,7 +98,9 @@ Consolidated execution plan for the two May 16 audits:
   - `supabase/deploy_rls_policies.py` now manages `fight_ratings`: RLS on, `DROP POLICY IF EXISTS "Public Read Ratings"`, keeps `"Enable read access for all users"`. Fixed the script's stale claims (fight_ratings "no RLS"; trigger "runs in the user's session" — it's SECURITY DEFINER).
   - Verified: exactly one SELECT policy (qual true); anon REST read 200; the 5 user tables still 4 own-row policies each; anon reads of user_round_scores / user_votes return 0 rows.
   - Followups #10
-- [ ] **S-P2-12** Add `fight_meta_details.fight_url → fights.fight_url ON DELETE CASCADE`
+- [x] **S-P2-12** Add `fight_meta_details.fight_url → fights.fight_url ON DELETE CASCADE` ✅ 2026-10-18
+  - `supabase/migrate_fmd_fight_url_fk.py` — pre-flight (fights.fight_url UNIQUE ✓, 8948 fmd rows, 0 null, 0 orphans) → `fight_meta_details_fight_url_fkey` ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED (mirrors the rfs FK) → validated, row count unchanged → rolled-back test: unknown URL rejected, deleting a fight deletes its fmd row.
+  - Scraper-safety checked: fmd inserted only for completed fights with that row's own URL; fights.fight_url only rewritten on upcoming→completed (no fmd yet); only DELETE is cancelled never-completed bouts.
   - Followups #12
 - [x] **S-P2-14** Revoke EXECUTE on `update_fight_ratings()` from PUBLIC/anon/authenticated ✅ 2026-10-18
   - Baked `REVOKE ... FROM PUBLIC, anon, authenticated` into `supabase/deploy_triggers.py` (after the CREATE — a fresh CREATE grants PUBLIC). ACL now `postgres, service_role` only.
@@ -162,6 +164,7 @@ Files: `Login.js`, `JudgeDirectory.js`, `JudgeProfileView.js`, `JudgeComparison.
 
 ## Phase L — New follow-ups from 2026-05-31 (S-P2-9 investigation)
 
+- [ ] **S-P2-21** Add a primary key (and `UNIQUE (fight_url)`) to `fight_meta_details` (found 2026-10-18 during S-P2-12). The table has NO PK/unique constraint at all — `context/schema.md` long claimed `id` was the PK. Data is clean today (8948 rows, 8948 distinct ids, 8948 distinct fight_urls), but one-row-per-fight relies only on `sync_meta()`'s select-before-insert, which two overlapping scraper runs (post-event + live-event workflows) could race. Proposed: `ALTER TABLE fight_meta_details ADD PRIMARY KEY (id), ADD CONSTRAINT fight_meta_details_fight_url_key UNIQUE (fight_url);` (index `idx_fight_meta_details_fight_url` then becomes redundant). Pre-flight: re-check uniqueness; check what else may rely on the table having no PK.
 - [ ] **S-P2-20** Trim table grants on `fight_ratings` (found 2026-10-18 during S-P2-10): `anon` + `authenticated` hold ALL privileges incl. INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER/REFERENCES. RLS blocks the DML (no write policies) and PostgREST exposes no TRUNCATE, so not exploitable today — but TRUNCATE bypasses RLS. Proposed: `REVOKE ALL ON fight_ratings FROM anon, authenticated; GRANT SELECT ON fight_ratings TO anon, authenticated;` baked into `deploy_rls_policies.py`. Worth a sweep of the same pattern on other public tables (Supabase default grants).
 - [x] **S-P2-19** DROP `get_liked_fight_stats()` ✅ 2026-10-18 — `supabase/drop_get_liked_fight_stats.py` re-ran reachability in the live DB (other fns / views / pg_depend / cron: none; `src/` grep empty), dropped, verified no overload remains. Exact definition + grants kept in the script docstring for undo. Docs: `context/rpc-functions.md`, `rpc-deploy` skill list.
 
@@ -184,3 +187,4 @@ Files: `Login.js`, `JudgeDirectory.js`, `JudgeProfileView.js`, `JudgeComparison.
 - 2026-10-18 — **S-P2-14 done.** `supabase/deploy_triggers.py` now revokes EXECUTE on `update_fight_ratings()` from PUBLIC/anon/authenticated (ACL verified: postgres + service_role) and drops `sync_fight_ratings`, an unscripted duplicate trigger that double-fired the recount on every vote. Script verifies the trigger list + ACL and runs a rolled-back vote smoke test (+1, before and after). `context/rpc-functions.md` + `context/schema.md` updated. Remaining Phase C: S-P2-10, S-P2-19, S-P2-12.
 - 2026-10-18 — **S-P2-10 done.** `deploy_rls_policies.py` now owns `fight_ratings` policies: dropped duplicate `"Public Read Ratings"`, one public SELECT policy remains; stale "no RLS / not SECURITY DEFINER" comments corrected. Verified policy set, anon read, and the 5 user tables' own-row policies unchanged. Filed **S-P2-20** (anon/authenticated hold ALL grants incl. TRUNCATE on fight_ratings). Remaining Phase C: S-P2-19, S-P2-12, S-P2-20.
 - 2026-10-18 — **S-P2-19 done.** Dropped dead `get_liked_fight_stats()` via `supabase/drop_get_liked_fight_stats.py` (live reachability re-check first; definition preserved in docstring). Remaining Phase C: S-P2-12, S-P2-20.
+- 2026-10-18 — **S-P2-12 done.** `fight_meta_details_fight_url_fkey` added (ON DELETE CASCADE, DEFERRABLE INITIALLY DEFERRED) via `supabase/migrate_fmd_fight_url_fk.py`; validated over all 8948 rows; rolled-back test: unknown URL rejected, fight delete cascades. Found fmd has **no PK/unique constraint** → filed **S-P2-21**. Remaining Phase C: S-P2-20, S-P2-21.

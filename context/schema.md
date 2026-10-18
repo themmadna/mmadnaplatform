@@ -36,9 +36,11 @@ Full table and view definitions. Update this file whenever a migration adds, rem
 | `card_position` | integer | NULL | ESPN-derived card order: 1 = main event, highest = first fight of night. Set by poll-live-fights + scraper Phase 5 |
 
 ### `fight_meta_details`
+**FK** `fight_meta_details_fight_url_fkey`: `fight_url` → `fights.fight_url` ON DELETE CASCADE, DEFERRABLE INITIALLY DEFERRED (S-P2-12, 2026-10-18, `supabase/migrate_fmd_fight_url_fk.py`) — mirrors `round_fight_stats_fight_url_fkey`. ⚠️ **No primary key or unique constraint in the live DB** (despite `id` reading "PK" below) — one-row-per-`fight_url` is kept only by `sync_meta()`'s select-before-insert. Tracked as S-P2-21.
+
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
-| `id` | uuid PK | NOT NULL | gen_random_uuid() |
+| `id` | uuid | NOT NULL | gen_random_uuid(). Documented as PK but **no PK constraint exists** (verified 2026-10-18; values are unique) |
 | `event_name` | text | NOT NULL | |
 | `bout` | text | NOT NULL | **often reversed vs `fights.bout`** — always join on `fight_url` |
 | `fighter1_name` | text | NOT NULL | |
