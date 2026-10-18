@@ -1,6 +1,6 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-18 (Server-side pick lock deployed — trigger `trg_ufp_lock_started`, 11/11 self-test cases in dry run and live.)
-Next session: **Merge decision** — `feature-predictions` → `main` is the production deploy (Vercel). Predictions stay allowlisted to Bastian (`predictionsEnabled`), but the profile rebuild (Votes/Settings tabs) goes public. Phase C items (S-P2-10/12/14/19) queued after the merge.
+Last updated: 2026-10-18 (`feature-predictions` MERGED to `main` as afbdc7c — production deploy. Predictions allowlisted to Bastian; profile rebuild + per-fight vote gate are public.)
+Next session: **Phase C** — S-P2-10/12/14/19 (see `memory/audits/REMEDIATION-PLAN.md`). Predictions public launch = `predictionsEnabled` → `!!session` in `src/featureFlags.js`, whenever Bastian decides.
 Last refreshed: 2026-05-16
 
 ---
@@ -12,6 +12,7 @@ Last refreshed: 2026-05-16
 - **Constraints:** production migration — Bastian approved, Claude ran it. Reveal (`revealed_at`) must keep working after the fight; scratched-bout picks must still orphan via ON DELETE SET NULL.
 - **Progress:** [x] `supabase/migrate_prediction_lock.py` — BEFORE INSERT/UPDATE/DELETE trigger, API roles only; locked = started OR ended OR completed. [x] Dry run (trigger + self-test in one rolled-back transaction) 11/11 PASS; applied; trigger present; rows 48 = 48; live self-test 11/11 PASS (fixtures o1=9106 o2=9105 d=9095). [x] `context/schema.md` updated.
 - **Decisions:** clearing a pick after the start is blocked too (would let a miss be erased from the record). Locks at the first bell — no walkout timestamp in the DB; the app keeps the walkout lock. Exemption is by `current_user` (RI actions run as table owner). Not exercised for real: an actual fight-row DELETE (simulated as an owner UPDATE to NULL).
+- **Merged (same day):** `feature-predictions` → `main` as `afbdc7c` (Bastian approved); local `main` first merged `origin/main` (keepalive commit) — its one unpushed commit 2deaa23 was already on the feature branch.
 - **Cleanup (same day):** all 48 test picks deleted (Bastian's call, all his, 4 cards) before the merge; backup at `espn_probe_logs/predictions_backup_20261018.json` (gitignored, local only). Table now empty.
 - **NextSteps:** see Next session line.
 

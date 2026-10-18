@@ -317,6 +317,7 @@ Reusable patterns and non-obvious gotchas. Organized by topic — add new entrie
 - **Before any cleanup or file deletion work, check for multiple `.git` directories** (`find . -name ".git" -maxdepth 3`). Two repos pointing to the same remote produce destructive-looking commits.
 - **When two repos share a remote, establish the canonical one and delete the other's `.git` before making any commits.** Never push from both.
 - **Always check `git remote -v` in both repos before any push** to confirm they're not sharing a remote.
+- **After a stash → checkout → merge → push → stash pop sequence, check `git status` before trusting it.** On 2026-10-18 the index came back EMPTY (every file "deleted" + all untracked) while HEAD, origin and the working tree were fine — likely VS Code's git touching the index at the same moment. `git ls-files | wc -l` = 0 confirms it; plain `git reset` (mixed) rebuilds the index from HEAD without touching files. Never commit from that state — it would delete the whole repo.
 
 ---
 
