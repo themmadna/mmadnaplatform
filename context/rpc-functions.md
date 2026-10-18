@@ -354,3 +354,7 @@ Frontend: `dataService.getScoringInsights()` → lazy-fetched in App.js when `cu
 ## `update_fight_ratings()` (trigger function)
 
 Trigger on `user_votes` (INSERT/UPDATE/DELETE). Recounts likes/dislikes/favorites for the affected fight and upserts into `fight_ratings`.
+
+- **One trigger only: `update_fight_ratings_trigger`.** An unscripted duplicate, `sync_fight_ratings` (same function, same events), double-fired the recount on every vote until it was dropped 2026-10-18. `deploy_triggers.py` drops it on every run and verifies the trigger list.
+- **EXECUTE: `postgres` + `service_role` only** (S-P2-14, 2026-10-18). Revoked from PUBLIC/anon/authenticated — Postgres checks EXECUTE on a trigger function only at CREATE TRIGGER, not when it fires, so votes still recount. The revoke sits after the CREATE in the deploy script because a fresh CREATE grants PUBLIC by default.
+- `deploy_triggers.py` ends with a rolled-back smoke test: casts a vote as the allowlisted user and requires `likes_count` +1.

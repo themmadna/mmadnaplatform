@@ -160,7 +160,7 @@ Pre-fight winner picks (swipe-to-predict). Unique constraint: `(user_id, fight_i
 | Title / Interim | **raw `fights.weight_class` only** — `weight_class_clean` strips title wording (verified: 0 of 6 real title fights retained it) |
 
 ### `fight_ratings`
-Aggregated vote counts, maintained by `update_fight_ratings` trigger.
+Aggregated vote counts, maintained by the `update_fight_ratings_trigger` trigger on `user_votes` (one trigger — duplicate `sync_fight_ratings` dropped 2026-10-18; see `context/rpc-functions.md`).
 
 | Column | Type | Nullable | Notes |
 |---|---|---|---|
