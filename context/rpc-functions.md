@@ -25,7 +25,7 @@ function body, or the next redeploy silently drops the hardening. Verify with
 
 **EXECUTE grants (S-P2-9, 2026-05-31):** The user-scoped RPCs
 (`get_user_judging_profile()`, `get_user_judge_comparison(text)`,
-`get_scoring_insights()`, `get_liked_fight_stats()`) have `anon` + `PUBLIC`
+`get_scoring_insights()`; the 4th, `get_liked_fight_stats()`, has since been dropped — S-P2-19) have `anon` + `PUBLIC`
 EXECUTE **revoked** — only `authenticated` (+ `postgres`/`service_role`) can call
 them. They key on `auth.uid()`, so a guest call returned empty before and now
 errors with permission-denied; the dataService wrappers all guard with
@@ -202,17 +202,9 @@ Frontend: `getRecommendations(userId, combatDNA)` — both args required, maps t
 
 ---
 
-## `get_liked_fight_stats()`
+## ~~`get_liked_fight_stats()`~~ — DROPPED 2026-10-18 (S-P2-19)
 
-Returns all `round_fight_stats` rows for fights the current user (`auth.uid()`) has liked.
-
-```
-Returns: SETOF round_fight_stats
-```
-
-- `LANGUAGE sql STABLE`, **SECURITY INVOKER** (not DEFINER → not in the S-P2-8 set).
-- anon/PUBLIC EXECUTE revoked (S-P2-9, applied ad-hoc — see below).
-- ⚠️ **DEAD + ORPHAN + buggy — flagged for DROP (S-P2-19).** No frontend usage (not in `src/`), not referenced by any DB function or view, and has **no version-controlled deploy script** (the S-P2-9 revoke was applied ad-hoc, not baked into a script). It also joins `round_fight_stats`↔`fights` on `(event_name, bout)` — the Convention #9 reversal risk — so even if revived it would mis-join. Recommend `DROP FUNCTION` pending approval rather than reconstructing a deploy script for dead code.
+Returned `round_fight_stats` rows for fights the current user had liked. Dead (no `src/` caller, no DB function/view/cron reference), orphan (hand-made, never scripted) and buggy (joined rfs↔fights on `(event_name, bout)`, Convention #9). Dropped by `supabase/drop_get_liked_fight_stats.py`, whose docstring holds the exact definition + grants if it ever needs restoring. If liked-fight stats are wanted again, write a new RPC that joins rfs on `fight_url`.
 
 ---
 

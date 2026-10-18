@@ -156,7 +156,6 @@ Bottom nav has 4 fixed tabs — new views are typically accessed via in-view lin
 | `get_user_judge_comparison(judge_name)` | User vs specific judge |
 | `get_community_scorecard(fight_id)` | Per-round community average |
 | `get_fight_recommendations(user_id, ...7 DNA params)` | DNA-distance recommendations |
-| `get_liked_fight_stats()` | Stats for user's liked fights |
 
 Check this list before adding a new function — the capability may already exist.
 
