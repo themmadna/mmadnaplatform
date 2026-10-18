@@ -61,12 +61,16 @@ if not events:
 
 
 def card(event_name):
-    """(total, completed, with_winner) for one event."""
+    """(total, completed, with_winner) for one event.
+
+    with_winner counts COMPLETED fights only: poll-live-fights writes ESPN's winner on
+    upcoming rows during the event, so a bare winner no longer proves the scraper ran.
+    """
     rows = (sb.table("fights").select("status,winner")
             .eq("event_name", event_name).execute().data or [])
     return (len(rows),
             sum(1 for r in rows if r["status"] == "completed"),
-            sum(1 for r in rows if r["winner"]))
+            sum(1 for r in rows if r["status"] == "completed" and r["winner"]))
 
 
 # --- 1. FRESHNESS ---------------------------------------------------------------

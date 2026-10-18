@@ -151,6 +151,8 @@ Prevents deletion of fight records mid-event. **Both conditions required:**
 
 `any_newly_completed` alone is insufficient: Phase 0.5 re-adds fights already completed in a prior run, so `any_newly_completed` stays False even though the event isn't over.
 
+Deleting a cancelled fight explicitly deletes its `user_votes` first. `user_fight_predictions` is deliberately **not** deleted: its FK is ON DELETE SET NULL, so the pick survives with `fight_id` NULL and the profile shows it as void ("bout cancelled"). Don't add a predictions delete here.
+
 ### Phase 3 NULL-Winner Decision Rescrape
 
 `sync_meta` runs `rescrape_null_winner_decisions(event_name)` after the main insert loop. The function selects `fight_meta_details` rows where `winner IS NULL AND method ILIKE 'Decision%'`, optionally filtered to the current event's URLs, and re-fetches each via `parse_fight_meta_details`. If the parse returns a winner, both `fmd.winner`/`fmd.result` and `fights.winner` are updated. If the parse still returns `winner=None` (a genuine draw — both fighters have "D" status on ufcstats), no update fires.

@@ -178,6 +178,11 @@ The Project Brain lives in `memory/` at the root of this repo. Read the relevant
 
 ### Global Brain
 Location: `~/bastian-global-brain/`
+
+- **Scan `BRAIN-INDEX.md` first.** One line per LESSONS and PLAYBOOK entry — title, trigger keywords, target section. Match on keywords, then load only that section. Do not read LESSONS.md or PLAYBOOK.md whole to find out whether they say anything relevant.
 - Read `OPERATING.md` when onboarding or uncertain how to proceed
-- Read `LESSONS.md` when hitting blockers or making architectural decisions
-- Read `PLAYBOOK.md` when starting a new feature or planning a session
+- Read `LESSONS.md` when hitting blockers or making architectural decisions — via the index above
+- Read `PLAYBOOK.md` when starting a new feature or planning a session — via the index above
+- `wiki/` — topic-indexed research, ~1,300 entries. **Archive tier: grep it, never load a page whole.** `grep '^## ' ~/bastian-global-brain/wiki/*.md --exclude=SEARCH-INDEX.md` lists every entry heading and *is* the index; then open only the page that matched. Ignore `wiki/SEARCH-INDEX.md` — it is a frozen artifact with dead anchors.
+- Read `wiki/synthesis/structural.md` before proposing any change to the Project Intelligence System's architecture
+- `feed/` — daily HTML briefings, the raw research behind the wiki
