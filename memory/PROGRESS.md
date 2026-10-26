@@ -1,7 +1,19 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-26 (CI outage fixed, UFC 333 + Moicano vs Nolan backfilled, mmadecisions rematch skip fixed; scrapers + CI moved to Python 3.12; dateutil 2.9; judge_scores_coverage per-fight rewrite deployed.)
-Next session: **Phase C leftovers** — S-P2-21 (fight_meta_details has NO primary key / unique — add PK(id) + UNIQUE(fight_url)), S-P2-20 (trim fight_ratings grants; sweep other public tables). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
+Last updated: 2026-10-26 (sectioned /code-review of `main` — ~80 unverified findings logged as a to-do. Earlier same day: CI outage fixed, UFC 333 + Moicano vs Nolan backfilled, mmadecisions rematch skip fixed; scrapers + CI moved to Python 3.12; dateutil 2.9; judge_scores_coverage per-fight rewrite deployed.)
+Next session: **Code review to-do** — `memory/audits/2026-10-26-code-review/TODO.md`, starting with G1 security (S5-5 `record-fight-status` authz → S6b-1 PUBLIC grant → S1-1 sign-out state leak), then G2. S4-3 pairs with **S-P2-21** (fmd PK + UNIQUE), and S6b-1 overlaps with **S-P2-20** (grants sweep), so do those Phase C leftovers alongside. Verify each premise before fixing. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
 Last refreshed: 2026-05-16
+
+---
+
+## Sectioned code review of `main` — 2026-10-26 (`main`)
+
+**Checkpoint**
+- **Goal:** a full correctness sweep of `main`, done section by section rather than in one pass.
+- **Constraints:** review only, no code changes. `/code-review ultra` is user-triggered/billed, so it wasn't used.
+- **Progress:** [x] `/code-review` with path targets across 8 sections (S1 frontend core · S2 scoring UI · S3 other frontend · S4 scrapers · S5 live events + CI · S6a DB structure · S6b RPCs · S7 ML), 10 findings each. [x] Consolidated into `memory/audits/2026-10-26-code-review/findings.md` + a grouped, ordered `TODO.md` (G1 security → G10 smaller issues).
+- **Decisions:** review everything before fixing, because the issues cross sections (name matching, time zones, draw/NC semantics) and are better fixed once. Skipped the one-off `migrate_*`/`fix_*` scripts.
+- **Known:** all findings are unverified. S6a-1 (fight_ratings trigger vs cascade delete) needs a rolled-back txn test before anyone assumes auto-delete is broken. S7-1 (ratio mirror) means a retrain → `scoring_model.json` changes → needs sign-off.
+- **NextSteps:** see Next session line.
 
 ---
 
