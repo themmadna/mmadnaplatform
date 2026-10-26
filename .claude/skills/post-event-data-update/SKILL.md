@@ -78,7 +78,7 @@ Authorization: Bearer <SUPABASE_MANAGEMENT_KEY>
 
 **Healthy result:** All fights from the event show stats populated, `judge_scores` present for completed fights.
 
-**If judge scores missing:** This is expected for fights with no mmadecisions entry (pre-2010 or obscure cards). Current baseline: 5,412 complete, 55 partial, 678 missing.
+**If judge scores missing:** This is expected for fights with no mmadecisions entry (pre-2010 or obscure cards). Current baseline (`judge_scores_coverage`, 2026-10-26): 3,340 complete, 156 partial, 703 missing, 1 excess. Check the new event's decisions in that view — each should read `complete` with `matched_bouts = 1`.
 
 ---
 

@@ -134,10 +134,11 @@ WHERE js.event_name = f.event_name
 
 **Judge row dedup:** When linking judge rows to fights, require BOTH `f1Row` AND `f2Row` to match. Matching on only one fighter name causes cross-fight collisions (same fighter name appears in multiple fights on the same card).
 
-**Expected coverage baseline:**
-- 5,412 fights: complete judge data
-- 55 fights: partial
-- 678 fights: missing (pre-2010 or no mmadecisions entry) — this is expected, not a bug
+**Expected coverage baseline** (`judge_scores_coverage` view, 2026-10-26 — decisions + overturned):
+- 3,340 fights: complete judge data
+- 156 fights: partial (mmadecisions has only 1–2 judges' cards)
+- 703 fights: missing (pre-2010 or no mmadecisions entry) — this is expected, not a bug
+- 1 fight: excess — duplicate scorecards under a name variant (`matched_bouts > 1`)
 
 **Weight class join:** Use `fight_meta_details.weight_class_clean` (normalized) for analytics. `fights.weight_class` is raw from ESPN and inconsistently formatted.
 

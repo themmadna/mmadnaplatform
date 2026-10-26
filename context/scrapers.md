@@ -126,7 +126,7 @@ The post-event, live-event and freshness workflows run Python **3.12** on `ubunt
 
 - **Symptom of a recurrence:** a wall of ~10-second red runs; `gh run view <id> --log-failed` shows `The version 'X' ... was not found`. Python 3.12 is supported upstream until 2028-10 — expect to bump again before then.
 - **ML deps are split out:** `scikit-learn==1.0.1` / `pandas==1.5.3` live in `scoring_model/requirements.txt`. They have no 3.12 wheels, so offline model training still needs Python 3.9 (still installed locally) until those pins are upgraded and the model retrained/re-validated. Nothing in CI or the scrapers imports them.
-- **Library deprecation noise on 3.12** (harmless): `dateutil` 2.8.2 `utcfromtimestamp`, `supabase` client `timeout`/`verify` params. Clearing the dateutil one = bump to 2.9.x.
+- **Deprecation noise on 3.12** (harmless): only the `supabase` client's internal `timeout`/`verify` params remain. `python-dateutil` was bumped 2.8.2 → 2.9.0.post0 (2026-10-26) to clear its `utcfromtimestamp` warning; stayed off 3.0 (major version).
 
 **Backfilling an event missed by the cron:** `--post-event` only acts within `start_time + 5h … + 48h`, so once that window has passed, a fixed cron will **not** pick the event up. Run the full pipeline (no flag) instead — it is idempotent.
 
@@ -202,7 +202,7 @@ python scrape_mmadecisions.py --no-stop    # Disable 10-event stop threshold (ga
 
 **Name extraction:** always from link display text (proper casing, spaces), never from URL slugs. URL slugs produce names that never join to UFC Stats data.
 
-**Data state (as of Phase 2 cleanup):** 5,412 complete, 55 partial (SQL name-match artefacts, frontend handles via matchesFighter), 678 missing (pre-2010 or mmadecisions genuinely lacks data).
+**Data state (`judge_scores_coverage`, 2026-10-26, decisions + overturned):** 3,340 complete, 156 partial (mmadecisions has only 1–2 judges' cards), 703 missing (pre-2010 or mmadecisions genuinely lacks data), 1 excess (duplicate under a name variant). The older "5,412 / 55 / 678" figures came from the pre-rewrite view, which counted every row on the event date — not comparable.
 
 ---
 

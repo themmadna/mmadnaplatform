@@ -1,5 +1,5 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-26 (CI outage fixed, UFC 333 + Moicano vs Nolan backfilled, mmadecisions rematch skip fixed; scrapers + CI moved to Python 3.12.)
+Last updated: 2026-10-26 (CI outage fixed, UFC 333 + Moicano vs Nolan backfilled, mmadecisions rematch skip fixed; scrapers + CI moved to Python 3.12; dateutil 2.9; judge_scores_coverage per-fight rewrite deployed.)
 Next session: **Phase C leftovers** — S-P2-21 (fight_meta_details has NO primary key / unique — add PK(id) + UNIQUE(fight_url)), S-P2-20 (trim fight_ratings grants; sweep other public tables). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
 Last refreshed: 2026-05-16
 
@@ -12,7 +12,9 @@ Last refreshed: 2026-05-16
 - **Constraints:** don't change ML training behaviour (`scoring_model.json` must not shift silently).
 - **Progress:** [x] `requirements.txt` → scraper deps only (unchanged pins); `scikit-learn`/`pandas` moved to `scoring_model/requirements.txt` (no scraper or CI script imports them). [x] Deps installed into local Python 3.12.10 (was a bare install). [x] All 48 repo `.py` files compile on 3.12 with `-W error`. [x] Full pipeline on 3.12: all phases 0→6, exit 0, 0 writes (data already current → same output as 3.9). [x] `scrape_mmadecisions.py --start 2026` on 3.12: dedup intact, stops at 10. [x] Workflows: `python-version: '3.12'`, back to `runs-on: ubuntu-latest`. [x] Interpreter path updated in CLAUDE.md, PROJECT.md, context/scrapers.md, post-event + rpc-deploy skills, `.env.example`.
 - **Decisions:** 3.12 (supported to 2028-10; available on Ubuntu 24.04 + 26.04 runners). ML pins left as-is → training still runs on local Python 3.9 until someone upgrades them and retrains.
-- **NextSteps:** confirm the first scheduled 3.12 run is green on GitHub. Optional: bump `python-dateutil` to 2.9.x to clear the `utcfromtimestamp` deprecation warning.
+- **Verified:** first scheduled run on `bc52e76` (Post-Event, 22:07Z) green on 3.12 — setup + install OK, then skipped (UFC 333 window expired, already backfilled).
+- **Follow-ups (same day):** [x] `python-dateutil` 2.8.2 → 2.9.0.post0 (not 3.0); `check_data_freshness.py` off `utcnow()`; full pipeline rerun on 3.12 exit 0, 0 writes. Remaining 3.12 warnings are supabase-client internals only. [x] `judge_scores_coverage` rewritten to per-fight matching, scope = decisions + Overturned (other stoppages never have mmadecisions cards — 12 of 2,268 had rows, all Overturned). Dry-run then deployed via new `supabase/deploy_judge_scores_coverage.py`: grants unchanged, 3,340 complete · 156 partial · 703 missing · 1 excess; Yan vs Dvalishvili 3 = 30 rows complete. Baselines updated in schema.md, scrapers.md, post-event + scraper-debug skills.
+- **Found, not fixed:** Bashi vs Delgado (2026-07-18) has duplicate scorecards — 36 rows under "Jose Delgado vs Austin Bashi" and "Jose Miguel Delgado vs Austin Bashi". Check whether the frontend double-counts before deleting either set.
 
 ---
 
@@ -23,7 +25,7 @@ Last refreshed: 2026-05-16
 - **Constraints:** push to `main` needs Bastian's OK (Vercel). `gh` account `ZuskiVibeCode` lacks admin, so it can't trigger `workflow_dispatch`.
 - **Progress:** [x] Cause: `ubuntu-latest` → Ubuntu 26.04 has no Python 3.9; every scraper and freshness run failed at setup-python from 2026-10-21 19:48Z. [x] `runs-on: ubuntu-24.04` on the 3 Python workflows, pushed `a2c4dcf` (plus the unpushed `4e546b1`). [x] Full pipeline run locally (`--post-event` window had closed): 1 event, 13 new fights, 14 updated, 62 round rows. [x] Audit: UFC 333 14/14 completed + winners + fmd, rfs = 2 × rounds on every bout, no stale `upcoming` rows; UFC FN Moicano vs Nolan (2026-10-31) 13 fights, start_time 21:00Z, all 13 ESPN comp ids linked. [x] Yan vs Dvalishvili 3 had no scorecards — `scrape_mmadecisions.py` skip check was name-only and matched UFC 323's rematch → now name + event date ±1 day; 2026-only rerun added the 30 rows, all other bouts still skipped. [x] Freshness check: UFC 333 ✅. [x] Freshness hint lists "runs failing in setup".
 - **Decisions:** pinned the runner instead of bumping Python — the old ML pins likely won't install on 3.11+. Backfilled with a local run instead of waiting for the cron.
-- **Known:** freshness check stays red on Allen vs Duncan 11/12 (Gatto vs Kareckaite draw, `winner=''`) until it ages out of the 30-day window ~2026-11-09 — false positive. `judge_scores_coverage` counts every row on the date, so it marks a bout "complete" even with 0 rows of its own (Yan–Dvalishvili showed complete while missing).
+- **Known:** freshness check stays red on Allen vs Duncan 11/12 (Gatto vs Kareckaite draw, `winner=''`) until it ages out of the 30-day window ~2026-11-09 — false positive. (`judge_scores_coverage` over-counting: fixed same day, see the Python 3.12 checkpoint.)
 - **NextSteps:** see Next session line.
 
 ---

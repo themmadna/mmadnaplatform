@@ -19,7 +19,7 @@ Exits non-zero when either fails, so the GitHub Actions run goes red and emails.
 """
 import os
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -46,7 +46,7 @@ sb = create_client(url, key)
 today = date.today()
 failures = []
 
-print(f"🔎 Data freshness check — {datetime.utcnow().isoformat(timespec='seconds')}Z")
+print(f"🔎 Data freshness check — {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S')}Z")
 print(f"   stale_after={STALE_AFTER_DAYS}d  completeness_window={COMPLETENESS_WINDOW_DAYS}d\n")
 
 events = (sb.table("ufc_events")

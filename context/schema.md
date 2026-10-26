@@ -241,12 +241,17 @@ Joins `ufc_events` → `fights` → `fight_meta_details` → `round_fight_stats`
 | `fight_status` | `❓ NO META DATA` / `✅ COMPLETE` / `❌ MISSING` / `⚠️ PARTIAL` |
 
 ### `judge_scores_coverage`
-Coverage per decision fight. Joins `fight_meta_details` → `ufc_events` → `judge_scores` (±1 day window). SQL in `supabase/views/judge_scores_coverage.sql`.
+Coverage per completed decision fight (+ `Overturned` — decisions later made NC; other stoppages excluded, mmadecisions has no cards for them). Diagnostic only — nothing in the app or scripts reads it. SQL in `supabase/views/judge_scores_coverage.sql`, deployed by `supabase/deploy_judge_scores_coverage.py`.
+
+**Per-fight matching** (rewritten 2026-10-26): a `judge_scores` bout (bout + date, ±1 day) belongs to the fight when either fighter's normalised full name matches a fighter on it, or the bout string contains both fighters' (distinct) last names; all rows of matched bouts are counted. Before the rewrite it counted *every* row on the date, so any fight on a card with ≥1 scorecard read `complete`.
 
 | Column | Notes |
 |---|---|
 | `event_date`, `event_name`, `fight_url` | identifiers |
 | `fighter1_name`, `fighter2_name`, `method`, `rounds_fought` | from fight_meta_details |
 | `expected_rows` | rounds × 6 (3 judges × 2 fighters) |
-| `score_rows_on_date` | actual judge_scores rows matched |
-| `coverage_status` | `'missing'` / `'partial'` / `'complete'` |
+| `score_rows_on_date` | judge_scores rows for **this fight** (name kept for compatibility) |
+| `coverage_status` | `'missing'` / `'partial'` (usually mmadecisions has only 1–2 judges' cards) / `'complete'` / `'excess'` (duplicate scorecards under two bout names) |
+| `matched_bouts` | number of judge_scores bouts matched — `> 1` = duplicate stored under a name variant |
+
+Baseline 2026-10-26 (4,200 fights): 3,340 complete · 156 partial · 703 missing · 1 excess (Bashi vs Delgado 2026-07-18, stored as both "Jose Delgado" and "Jose Miguel Delgado").
