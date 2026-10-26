@@ -40,7 +40,7 @@
 ### Python Data Pipeline
 | Tool | Role |
 |------|------|
-| Python 3.9 | All scrapers (`C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe`) |
+| Python 3.12 | All scrapers (`C:/Users/sabzu/AppData/Local/Programs/Python/Python312/python.exe`) |
 | requests + BeautifulSoup4 | Web scraping (ufcstats.com, mmadecisions.com) |
 | supabase-py | Database writes (threaded, thread-local instances) |
 | argparse | CLI interface for scraper phases |

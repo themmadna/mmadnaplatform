@@ -13,7 +13,7 @@ Before running anything, confirm these are set in the shell environment:
 - `SUPABASE_URL` — Supabase project URL
 - `SUPABASE_SERVICE_KEY` — **Service key required for all writes.** Anon key fails silently with no error.
 
-Python path: `C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe`
+Python path: `C:/Users/sabzu/AppData/Local/Programs/Python/Python312/python.exe`
 
 Working directory: `c:/Users/sabzu/Documents/VS Ufc/ufc-web-app/`
 
@@ -23,7 +23,7 @@ Working directory: `c:/Users/sabzu/Documents/VS Ufc/ufc-web-app/`
 
 ```bash
 cd "c:/Users/sabzu/Documents/VS Ufc/ufc-web-app"
-C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe "master file for data update.py"
+C:/Users/sabzu/AppData/Local/Programs/Python/Python312/python.exe "master file for data update.py"
 ```
 
 **What this covers:**
@@ -45,7 +45,7 @@ C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe "master file fo
 ## Step 2 — Run Phase 6 (Judge Scorecards)
 
 ```bash
-C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe scrape_mmadecisions.py
+C:/Users/sabzu/AppData/Local/Programs/Python/Python312/python.exe scrape_mmadecisions.py
 ```
 
 **What this covers:** Official judge names, per-round scores, decision type from mmadecisions.com.

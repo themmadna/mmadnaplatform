@@ -46,7 +46,7 @@ ufc-web-app/
 
 - React (Create React App), Tailwind CSS, Recharts, Lucide React
 - Supabase JS client, deployed on Vercel
-- Python 3.9 scrapers: `requests`, `beautifulsoup4`, `python-dotenv`, `supabase`, `python-dateutil`
+- Python 3.12 scrapers: `requests`, `beautifulsoup4`, `python-dotenv`, `supabase`, `python-dateutil`
 
 ---
 
@@ -58,7 +58,7 @@ npm start               # Dev server at localhost:3000
 npm run build           # Production build
 
 # Scrapers (from ufc-web-app/)
-# Python: C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe
+# Python: C:/Users/sabzu/AppData/Local/Programs/Python/Python312/python.exe
 python "master file for data update.py"   # Full pipeline — run after each UFC event
 python scrape_mmadecisions.py             # Judge scorecards — run separately
 ```

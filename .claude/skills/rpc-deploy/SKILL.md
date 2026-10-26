@@ -68,7 +68,7 @@ print(resp.status_code, resp.json())
 
 Run with:
 ```bash
-C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe supabase/deploy_<function_name>.py
+C:/Users/sabzu/AppData/Local/Programs/Python/Python312/python.exe supabase/deploy_<function_name>.py
 ```
 
 **Expect:** `200` with `{"results": []}` or `{"results": [{"command": "CREATE FUNCTION"}]}`.

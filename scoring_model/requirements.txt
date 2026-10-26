@@ -1,0 +1,7 @@
+# ML model training (scoring_model/ scripts only) — not needed by the scrapers or CI.
+# These pins predate the Python 3.12 move and have no 3.12 wheels: install them on
+# Python 3.9, or upgrade the pins (retrain + re-validate scoring_model.json) first.
+# Install: pip install -r scoring_model/requirements.txt
+
+scikit-learn==1.0.1
+pandas==1.5.3

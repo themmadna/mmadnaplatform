@@ -1,7 +1,18 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-26 (CI outage fixed — runner pinned, UFC 333 + Moicano vs Nolan backfilled, mmadecisions rematch skip fixed.)
-Next session: **CI Python upgrade** (3.9 → 3.11+, bump scikit-learn/pandas pins; the ubuntu-24.04 pin is a stopgap), then **Phase C leftovers** — S-P2-21 (fight_meta_details has NO primary key / unique — add PK(id) + UNIQUE(fight_url)), S-P2-20 (trim fight_ratings grants; sweep other public tables). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
+Last updated: 2026-10-26 (CI outage fixed, UFC 333 + Moicano vs Nolan backfilled, mmadecisions rematch skip fixed; scrapers + CI moved to Python 3.12.)
+Next session: **Phase C leftovers** — S-P2-21 (fight_meta_details has NO primary key / unique — add PK(id) + UNIQUE(fight_url)), S-P2-20 (trim fight_ratings grants; sweep other public tables). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
 Last refreshed: 2026-05-16
+
+---
+
+## Scrapers + CI → Python 3.12 — 2026-10-26 (`main`)
+
+**Checkpoint**
+- **Goal:** get off EOL Python 3.9 so the scraper crons don't break again; replace the `ubuntu-24.04` stopgap pin.
+- **Constraints:** don't change ML training behaviour (`scoring_model.json` must not shift silently).
+- **Progress:** [x] `requirements.txt` → scraper deps only (unchanged pins); `scikit-learn`/`pandas` moved to `scoring_model/requirements.txt` (no scraper or CI script imports them). [x] Deps installed into local Python 3.12.10 (was a bare install). [x] All 48 repo `.py` files compile on 3.12 with `-W error`. [x] Full pipeline on 3.12: all phases 0→6, exit 0, 0 writes (data already current → same output as 3.9). [x] `scrape_mmadecisions.py --start 2026` on 3.12: dedup intact, stops at 10. [x] Workflows: `python-version: '3.12'`, back to `runs-on: ubuntu-latest`. [x] Interpreter path updated in CLAUDE.md, PROJECT.md, context/scrapers.md, post-event + rpc-deploy skills, `.env.example`.
+- **Decisions:** 3.12 (supported to 2028-10; available on Ubuntu 24.04 + 26.04 runners). ML pins left as-is → training still runs on local Python 3.9 until someone upgrades them and retrains.
+- **NextSteps:** confirm the first scheduled 3.12 run is green on GitHub. Optional: bump `python-dateutil` to 2.9.x to clear the `utcfromtimestamp` deprecation warning.
 
 ---
 

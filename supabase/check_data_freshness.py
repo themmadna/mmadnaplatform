@@ -125,7 +125,7 @@ if failures:
     print("     A \"state\": \"disabled_inactivity\" is conclusive. Re-enable in the Actions tab.")
     print("  2. ufcstats changed its proof-of-work challenge — see context/scrapers.md.")
     print("  3. Runs failing in setup, not scraping (~10s runs) — e.g. the runner image dropped")
-    print("     Python 3.9. `gh run list` then `gh run view <id> --log-failed`.")
+    print("     the workflows' Python version. `gh run list` then `gh run view <id> --log-failed`.")
     print("  4. Supabase key rotated / secrets stale.")
     sys.exit(1)
 

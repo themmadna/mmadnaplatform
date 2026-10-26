@@ -20,7 +20,7 @@ Both scrapers load `.env` via `Path(__file__).parent / '.env'`.
 
 ## Python Path
 
-`C:/Users/sabzu/AppData/Local/Programs/Python/Python39/python.exe`
+`C:/Users/sabzu/AppData/Local/Programs/Python/Python312/python.exe`
 
 ---
 
@@ -120,9 +120,13 @@ The ESPN comp-id / `card_position` half of Phase 5 (step 4b) still only matches 
 - The disable lands mid-cron, so the event in flight is left half-scraped rather than cleanly skipped.
 - Mitigation: `.github/workflows/keepalive.yml` pushes an empty commit on `0 6 1 * *` (monthly). The message carries `[skip ci]` so Vercel does not redeploy for it. The keepalive is itself a scheduled workflow, so it keeps *itself* alive too — but only while it is enabled; if everything is ever disabled again, it must be re-enabled by hand like the others.
 
-### Runner OS pinned to `ubuntu-24.04` (Python 3.9)
+### CI Python version (3.12)
 
-The post-event, live-event and freshness workflows pin `runs-on: ubuntu-24.04`. When `ubuntu-latest` moved to Ubuntu 26.04 (first failure 2026-10-21 19:48Z), `actions/setup-python` had no 3.9 build for it, so every run died in ~10s at setup and UFC 333 (2026-10-24) went unscraped. Symptom: a wall of ~10-second red runs; `gh run view <id> --log-failed` shows `The version '3.9' ... was not found`. The pin is a stopgap — Python 3.9 is EOL and 24.04 will be retired too. The real fix is moving CI to 3.11+, which means upgrading the `scikit-learn==1.0.1` / `pandas==1.5.3` pins in `requirements.txt` (used only by `scoring_model/`).
+The post-event, live-event and freshness workflows run Python **3.12** on `ubuntu-latest` and install only the root `requirements.txt` (scraper deps). History: on 2026-10-21 `ubuntu-latest` moved to Ubuntu 26.04, which has no Python 3.9 build for `actions/setup-python`, so every run died in ~10s at setup and UFC 333 (2026-10-24) went unscraped. Stopgap pin to `ubuntu-24.04` (`a2c4dcf`), then moved to 3.12 on 2026-10-26.
+
+- **Symptom of a recurrence:** a wall of ~10-second red runs; `gh run view <id> --log-failed` shows `The version 'X' ... was not found`. Python 3.12 is supported upstream until 2028-10 — expect to bump again before then.
+- **ML deps are split out:** `scikit-learn==1.0.1` / `pandas==1.5.3` live in `scoring_model/requirements.txt`. They have no 3.12 wheels, so offline model training still needs Python 3.9 (still installed locally) until those pins are upgraded and the model retrained/re-validated. Nothing in CI or the scrapers imports them.
+- **Library deprecation noise on 3.12** (harmless): `dateutil` 2.8.2 `utcfromtimestamp`, `supabase` client `timeout`/`verify` params. Clearing the dateutil one = bump to 2.9.x.
 
 **Backfilling an event missed by the cron:** `--post-event` only acts within `start_time + 5h … + 48h`, so once that window has passed, a fixed cron will **not** pick the event up. Run the full pipeline (no flag) instead — it is idempotent.
 
