@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   scrape-live:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04  # pinned: ubuntu-latest (26.04) has no Python 3.9 build
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
