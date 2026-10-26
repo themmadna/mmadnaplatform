@@ -120,6 +120,12 @@ The ESPN comp-id / `card_position` half of Phase 5 (step 4b) still only matches 
 - The disable lands mid-cron, so the event in flight is left half-scraped rather than cleanly skipped.
 - Mitigation: `.github/workflows/keepalive.yml` pushes an empty commit on `0 6 1 * *` (monthly). The message carries `[skip ci]` so Vercel does not redeploy for it. The keepalive is itself a scheduled workflow, so it keeps *itself* alive too — but only while it is enabled; if everything is ever disabled again, it must be re-enabled by hand like the others.
 
+### Runner OS pinned to `ubuntu-24.04` (Python 3.9)
+
+The post-event, live-event and freshness workflows pin `runs-on: ubuntu-24.04`. When `ubuntu-latest` moved to Ubuntu 26.04 (first failure 2026-10-21 19:48Z), `actions/setup-python` had no 3.9 build for it, so every run died in ~10s at setup and UFC 333 (2026-10-24) went unscraped. Symptom: a wall of ~10-second red runs; `gh run view <id> --log-failed` shows `The version '3.9' ... was not found`. The pin is a stopgap — Python 3.9 is EOL and 24.04 will be retired too. The real fix is moving CI to 3.11+, which means upgrading the `scikit-learn==1.0.1` / `pandas==1.5.3` pins in `requirements.txt` (used only by `scoring_model/`).
+
+**Backfilling an event missed by the cron:** `--post-event` only acts within `start_time + 5h … + 48h`, so once that window has passed, a fixed cron will **not** pick the event up. Run the full pipeline (no flag) instead — it is idempotent.
+
 ### Data Freshness Check (`supabase/check_data_freshness.py`)
 
 Weekly guard against the pipeline dying silently, run by `.github/workflows/data-freshness-check.yml` (`0 12 * * 1`, Mondays after the weekend's events land). Two checks, both of which would have caught the 2026-08 outage within days:
@@ -187,6 +193,8 @@ python scrape_mmadecisions.py --no-stop    # Disable 10-event stop threshold (ga
 ```
 
 **Event filter:** matches `'UFC'`, `'TUF'`, and `'The Ultimate Fighter'` — TUF Finale events are listed without "UFC" on mmadecisions.com.
+
+**Skip check (already-scraped bouts):** a bout is skipped only if `judge_scores` already has that bout name **within ±1 day of the event's date**, read from the year-listing row (`event_date_from_row()`). Rematches reuse the exact bout name — name-only matching skipped Yan vs Dvalishvili 3 (UFC 333) as UFC 323's rematch until 2026-10-26. If the row date can't be parsed, it falls back to the name-only check.
 
 **Name extraction:** always from link display text (proper casing, spaces), never from URL slugs. URL slugs produce names that never join to UFC Stats data.
 

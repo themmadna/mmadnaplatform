@@ -1,7 +1,19 @@
 # UFC Web App — Project Plan
-Last updated: 2026-10-18 (Phase C: S-P2-14, S-P2-10, S-P2-19, S-P2-12 done; S-P2-20 + S-P2-21 filed. Earlier same day: predictions merged to main.)
-Next session: **Phase C leftovers** — S-P2-21 (fight_meta_details has NO primary key / unique — add PK(id) + UNIQUE(fight_url)), S-P2-20 (trim fight_ratings grants; sweep other public tables). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
+Last updated: 2026-10-26 (CI outage fixed — runner pinned, UFC 333 + Moicano vs Nolan backfilled, mmadecisions rematch skip fixed.)
+Next session: **CI Python upgrade** (3.9 → 3.11+, bump scikit-learn/pandas pins; the ubuntu-24.04 pin is a stopgap), then **Phase C leftovers** — S-P2-21 (fight_meta_details has NO primary key / unique — add PK(id) + UNIQUE(fight_url)), S-P2-20 (trim fight_ratings grants; sweep other public tables). See `memory/audits/REMEDIATION-PLAN.md`. Predictions public launch = `predictionsEnabled` → `!!session`, whenever Bastian decides.
 Last refreshed: 2026-05-16
+
+---
+
+## CI outage + UFC 333 backfill — 2026-10-26 (`main`)
+
+**Checkpoint**
+- **Goal:** UFC 333 stats missing and the next event not showing — find why and backfill.
+- **Constraints:** push to `main` needs Bastian's OK (Vercel). `gh` account `ZuskiVibeCode` lacks admin, so it can't trigger `workflow_dispatch`.
+- **Progress:** [x] Cause: `ubuntu-latest` → Ubuntu 26.04 has no Python 3.9; every scraper and freshness run failed at setup-python from 2026-10-21 19:48Z. [x] `runs-on: ubuntu-24.04` on the 3 Python workflows, pushed `a2c4dcf` (plus the unpushed `4e546b1`). [x] Full pipeline run locally (`--post-event` window had closed): 1 event, 13 new fights, 14 updated, 62 round rows. [x] Audit: UFC 333 14/14 completed + winners + fmd, rfs = 2 × rounds on every bout, no stale `upcoming` rows; UFC FN Moicano vs Nolan (2026-10-31) 13 fights, start_time 21:00Z, all 13 ESPN comp ids linked. [x] Yan vs Dvalishvili 3 had no scorecards — `scrape_mmadecisions.py` skip check was name-only and matched UFC 323's rematch → now name + event date ±1 day; 2026-only rerun added the 30 rows, all other bouts still skipped. [x] Freshness check: UFC 333 ✅. [x] Freshness hint lists "runs failing in setup".
+- **Decisions:** pinned the runner instead of bumping Python — the old ML pins likely won't install on 3.11+. Backfilled with a local run instead of waiting for the cron.
+- **Known:** freshness check stays red on Allen vs Duncan 11/12 (Gatto vs Kareckaite draw, `winner=''`) until it ages out of the 30-day window ~2026-11-09 — false positive. `judge_scores_coverage` counts every row on the date, so it marks a bout "complete" even with 0 rows of its own (Yan–Dvalishvili showed complete while missing).
+- **NextSteps:** see Next session line.
 
 ---
 

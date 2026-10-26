@@ -214,6 +214,15 @@ def insert_judge_data_supabase(raw_data, db=None):
 
 # --- 4. MAIN ORCHESTRATOR (OPTIMIZED) ---
 
+def event_date_from_row(link):
+    """Event date from the year-listing row, e.g. 'Oct 24, 2026 | UFC 333: ...'. None if unparsable."""
+    row = link.find_parent('tr')
+    cell = row.find('td') if row else None
+    try:
+        return datetime.strptime(cell.get_text(strip=True), '%b %d, %Y').date()
+    except (AttributeError, ValueError):
+        return None
+
 def scrapeDataFunction(start_year, end_year):
     url = "http://mmadecisions.com/decisions-by-event/"
     base_url = "http://mmadecisions.com/"
@@ -235,10 +244,10 @@ def scrapeDataFunction(start_year, end_year):
         
         # Get all links and their text (Event Names)
         links = year_soup.find_all('a')
-        ufc_events = [(a.get('href'), a.text.strip()) for a in links
+        ufc_events = [(a.get('href'), a.text.strip(), event_date_from_row(a)) for a in links
                       if 'UFC' in a.text or 'TUF' in a.text or 'The Ultimate Fighter' in a.text]
-        
-        for e_link, e_name in ufc_events:
+
+        for e_link, e_name, e_date in ufc_events:
             print(f"\nChecking Event: {e_name}")
 
             event_html = fetch_page(base_url + e_link)
@@ -259,8 +268,15 @@ def scrapeDataFunction(start_year, end_year):
 
             url_bout_names = [url_to_bout(b_link) for b_link, _ in bouts]
             if url_bout_names:
-                existing_res = supabase_db.table("judge_scores").select("bout").in_("bout", url_bout_names).execute()
-                existing_bouts = set(row['bout'] for row in existing_res.data)
+                existing_res = supabase_db.table("judge_scores").select("bout,date").in_("bout", url_bout_names).execute()
+                # A bout name only counts as scraped if its rows are from THIS event (±1 day) —
+                # rematches reuse the exact name (Yan vs Dvalishvili 3 was skipped as UFC 323's).
+                # No parsable event date → fall back to the old name-only check.
+                existing_bouts = set(
+                    row['bout'] for row in existing_res.data
+                    if e_date is None
+                    or abs((datetime.strptime(row['date'], '%Y-%m-%d').date() - e_date).days) <= 1
+                )
             else:
                 existing_bouts = set()
 
